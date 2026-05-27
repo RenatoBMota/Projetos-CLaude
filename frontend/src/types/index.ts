@@ -22,7 +22,31 @@ export type StatusAgendamento =
   | 'CANCELADO'
   | 'NO_SHOW'
 
-export type TipoOperacao = 'RECEBIMENTO' | 'EXPEDICAO' | 'DEVOLUCAO' | 'TRANSFERENCIA'
+export type TipoOperacao = 'RECEBIMENTO' | 'EXPEDICAO' | 'DEVOLUCAO' | 'TRANSFERENCIA' | 'CROSS_DOCKING' | 'ESPECIAL'
+
+export type TipoProcesso =
+  | 'RECEBIMENTO'
+  | 'EXPEDICAO'
+  | 'CROSS_DOCKING'
+  | 'DEVOLUCAO'
+  | 'TRANSFERENCIA'
+  | 'ESPECIAL'
+
+export type TipoRestritor = 'TRANSPORTADORA' | 'FORNECEDOR' | 'TIPO_VEICULO' | 'TIPO_CARGA' | 'PRODUTO'
+
+export type TipoAgendamento = 'AGENDAMENTO' | 'PRE_AGENDAMENTO'
+
+export type StatusSLA = 'NO_PRAZO' | 'PROXIMO_VENCIMENTO' | 'VENCIDO'
+
+export type TipoBloqueio =
+  | 'MANUTENCAO'
+  | 'FERIADO'
+  | 'INVENTARIO'
+  | 'FALTA_ENERGIA'
+  | 'OPERACAO_ESPECIAL'
+  | 'SATURACAO'
+  | 'AUDITORIA'
+  | 'EMERGENCIA'
 
 export type TipoDoca =
   | 'RECEBIMENTO'

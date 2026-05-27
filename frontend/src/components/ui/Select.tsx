@@ -6,11 +6,16 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   error?: string
   options: { value: string; label: string }[]
   placeholder?: string
+  onValueChange?: (value: string) => void
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ label, error, options, placeholder, className, id, ...props }, ref) => {
+  ({ label, error, options, placeholder, className, id, onValueChange, onChange, ...props }, ref) => {
     const selectId = id ?? label?.toLowerCase().replace(/\s+/g, '-')
+    const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      onValueChange?.(e.target.value)
+      onChange?.(e)
+    }
     return (
       <div className="flex flex-col gap-1">
         {label && (
@@ -22,6 +27,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         <select
           ref={ref}
           id={selectId}
+          onChange={handleChange}
           {...props}
           className={clsx(
             'w-full px-3 py-2 text-sm rounded-lg border transition-colors outline-none appearance-none bg-white',
