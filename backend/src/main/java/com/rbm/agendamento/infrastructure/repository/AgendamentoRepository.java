@@ -72,4 +72,86 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, UUID> 
     Page<Agendamento> findByTransportadora(@Param("transportadoraId") UUID transportadoraId,
                                             @Param("status") StatusAgendamento status,
                                             Pageable pageable);
+
+    @Query("""
+            SELECT a.status, COUNT(a) FROM Agendamento a
+            WHERE (:dataInicio IS NULL OR a.dataOperacao >= :dataInicio)
+            AND (:dataFim IS NULL OR a.dataOperacao <= :dataFim)
+            AND (:filialId IS NULL OR a.filial.id = :filialId)
+            GROUP BY a.status
+            """)
+    List<Object[]> countByStatus(@Param("dataInicio") LocalDate dataInicio,
+                                  @Param("dataFim") LocalDate dataFim,
+                                  @Param("filialId") UUID filialId);
+
+    @Query("""
+            SELECT a.slaStatus, COUNT(a) FROM Agendamento a
+            WHERE (:dataInicio IS NULL OR a.dataOperacao >= :dataInicio)
+            AND (:dataFim IS NULL OR a.dataOperacao <= :dataFim)
+            AND (:filialId IS NULL OR a.filial.id = :filialId)
+            GROUP BY a.slaStatus
+            """)
+    List<Object[]> countBySlaStatus(@Param("dataInicio") LocalDate dataInicio,
+                                     @Param("dataFim") LocalDate dataFim,
+                                     @Param("filialId") UUID filialId);
+
+    @Query("""
+            SELECT COALESCE(SUM(CASE WHEN a.noShow = TRUE THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(a), 0), 0)
+            FROM Agendamento a
+            WHERE (:dataInicio IS NULL OR a.dataOperacao >= :dataInicio)
+            AND (:dataFim IS NULL OR a.dataOperacao <= :dataFim)
+            AND (:filialId IS NULL OR a.filial.id = :filialId)
+            """)
+    Double getNoShowRate(@Param("dataInicio") LocalDate dataInicio,
+                          @Param("dataFim") LocalDate dataFim,
+                          @Param("filialId") UUID filialId);
+
+    @Query("""
+            SELECT COALESCE(SUM(CASE WHEN a.slaStatus = 'NO_PRAZO' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(a), 0), 0)
+            FROM Agendamento a
+            WHERE a.status NOT IN ('CRIADO','CANCELADO')
+            AND (:dataInicio IS NULL OR a.dataOperacao >= :dataInicio)
+            AND (:dataFim IS NULL OR a.dataOperacao <= :dataFim)
+            AND (:filialId IS NULL OR a.filial.id = :filialId)
+            """)
+    Double getSlaComplianceRate(@Param("dataInicio") LocalDate dataInicio,
+                                 @Param("dataFim") LocalDate dataFim,
+                                 @Param("filialId") UUID filialId);
+
+    @Query("""
+            SELECT a.transportadora.razaoSocial, COUNT(a)
+            FROM Agendamento a
+            WHERE a.transportadora IS NOT NULL
+            AND (:dataInicio IS NULL OR a.dataOperacao >= :dataInicio)
+            AND (:dataFim IS NULL OR a.dataOperacao <= :dataFim)
+            GROUP BY a.transportadora.id, a.transportadora.razaoSocial
+            ORDER BY COUNT(a) DESC
+            """)
+    List<Object[]> countByTransportadora(@Param("dataInicio") LocalDate dataInicio,
+                                          @Param("dataFim") LocalDate dataFim,
+                                          Pageable pageable);
+
+    @Query("""
+            SELECT a.filial.nome, COUNT(a)
+            FROM Agendamento a
+            WHERE (:dataInicio IS NULL OR a.dataOperacao >= :dataInicio)
+            AND (:dataFim IS NULL OR a.dataOperacao <= :dataFim)
+            GROUP BY a.filial.id, a.filial.nome
+            ORDER BY COUNT(a) DESC
+            """)
+    List<Object[]> countByFilial(@Param("dataInicio") LocalDate dataInicio,
+                                  @Param("dataFim") LocalDate dataFim);
+
+    @Query("SELECT COUNT(a) FROM Agendamento a WHERE a.dataOperacao = :data AND a.status NOT IN :excluidos")
+    long countByDataAndStatusNotIn(@Param("data") LocalDate data,
+                                    @Param("excluidos") List<StatusAgendamento> excluidos);
+
+    @Query("""
+            SELECT COUNT(a) FROM Agendamento a
+            WHERE a.dataOperacao >= :dataInicio AND a.dataOperacao <= :dataFim
+            AND a.status NOT IN :excluidos
+            """)
+    long countByPeriodAndStatusNotIn(@Param("dataInicio") LocalDate dataInicio,
+                                      @Param("dataFim") LocalDate dataFim,
+                                      @Param("excluidos") List<StatusAgendamento> excluidos);
 }
