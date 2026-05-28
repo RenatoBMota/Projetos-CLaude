@@ -22,8 +22,8 @@ const FASES = [
   { fase: 3, titulo: 'Módulo Documental',   status: 'done',    desc: 'XML, NF-e, validações' },
   { fase: 4, titulo: 'Portal Externo',      status: 'done',    desc: 'Transportadoras, aceite' },
   { fase: 5, titulo: 'Painel Operacional',  status: 'done',    desc: 'Dashboard, KPIs' },
-  { fase: 6, titulo: 'Notificações',        status: 'next',    desc: 'E-mail, WhatsApp' },
-  { fase: 7, titulo: 'Integrações',         status: 'pending', desc: 'YMS, WMS, ERP' },
+  { fase: 6, titulo: 'Notificações',        status: 'done',    desc: 'E-mail, WhatsApp' },
+  { fase: 7, titulo: 'Integrações',         status: 'next',    desc: 'YMS, WMS, ERP' },
 ]
 
 const MENUS = [

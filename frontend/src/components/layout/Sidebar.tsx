@@ -14,6 +14,7 @@ import {
   Clock,
   LogOut,
   ExternalLink,
+  Bell,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { label: 'Transportadoras', href: '/transportadoras',  icon: Truck },
   { label: 'Fornecedores',    href: '/fornecedores',     icon: Users },
   { label: 'Documentos',      href: '/documentos',       icon: FileText },
+  { label: 'Notificações',    href: '/notificacoes',     icon: Bell },
   { label: 'Bloqueios',       href: '/bloqueios',        icon: ShieldAlert },
   { label: 'Configurações',   href: '/configuracoes',    icon: Settings },
   { label: 'Portal Carrier',  href: '/portal/aceite',    icon: ExternalLink },

@@ -108,3 +108,27 @@ app:
     secret-key: ${MINIO_SECRET_KEY:rbm_minio_secret}
     bucket-documents: rbm-documentos
     bucket-attachments: rbm-anexos
+  notification:
+    email:
+      enabled: ${NOTIF_EMAIL_ENABLED:false}
+      from: ${NOTIF_EMAIL_FROM:noreply@rbmlogistics.com.br}
+      from-name: ${NOTIF_EMAIL_FROM_NAME:RBM Logistics}
+    whatsapp:
+      enabled: ${NOTIF_WHATSAPP_ENABLED:false}
+      webhook-url: ${NOTIF_WHATSAPP_WEBHOOK_URL:}
+      api-key: ${NOTIF_WHATSAPP_API_KEY:}
+
+spring:
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+        debug: false
