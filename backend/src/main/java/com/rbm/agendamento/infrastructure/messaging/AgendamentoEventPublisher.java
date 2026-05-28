@@ -28,6 +28,34 @@ public class AgendamentoEventPublisher {
         publicar(RabbitMQConfig.RK_AGENDAMENTO_CANCELADO, agendamento);
     }
 
+    public void publicarIntegracaoYms(String tipo, Agendamento agendamento) {
+        try {
+            java.util.HashMap<String, Object> payload = new java.util.HashMap<>();
+            payload.put("tipo", tipo);
+            payload.put("id", agendamento.getId().toString());
+            payload.put("codigo", agendamento.getCodigo());
+            payload.put("status", agendamento.getStatus().name());
+            payload.put("filialId", agendamento.getFilial().getId().toString());
+            payload.put("filialNome", agendamento.getFilial().getNome());
+            payload.put("dataOperacao", agendamento.getDataOperacao().toString());
+            payload.put("horarioInicio", agendamento.getHorarioInicio().toString());
+            if (agendamento.getTipoOperacao() != null)
+                payload.put("tipoOperacao", agendamento.getTipoOperacao().name());
+            if (agendamento.getFornecedor() != null)
+                payload.put("fornecedorNome", agendamento.getFornecedor().getRazaoSocial());
+            if (agendamento.getTransportadora() != null)
+                payload.put("transportadoraNome", agendamento.getTransportadora().getRazaoSocial());
+            if (!agendamento.getDocumentos().isEmpty())
+                payload.put("nf", agendamento.getDocumentos().get(0).getNumero());
+
+            String routingKey = "integracao.yms." + tipo.toLowerCase();
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_INTEGRACAO, routingKey, payload);
+            log.debug("Evento integração YMS publicado: {} para agendamento {}", tipo, agendamento.getCodigo());
+        } catch (Exception e) {
+            log.error("Falha ao publicar integração YMS {} para agendamento {}: {}", tipo, agendamento.getCodigo(), e.getMessage());
+        }
+    }
+
     private void publicar(String routingKey, Agendamento agendamento) {
         try {
             Map<String, Object> payload = Map.of(

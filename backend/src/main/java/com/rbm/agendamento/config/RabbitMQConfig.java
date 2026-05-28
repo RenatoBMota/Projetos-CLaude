@@ -31,6 +31,7 @@ public class RabbitMQConfig {
     public static final String RK_AGENDAMENTO_CRIADO     = "agendamento.criado";
     public static final String RK_AGENDAMENTO_CONFIRMADO = "agendamento.confirmado";
     public static final String RK_AGENDAMENTO_CANCELADO  = "agendamento.cancelado";
+    public static final String RK_INTEGRACAO_YMS         = "integracao.yms.#";
 
     @Bean
     public MessageConverter messageConverter() {
@@ -145,6 +146,13 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(queueAgendamentoCancelado())
                 .to(agendamentoExchange())
                 .with(RK_AGENDAMENTO_CANCELADO);
+    }
+
+    @Bean
+    public Binding bindingIntegracaoYms() {
+        return BindingBuilder.bind(queueIntegracaoYms())
+                .to(integracaoExchange())
+                .with(RK_INTEGRACAO_YMS);
     }
 
     @Bean

@@ -106,6 +106,7 @@ public class AgendamentoService {
         registrarHistorico(agendamento, anterior, StatusAgendamento.CONFIRMADO, "Aceito pela transportadora", usuarioId);
         Agendamento salvo = agendamentoRepository.save(agendamento);
         eventPublisher.publicarConfirmado(salvo);
+        eventPublisher.publicarIntegracaoYms("CONFIRMADO", salvo);
         return AgendamentoResponse.from(salvo);
     }
 
@@ -150,6 +151,7 @@ public class AgendamentoService {
         agendamento = agendamentoRepository.save(agendamento);
 
         eventPublisher.publicarCancelado(agendamento);
+        eventPublisher.publicarIntegracaoYms("CANCELADO", agendamento);
         return AgendamentoResponse.from(agendamento);
     }
 

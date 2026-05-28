@@ -117,6 +117,12 @@ app:
       enabled: ${NOTIF_WHATSAPP_ENABLED:false}
       webhook-url: ${NOTIF_WHATSAPP_WEBHOOK_URL:}
       api-key: ${NOTIF_WHATSAPP_API_KEY:}
+  integracao:
+    yms:
+      enabled: ${YMS_ENABLED:false}
+      base-url: ${YMS_BASE_URL:http://localhost:5000}
+      api-key: ${YMS_API_KEY:}
+      webhook-secret: ${YMS_WEBHOOK_SECRET:rbm-yms-webhook-secret}
 
 spring:
   mail:
