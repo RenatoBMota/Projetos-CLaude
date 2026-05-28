@@ -10,6 +10,8 @@ export interface ApiResponse<T> {
 
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
+export type StatusValidacaoDocumento = 'PENDENTE' | 'APROVADO' | 'REJEITADO'
+
 export type StatusAgendamento =
   | 'CRIADO'
   | 'PENDENTE_ACEITE'

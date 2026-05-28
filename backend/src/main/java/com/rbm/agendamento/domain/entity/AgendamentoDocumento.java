@@ -1,5 +1,6 @@
 package com.rbm.agendamento.domain.entity;
 
+import com.rbm.agendamento.domain.enums.StatusValidacaoDocumento;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -46,6 +47,32 @@ public class AgendamentoDocumento {
     private BigDecimal peso;
 
     private Integer volumes;
+
+    @Column(name = "valor_total", precision = 15, scale = 2)
+    private BigDecimal valorTotal;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status_validacao", nullable = false, length = 20)
+    @Builder.Default
+    private StatusValidacaoDocumento statusValidacao = StatusValidacaoDocumento.PENDENTE;
+
+    @Column(name = "observacao_validacao", columnDefinition = "TEXT")
+    private String observacaoValidacao;
+
+    @Column(name = "nome_arquivo", length = 300)
+    private String nomeArquivo;
+
+    @Column(name = "tamanho_arquivo")
+    private Long tamanhoArquivo;
+
+    @Column(name = "content_type", length = 100)
+    private String contentType;
+
+    @Column(name = "validado_em")
+    private LocalDateTime validadoEm;
+
+    @Column(name = "validado_por")
+    private UUID validadoPor;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

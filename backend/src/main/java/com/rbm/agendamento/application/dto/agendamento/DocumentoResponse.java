@@ -1,8 +1,10 @@
 package com.rbm.agendamento.application.dto.agendamento;
 
 import com.rbm.agendamento.domain.entity.AgendamentoDocumento;
+import com.rbm.agendamento.domain.enums.StatusValidacaoDocumento;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record DocumentoResponse(
@@ -14,7 +16,15 @@ public record DocumentoResponse(
         String emitente,
         String destinatario,
         BigDecimal peso,
-        Integer volumes
+        Integer volumes,
+        BigDecimal valorTotal,
+        StatusValidacaoDocumento statusValidacao,
+        String observacaoValidacao,
+        String nomeArquivo,
+        Long tamanhoArquivo,
+        String contentType,
+        boolean temArquivo,
+        LocalDateTime createdAt
 ) {
     public static DocumentoResponse from(AgendamentoDocumento d) {
         return new DocumentoResponse(
@@ -26,7 +36,15 @@ public record DocumentoResponse(
                 d.getEmitente(),
                 d.getDestinatario(),
                 d.getPeso(),
-                d.getVolumes()
+                d.getVolumes(),
+                d.getValorTotal(),
+                d.getStatusValidacao(),
+                d.getObservacaoValidacao(),
+                d.getNomeArquivo(),
+                d.getTamanhoArquivo(),
+                d.getContentType(),
+                d.getXmlPath() != null,
+                d.getCreatedAt()
         );
     }
 }
