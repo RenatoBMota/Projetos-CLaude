@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { Plus, Search, Eye, Ban, CheckCircle, Clock } from 'lucide-react'
+import { Plus, Search, Eye, Ban, CheckCircle, Clock, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Table } from '@/components/ui/Table'
@@ -86,6 +86,12 @@ export default function AgendamentosPage() {
       case 'iniciar': await agendamentoService.iniciarOperacao(id); break
       case 'finalizar': await agendamentoService.finalizar(id); break
       case 'noshow': await agendamentoService.registrarNoShow(id); break
+      case 'aceitar': await agendamentoService.aceitar(id); break
+      case 'recusar': {
+        const motivo = prompt('Motivo da recusa:') ?? 'Recusado pelo operador'
+        await agendamentoService.recusar(id, motivo)
+        break
+      }
     }
     load()
   }
@@ -132,6 +138,16 @@ export default function AgendamentosPage() {
           <button onClick={() => handleAcao(a.id, 'confirmar')} className="text-green-600 hover:text-green-800 p-1" title="Confirmar">
             <CheckCircle className="h-4 w-4" />
           </button>
+        )}
+        {a.status === 'PENDENTE_ACEITE' && (
+          <>
+            <button onClick={() => handleAcao(a.id, 'aceitar')} className="text-green-600 hover:text-green-800 p-1" title="Aceitar">
+              <ThumbsUp className="h-4 w-4" />
+            </button>
+            <button onClick={() => handleAcao(a.id, 'recusar')} className="text-red-500 hover:text-red-700 p-1" title="Recusar">
+              <ThumbsDown className="h-4 w-4" />
+            </button>
+          </>
         )}
         {!['FINALIZADO','CANCELADO','NO_SHOW'].includes(a.status) && (
           <button onClick={() => agendamentoService.cancelar(a.id, 'Cancelado pelo operador').then(load)}

@@ -9,5 +9,5 @@ public record LoginResponse(
         String refreshToken,
         UsuarioInfo usuario
 ) {
-    public record UsuarioInfo(UUID id, String nome, String email, Role role) {}
+    public record UsuarioInfo(UUID id, String nome, String email, Role role, UUID transportadoraId) {}
 }

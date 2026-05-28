@@ -13,6 +13,7 @@ import {
   ShieldAlert,
   Clock,
   LogOut,
+  ExternalLink,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { label: 'Documentos',      href: '/documentos',       icon: FileText },
   { label: 'Bloqueios',       href: '/bloqueios',        icon: ShieldAlert },
   { label: 'Configurações',   href: '/configuracoes',    icon: Settings },
+  { label: 'Portal Carrier',  href: '/portal/aceite',    icon: ExternalLink },
 ]
 
 export function Sidebar() {

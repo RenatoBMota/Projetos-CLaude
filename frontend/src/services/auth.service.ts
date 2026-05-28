@@ -3,7 +3,7 @@ import { api } from './api'
 export interface LoginResponse {
   token: string
   refreshToken: string
-  usuario: { id: string; nome: string; email: string; role: string }
+  usuario: { id: string; nome: string; email: string; role: string; transportadoraId?: string | null }
 }
 
 export const authService = {

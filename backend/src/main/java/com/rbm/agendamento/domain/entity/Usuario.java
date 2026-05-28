@@ -35,6 +35,9 @@ public class Usuario extends BaseEntity implements UserDetails {
     @Column(name = "filial_id")
     private UUID filialId;
 
+    @Column(name = "transportadora_id")
+    private UUID transportadoraId;
+
     @Column(nullable = false)
     private Boolean ativo = true;
 

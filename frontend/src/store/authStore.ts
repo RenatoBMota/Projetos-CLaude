@@ -6,6 +6,7 @@ interface UsuarioInfo {
   nome: string
   email: string
   role: string
+  transportadoraId?: string | null
 }
 
 interface AuthState {

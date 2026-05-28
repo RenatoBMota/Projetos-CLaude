@@ -110,6 +110,24 @@ public class AgendamentoController {
         return ApiResponse.ok(agendamentoService.registrarNoShow(id, extrairUsuarioId(user)));
     }
 
+    @PostMapping("/{id}/aceitar")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','OPERATOR','CARRIER')")
+    @Operation(summary = "Aceitar agendamento pendente (transportadora)")
+    public ApiResponse<AgendamentoResponse> aceitar(@PathVariable UUID id,
+                                                     @AuthenticationPrincipal UserDetails user) {
+        return ApiResponse.ok(agendamentoService.aceitar(id, extrairUsuarioId(user)));
+    }
+
+    @PostMapping("/{id}/recusar")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','OPERATOR','CARRIER')")
+    @Operation(summary = "Recusar agendamento pendente (transportadora)")
+    public ApiResponse<AgendamentoResponse> recusar(@PathVariable UUID id,
+                                                     @RequestBody(required = false) Map<String, String> body,
+                                                     @AuthenticationPrincipal UserDetails user) {
+        String motivo = body != null ? body.getOrDefault("motivo", "Recusado pela transportadora") : "Recusado pela transportadora";
+        return ApiResponse.ok(agendamentoService.recusar(id, motivo, extrairUsuarioId(user)));
+    }
+
     private UUID extrairUsuarioId(UserDetails user) {
         if (user instanceof com.rbm.agendamento.domain.entity.Usuario u) return u.getId();
         return null;

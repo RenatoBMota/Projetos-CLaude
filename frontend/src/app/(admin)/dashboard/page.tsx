@@ -8,8 +8,8 @@ const FASES = [
   { fase: 1, titulo: 'Cadastros Mestres',       status: 'done',    desc: 'Auth, filiais, parceiros' },
   { fase: 2, titulo: 'Motor de Agendamento',    status: 'done',    desc: 'Janelas, slots, bloqueios' },
   { fase: 3, titulo: 'Módulo Documental',       status: 'done',    desc: 'XML, NF-e, validações' },
-  { fase: 4, titulo: 'Portal Externo',          status: 'next',    desc: 'Transportadoras, aceite' },
-  { fase: 5, titulo: 'Painel Operacional',      status: 'pending', desc: 'Dashboard, KPIs' },
+  { fase: 4, titulo: 'Portal Externo',          status: 'done',    desc: 'Transportadoras, aceite' },
+  { fase: 5, titulo: 'Painel Operacional',      status: 'next',    desc: 'Dashboard, KPIs' },
   { fase: 6, titulo: 'Notificações',            status: 'pending', desc: 'E-mail, WhatsApp' },
   { fase: 7, titulo: 'Integrações',             status: 'pending', desc: 'YMS, WMS, ERP' },
 ]
@@ -30,7 +30,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-1">Bem-vindo, {usuario?.nome}. Fase 3 concluída — Módulo Documental ativo.</p>
+        <p className="text-gray-500 text-sm mt-1">Bem-vindo, {usuario?.nome}. Fase 4 concluída — Portal Externo e fluxo de aceite ativos.</p>
       </div>
 
       <div className="card p-6">

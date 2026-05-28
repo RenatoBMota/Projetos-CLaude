@@ -109,6 +109,15 @@ public class Agendamento extends BaseEntity {
     @Column(name = "criado_por")
     private UUID criadoPor;
 
+    @Column(name = "aceite_em")
+    private LocalDateTime aceiteEm;
+
+    @Column(name = "aceite_por")
+    private UUID aceitePor;
+
+    @Column(name = "aceite_motivo", columnDefinition = "TEXT")
+    private String aceiteMotivo;
+
     @OneToMany(mappedBy = "agendamento", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<AgendamentoDocumento> documentos = new ArrayList<>();

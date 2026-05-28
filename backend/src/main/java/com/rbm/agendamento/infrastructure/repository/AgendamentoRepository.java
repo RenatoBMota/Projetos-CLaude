@@ -62,4 +62,14 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, UUID> 
 
     @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(a.codigo, 13) AS int)), 0) FROM Agendamento a WHERE a.codigo LIKE :prefixo%")
     Integer findMaxSequencial(@Param("prefixo") String prefixo);
+
+    @Query("""
+            SELECT a FROM Agendamento a
+            WHERE a.transportadora.id = :transportadoraId
+            AND (:status IS NULL OR a.status = :status)
+            ORDER BY a.dataOperacao ASC, a.horarioInicio ASC
+            """)
+    Page<Agendamento> findByTransportadora(@Param("transportadoraId") UUID transportadoraId,
+                                            @Param("status") StatusAgendamento status,
+                                            Pageable pageable);
 }

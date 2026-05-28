@@ -43,7 +43,7 @@ public class AuthService {
         String refreshToken = criarRefreshToken(usuario);
 
         return new LoginResponse(token, refreshToken,
-                new LoginResponse.UsuarioInfo(usuario.getId(), usuario.getNome(), usuario.getEmail(), usuario.getRole()));
+                new LoginResponse.UsuarioInfo(usuario.getId(), usuario.getNome(), usuario.getEmail(), usuario.getRole(), usuario.getTransportadoraId()));
     }
 
     @Transactional
@@ -63,7 +63,7 @@ public class AuthService {
         String novoRefreshToken = criarRefreshToken(usuario);
 
         return new LoginResponse(novoToken, novoRefreshToken,
-                new LoginResponse.UsuarioInfo(usuario.getId(), usuario.getNome(), usuario.getEmail(), usuario.getRole()));
+                new LoginResponse.UsuarioInfo(usuario.getId(), usuario.getNome(), usuario.getEmail(), usuario.getRole(), usuario.getTransportadoraId()));
     }
 
     @Transactional

@@ -72,6 +72,10 @@ public class AgendamentoService {
                 throw new BusinessException("SEM_VAGAS", "Não há vagas disponíveis para este horário");
 
             Agendamento agendamento = construirAgendamento(request, janela, horarioFim, criadoPor);
+            if (Boolean.TRUE.equals(janela.getAceiteObrigatorio())
+                    && !Boolean.TRUE.equals(janela.getAprovacaoAutomatica())) {
+                agendamento.setStatus(StatusAgendamento.PENDENTE_ACEITE);
+            }
             agendamento = agendamentoRepository.save(agendamento);
 
             registrarHistorico(agendamento, null, agendamento.getStatus(), "Agendamento criado", criadoPor);
@@ -87,6 +91,48 @@ public class AgendamentoService {
     @Transactional
     public AgendamentoResponse confirmar(UUID id, UUID usuarioId) {
         return mudarStatus(id, StatusAgendamento.CONFIRMADO, "Agendamento confirmado", usuarioId);
+    }
+
+    @Transactional
+    public AgendamentoResponse aceitar(UUID id, UUID usuarioId) {
+        Agendamento agendamento = buscarEntidade(id);
+        if (agendamento.getStatus() != StatusAgendamento.PENDENTE_ACEITE)
+            throw new BusinessException("STATUS_INVALIDO", "Somente agendamentos PENDENTE_ACEITE podem ser aceitos");
+
+        StatusAgendamento anterior = agendamento.getStatus();
+        agendamento.setStatus(StatusAgendamento.CONFIRMADO);
+        agendamento.setAceiteEm(java.time.LocalDateTime.now());
+        agendamento.setAceitePor(usuarioId);
+        registrarHistorico(agendamento, anterior, StatusAgendamento.CONFIRMADO, "Aceito pela transportadora", usuarioId);
+        Agendamento salvo = agendamentoRepository.save(agendamento);
+        eventPublisher.publicarConfirmado(salvo);
+        return AgendamentoResponse.from(salvo);
+    }
+
+    @Transactional
+    public AgendamentoResponse recusar(UUID id, String motivo, UUID usuarioId) {
+        Agendamento agendamento = buscarEntidade(id);
+        if (agendamento.getStatus() != StatusAgendamento.PENDENTE_ACEITE)
+            throw new BusinessException("STATUS_INVALIDO", "Somente agendamentos PENDENTE_ACEITE podem ser recusados");
+
+        StatusAgendamento anterior = agendamento.getStatus();
+        agendamento.setStatus(StatusAgendamento.CANCELADO);
+        agendamento.setAceiteEm(java.time.LocalDateTime.now());
+        agendamento.setAceitePor(usuarioId);
+        agendamento.setAceiteMotivo(motivo);
+        registrarHistorico(agendamento, anterior, StatusAgendamento.CANCELADO,
+                "Recusado pela transportadora: " + motivo, usuarioId);
+        Agendamento salvo = agendamentoRepository.save(agendamento);
+        eventPublisher.publicarCancelado(salvo);
+        return AgendamentoResponse.from(salvo);
+    }
+
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<AgendamentoResponse> listarPorTransportadora(
+            UUID transportadoraId, StatusAgendamento status,
+            org.springframework.data.domain.Pageable pageable) {
+        return agendamentoRepository.findByTransportadora(transportadoraId, status, pageable)
+                .map(AgendamentoResponse::from);
     }
 
     @Transactional

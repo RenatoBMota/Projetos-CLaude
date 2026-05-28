@@ -55,6 +55,9 @@ export interface AgendamentoResponse {
   slaStatus: StatusSLA
   noShow: boolean
   expiraEm: string | null
+  aceiteEm: string | null
+  aceitePor: string | null
+  aceiteMotivo: string | null
   documentos: DocumentoResponse[]
   historico: HistoricoResponse[]
   criadoEm: string
@@ -129,4 +132,10 @@ export const agendamentoService = {
 
   registrarNoShow: (id: string) =>
     api.post<{ data: AgendamentoResponse }>(`/agendamentos/${id}/no-show`),
+
+  aceitar: (id: string) =>
+    api.post<{ data: AgendamentoResponse }>(`/agendamentos/${id}/aceitar`),
+
+  recusar: (id: string, motivo: string) =>
+    api.post<{ data: AgendamentoResponse }>(`/agendamentos/${id}/recusar`, { motivo }),
 }
