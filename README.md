@@ -162,21 +162,26 @@ docker compose logs -f redis
 ```
 Projetos-CLaude/
 ├── backend/                        # Spring Boot API
-│   ├── src\main\java\com\rbm\agendamento\
-│   │   ├── api\                    # Controllers e response wrappers
-│   │   ├── config\                 # Security, Redis, RabbitMQ, OpenAPI
-│   │   └── domain\                 # Entidades e regras de negócio (Fase 1+)
-│   └── src\main\resources\db\migration\  # Flyway migrations
-├── frontend\                       # Next.js App
-│   └── src\
-│       ├── app\                    # App Router (páginas)
-│       ├── components\             # Componentes reutilizáveis
-│       ├── services\               # Clientes HTTP (axios)
-│       ├── types\                  # Tipos TypeScript
-│       └── utils\                  # Constantes e helpers
-├── infra\nginx\                    # Configuração do proxy reverso
-├── .github\workflows\              # CI/CD (GitHub Actions)
-├── docker-compose.yml              # Infraestrutura de desenvolvimento
+│   ├── src/main/java/.../
+│   │   ├── api/                    # Controllers e response wrappers
+│   │   ├── config/                 # Security, Redis, RabbitMQ, OpenAPI
+│   │   ├── domain/                 # Entidades e regras de negócio
+│   │   ├── application/            # Services e DTOs
+│   │   └── infrastructure/         # Repositories, Messaging, Integração YMS
+│   └── src/main/resources/
+│       ├── application.yml         # Configurações da aplicação
+│       └── db/migration/           # Flyway V1 a V15
+├── frontend/                       # Next.js App
+│   └── src/
+│       ├── app/                    # App Router (páginas)
+│       ├── components/             # Componentes reutilizáveis
+│       ├── services/               # Clientes HTTP (axios)
+│       ├── store/                  # Estado global (Zustand)
+│       └── types/                  # Tipos TypeScript
+├── infra/nginx/                    # Configuração do proxy reverso
+├── yms-integration/                # Patch Python para integração com o YMS
+├── MANUAL.md                       # Manual completo de instalação e uso
+├── docker-compose.yml              # Infraestrutura (Postgres, Redis, RabbitMQ, MinIO)
 └── .env.example                    # Modelo de variáveis de ambiente
 ```
 
@@ -227,11 +232,11 @@ volumes:
 | Fase | Escopo                              | Status       |
 |------|-------------------------------------|--------------|
 | 0    | Fundação: infra, scaffold, CI/CD    | ✅ Concluída  |
-| 1    | Autenticação e Cadastros Mestres    | 🔜 Próxima   |
-| 2    | Motor de Agendamento e Janelas      | ⏳ Pendente  |
-| 3    | Módulo Documental (XML/NF-e)        | ⏳ Pendente  |
-| 4    | Portal Externo (Transportadoras)    | ⏳ Pendente  |
-| 5    | Painel Operacional e Dashboards     | ⏳ Pendente  |
-| 6    | Notificações (E-mail, WhatsApp)     | ⏳ Pendente  |
-| 7    | Integrações YMS / WMS / ERP         | ⏳ Pendente  |
-| 8    | Enterprise: IA, OCR, Torre Controle | ⏳ Pendente  |
+| 1    | Autenticação e Cadastros Mestres    | ✅ Concluída  |
+| 2    | Motor de Agendamento e Janelas      | ✅ Concluída  |
+| 3    | Módulo Documental (XML/NF-e)        | ✅ Concluída  |
+| 4    | Portal Externo (Transportadoras)    | ✅ Concluída  |
+| 5    | Painel Operacional e Dashboards     | ✅ Concluída  |
+| 6    | Notificações (E-mail, WhatsApp)     | ✅ Concluída  |
+| 7    | Integração YMS (Gerenc. de Pátio)   | ✅ Concluída  |
+| 8    | Enterprise: IA, OCR, Torre Controle | 🔜 Próxima versão |
