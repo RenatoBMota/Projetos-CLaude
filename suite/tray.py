@@ -1,8 +1,8 @@
 """
-Suite Tray - ícone na bandeja do sistema usando pywin32 (sem Pillow).
-Compatível com Python 3.14+.
+Suite Tray - icone na bandeja do sistema usando pywin32 (sem Pillow).
+Compativel com Python 3.14+.
 """
-import sys, os, struct, base64, tempfile, subprocess, threading, webbrowser, time, traceback
+import sys, os, base64, subprocess, threading, webbrowser, time, traceback
 
 LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "suite_error.log")
 def log(msg):
@@ -11,7 +11,6 @@ def log(msg):
 
 try:
     import win32gui, win32con, win32api
-    import ctypes
 except Exception as e:
     log(f"ERRO import pywin32: {e}\n{traceback.format_exc()}")
     sys.exit(1)
@@ -23,72 +22,76 @@ SCV_PORT = 5002
 
 processes = {}
 
-# ── ICO embutido (32x32 azul com S branco) ────────────────────────────────────
 ICO_B64 = (
-    "AAABAAEAICAAAAEAGACoDAAAFgAAACgAAAAgAAAAQAAAAAEAGAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-    "AAAAAAAAUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHg"
-    "UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHg"
-    "UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHg"
-    "UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHg"
-    "UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHg"
-    "UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHg"
-    "UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHg"
-    "UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHg"
-    "UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHg"
-    "UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHg"
-    "UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHg"
-    "UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHg"
-    "UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHg"
-    "UQHgUQHj///////////////////////////////////////////////////////////////8UQHg"
-    "UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHj//////////"
-    "//////////////////////////////////////////////////////8UQHgUQHgUQHgUQHgUQHgUQ"
-    "HgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHj///////////////////////////////////////////////////////////////8UQHg"
-    "UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHj//////////"
-    "//////////////////////////////////////////////////////8UQHgUQHgUQHgUQHgUQHgUQ"
-    "HgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQ"
-    "HgUQHgUQHgUQHgUQHj///////////////8UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHg"
-    "UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHj"
-    "///////////////8UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQ"
-    "HgUQHj///////////////////////////////////////////////////////////////8UQHgUQ"
-    "HgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHj//////////"
-    "//////////////////////////////////////////////////////8UQHgUQHgUQHgUQHgUQHgUQ"
-    "HgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHj///////////////////////////////////////////////////////////////8UQHg"
-    "UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHj//////////"
-    "//////////////////////////////////////////////////////8UQHgUQHgUQHgUQHgUQHgUQ"
-    "HgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHj///////////////8UQHgUQHgUQHgUQHgUQHgUQ"
-    "HgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQ"
-    "HgUQHgUQHgUQHj///////////////8UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHg"
-    "UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHj//////"
-    "/////////////////////////////////////////////////////////8UQHgUQHgUQHgUQHgUQ"
-    "HgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHj///////////////////////////////////////////////////////////////8UQHg"
-    "UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHj//////////"
-    "//////////////////////////////////////////////////////8UQHgUQHgUQHgUQHgUQHgUQ"
-    "HgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQ"
-    "HgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQ"
-    "HgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQ"
-    "HgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQ"
-    "HgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQ"
-    "HgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQ"
-    "HgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQ"
-    "HgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQ"
-    "HgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQ"
-    "HgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQ"
-    "HgUQHgUQHgUQHgUQHgUQHgUQHgUQHgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+    "AAABAAEAICAAAAEAGACoDAAAFgAAACgAAAAgAAAAQAAAAAEAGAAAAAAAgAwAAAAAAAAAAAAAAAAA"
+    "AAAAAAAUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHj/"
+    "//////////////////////////////////////////////////////////////8UQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHj/////////////////////////"
+    "//////////////////////////////////////8UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHj/////////////////////////////////////////////////"
+    "//////////////8UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHj///////////////////////////////////////////////////////////////8UQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHj///////////////8UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHj///////////////8UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHj///////////////////////////////////////////////////////////////8UQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHj/////////////////"
+    "//////////////////////////////////////////////8UQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHj/////////////////////////////////////////"
+    "//////////////////////8UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHj///////////////////////////////////////////////////////////////8U"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHj/////////////"
+    "//8UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHj///////////////8UQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHj/////////////////////////////////////////////////////////////"
+    "//8UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHj/////////"
+    "//////////////////////////////////////////////////////8UQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHj/////////////////////////////////"
+    "//////////////////////////////8UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHj/////////////////////////////////////////////////////////"
+    "//////8UQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgU"
+    "QHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgUQHgA"
+    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    "AAAAAAAAAAAAAAAAAA=="
 )
 
 def get_ico_path():
-    ico_path = os.path.join(BASE, "suite_icon.ico")
-    if not os.path.exists(ico_path):
-        with open(ico_path, "wb") as f:
-            f.write(base64.b64decode(ICO_B64))
+    """Grava o ICO num path sem espacos/acentos (temp dir)."""
+    ico_path = os.path.join(os.environ.get("TEMP", os.getcwd()), "suite_app.ico")
+    with open(ico_path, "wb") as f:
+        f.write(base64.b64decode(ICO_B64))
     return ico_path
 
-# ── Constantes Win32 ──────────────────────────────────────────────────────────
-WM_TRAY = win32con.WM_USER + 20
+WM_TRAY    = win32con.WM_USER + 20
 NIM_ADD    = 0
-NIM_MODIFY = 1
 NIM_DELETE = 2
 NIF_MESSAGE = 1
 NIF_ICON    = 2
@@ -99,7 +102,6 @@ MENU_WMS   = 1002
 MENU_SCV   = 1003
 MENU_QUIT  = 1009
 
-# ── Subprocessos ─────────────────────────────────────────────────────────────
 def python_bin(venv_dir):
     return os.path.join(venv_dir, "Scripts", "python.exe")
 
@@ -151,20 +153,35 @@ def start_all():
     except Exception as e:
         log(f"ERRO start_all: {e}\n{traceback.format_exc()}")
 
-# ── Janela Win32 invisível + tray ─────────────────────────────────────────────
 def show_menu(hwnd):
     menu = win32gui.CreatePopupMenu()
-    win32gui.AppendMenu(menu, win32con.MF_STRING, MENU_HUB,  "Abrir Suite (Hub)")
+    win32gui.AppendMenu(menu, win32con.MF_STRING,    MENU_HUB,  "Abrir Suite (Hub)")
     win32gui.AppendMenu(menu, win32con.MF_SEPARATOR, 0, "")
-    win32gui.AppendMenu(menu, win32con.MF_STRING, MENU_WMS, f"WMS RMA  →  porta {WMS_PORT}")
-    win32gui.AppendMenu(menu, win32con.MF_STRING, MENU_SCV, f"SCV  →  porta {SCV_PORT}")
+    win32gui.AppendMenu(menu, win32con.MF_STRING,    MENU_WMS,  f"WMS RMA  porta {WMS_PORT}")
+    win32gui.AppendMenu(menu, win32con.MF_STRING,    MENU_SCV,  f"SCV  porta {SCV_PORT}")
     win32gui.AppendMenu(menu, win32con.MF_SEPARATOR, 0, "")
-    win32gui.AppendMenu(menu, win32con.MF_STRING, MENU_QUIT, "Encerrar tudo")
+    win32gui.AppendMenu(menu, win32con.MF_STRING,    MENU_QUIT, "Encerrar tudo")
     pos = win32gui.GetCursorPos()
     win32gui.SetForegroundWindow(hwnd)
     win32gui.TrackPopupMenu(menu, win32con.TPM_LEFTALIGN, pos[0], pos[1], 0, hwnd, None)
     win32gui.PostMessage(hwnd, win32con.WM_NULL, 0, 0)
     win32gui.DestroyMenu(menu)
+
+_nid = None
+
+def add_tray(hwnd, hicon):
+    global _nid
+    _nid = (hwnd, 0, NIF_MESSAGE | NIF_ICON | NIF_TIP, WM_TRAY, hicon, "Suite de Apps")
+    win32gui.Shell_NotifyIcon(NIM_ADD, _nid)
+
+def remove_tray(hwnd):
+    global _nid
+    if _nid:
+        try:
+            win32gui.Shell_NotifyIcon(NIM_DELETE, _nid)
+        except Exception:
+            pass
+        _nid = None
 
 def wnd_proc(hwnd, msg, wparam, lparam):
     if msg == WM_TRAY:
@@ -190,44 +207,35 @@ def wnd_proc(hwnd, msg, wparam, lparam):
         return win32gui.DefWindowProc(hwnd, msg, wparam, lparam)
     return 0
 
-_nid = None
-
-def add_tray(hwnd, hicon):
-    global _nid
-    _nid = (hwnd, 0, NIF_MESSAGE | NIF_ICON | NIF_TIP, WM_TRAY, hicon, "Suite de Apps")
-    win32gui.Shell_NotifyIcon(NIM_ADD, _nid)
-
-def remove_tray(hwnd):
-    global _nid
-    if _nid:
-        win32gui.Shell_NotifyIcon(NIM_DELETE, _nid)
-        _nid = None
-
 def main():
     log("=== Suite Tray iniciando (pywin32) ===")
     try:
         threading.Thread(target=start_all, daemon=True).start()
 
         ico_path = get_ico_path()
+        log(f"ICO path: {ico_path}")
+
         hicon = win32gui.LoadImage(
             0, ico_path, win32con.IMAGE_ICON,
             0, 0, win32con.LR_LOADFROMFILE | win32con.LR_DEFAULTSIZE
         )
+        log(f"hicon={hicon}")
 
         wc = win32gui.WNDCLASS()
-        wc.hInstance = win32api.GetModuleHandle(None)
-        wc.lpszClassName = "SuiteTray"
-        wc.lpfnWndProc = wnd_proc
+        wc.hInstance    = win32api.GetModuleHandle(None)
+        wc.lpszClassName = "SuiteTrayWnd"
+        wc.lpfnWndProc  = wnd_proc
         win32gui.RegisterClass(wc)
 
         hwnd = win32gui.CreateWindow(
-            "SuiteTray", "Suite Tray",
+            "SuiteTrayWnd", "Suite Tray",
             0, 0, 0, 0, 0, 0, 0,
             win32api.GetModuleHandle(None), None
         )
+        log(f"hwnd={hwnd}")
 
         add_tray(hwnd, hicon)
-        log("Tray icon adicionado, entrando no loop de mensagens")
+        log("Tray OK - loop de mensagens iniciado")
         win32gui.PumpMessages()
     except Exception as e:
         log(f"ERRO FATAL: {e}\n{traceback.format_exc()}")
