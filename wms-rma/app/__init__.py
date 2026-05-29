@@ -59,19 +59,26 @@ def create_app():
 
     # ── Controle de acesso por perfil ─────────────────────────────────────────
     from app.utils import BLUEPRINT_ROLES
-    from flask_login import current_user as cu
 
     @app.before_request
     def check_blueprint_access():
         from flask import request as req, abort
         from flask_login import current_user as u
-        # request.blueprints é uma lista de strings em Flask
         bp_name = req.blueprints[-1] if req.blueprints else ''
         if bp_name == 'auth' or not bp_name:
             return
         if not u.is_authenticated:
-            return  # login_required handles redirect
-        allowed = BLUEPRINT_ROLES.get(bp_name)
+            return
+        if u.role == 'admin':
+            return  # admin sempre tem acesso total
+        # Lê permissões do cache (invalidado ao salvar via /usuarios/permissoes/salvar)
+        mapa = app.config.get('PERMISSOES_MAPA')
+        if mapa is None:
+            from app.models import PermissaoPerfil
+            mapa = PermissaoPerfil.carregar_mapa()
+            app.config['PERMISSOES_MAPA'] = mapa
+        # blueprint ausente no mapa = acesso livre para todos
+        allowed = mapa.get(bp_name)
         if allowed is not None and u.role not in allowed:
             abort(403)
 

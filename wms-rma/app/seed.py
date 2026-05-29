@@ -5,13 +5,17 @@ from app.models import (
     Configuracao, Usuario, Roles, Fornecedor, Produto,
     Armazem, Zona, Modulo, Rua, Numero, Apartamento,
     PoliticaSLA, RMA, EstadoRMA, HistoricoRMA, PrazoSLA, TipoZona,
-    ListaOpcao, TipoLista
+    ListaOpcao, TipoLista, PermissaoPerfil
 )
+from app.utils import BLUEPRINT_ROLES
 import random
 
 
 def seed_banco():
     """Popula o banco com dados iniciais se estiver vazio."""
+    # Seed permissões (sempre, independente de outros dados)
+    PermissaoPerfil.seed_defaults(BLUEPRINT_ROLES)
+
     if Usuario.query.first():
         return
 

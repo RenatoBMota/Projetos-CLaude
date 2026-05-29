@@ -99,7 +99,7 @@
           <th>Cliente</th>
           <th>Produto</th>
           <th>Fornecedor</th>
-          <th>Qtd</th>
+          <th>Endereço</th>
           <th>SLA</th>
           <th>Dias</th>
           <th>Recebido</th>
@@ -126,7 +126,13 @@
           <td class="text-truncate" style="max-width:120px;">
             {% if r.fornecedor %}{{ r.fornecedor.nome }}{% else %}—{% endif %}
           </td>
-          <td class="text-center">{{ r.quantidade }}</td>
+          <td>
+            {% if r.apt_ref %}
+            <span class="badge bg-dark font-monospace" style="font-size:.7rem;">{{ r.apt_ref.endereco }}</span>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
+          </td>
           <td>
             {% if r.em_atraso %}
             <span class="badge bg-danger"><i class="fa-solid fa-clock me-1"></i>Atrasado</span>
@@ -151,7 +157,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="11" class="text-center py-5 text-muted">
+          <td colspan="12" class="text-center py-5 text-muted">
             <i class="fa-solid fa-inbox fa-2x mb-2 d-block"></i>
             Nenhum RMA encontrado com os filtros aplicados.
           </td>

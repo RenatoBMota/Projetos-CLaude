@@ -533,3 +533,31 @@ class ItemInventario(db.Model):
     verificado_em  = db.Column(db.DateTime)
     apartamento    = db.relationship('Apartamento', foreign_keys=[apartamento_id])
     rma            = db.relationship('RMA', foreign_keys=[rma_id])
+
+
+class PermissaoPerfil(db.Model):
+    """Matriz de permissões blueprint × role, editável pelo admin."""
+    __tablename__ = 'permissoes_perfil'
+    id        = db.Column(db.Integer, primary_key=True)
+    blueprint = db.Column(db.String(50), nullable=False)
+    role      = db.Column(db.String(50), nullable=False)
+    __table_args__ = (db.UniqueConstraint('blueprint', 'role', name='uq_bp_role'),)
+
+    @classmethod
+    def carregar_mapa(cls):
+        """Retorna dict {blueprint: set(roles)} com as permissões salvas no banco."""
+        mapa = {}
+        for p in cls.query.all():
+            mapa.setdefault(p.blueprint, set()).add(p.role)
+        return mapa
+
+    @classmethod
+    def seed_defaults(cls, defaults):
+        """Popula a tabela com os defaults se ainda estiver vazia."""
+        if cls.query.count() == 0:
+            for bp, roles in defaults.items():
+                if roles is None:
+                    continue  # acesso livre, não armazena restrição
+                for role in roles:
+                    db.session.add(cls(blueprint=bp, role=role))
+            db.session.commit()

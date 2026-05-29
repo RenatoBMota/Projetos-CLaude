@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from datetime import datetime
 from app.extensions import db
-from app.models import Usuario, Roles
+from app.models import Usuario, Roles, PermissaoPerfil
 from app.utils import role_required, BLUEPRINT_ROLES
 
 bp = Blueprint('usuarios', __name__, url_prefix='/usuarios')
@@ -115,26 +115,47 @@ def toggle_ativo(user_id):
     return redirect(url_for('usuarios.index'))
 
 
+TELAS = {
+    'dashboard':    'Dashboard',
+    'rma':          'RMA',
+    'triagem':      'Triagem',
+    'armazem':      'Armazém',
+    'produtos':     'Produtos',
+    'lote':         'Lotes',
+    'sla':          'Monitor SLA',
+    'relatorios':   'Relatórios',
+    'auditoria':    'Inventário',
+    'configuracoes':'Configurações',
+    'usuarios':     'Usuários',
+}
+
+
 @bp.route('/permissoes')
 @login_required
 @role_required(Roles.ADMIN)
 def permissoes():
-    """Tela de visualização da matriz de permissões por perfil."""
-    telas = {
-        'dashboard':    'Dashboard',
-        'rma':          'RMA',
-        'triagem':      'Triagem',
-        'armazem':      'Armazém',
-        'produtos':     'Produtos',
-        'lote':         'Lotes',
-        'sla':          'Monitor SLA',
-        'relatorios':   'Relatórios',
-        'auditoria':    'Inventário',
-        'configuracoes':'Configurações',
-        'usuarios':     'Usuários',
-    }
+    mapa = PermissaoPerfil.carregar_mapa()
     return render_template('usuarios/permissoes.html',
-        telas=telas, roles=Roles.LABELS, BLUEPRINT_ROLES=BLUEPRINT_ROLES)
+        telas=TELAS, roles=Roles.LABELS, mapa=mapa)
+
+
+@bp.route('/permissoes/salvar', methods=['POST'])
+@login_required
+@role_required(Roles.ADMIN)
+def permissoes_salvar():
+    """Salva a nova matriz de permissões (checkboxes do formulário)."""
+    # Remove todas e recria baseado nos checkboxes marcados
+    PermissaoPerfil.query.delete()
+    for bp_key in TELAS:
+        for role_key in Roles.LABELS:
+            if request.form.get(f'{bp_key}__{role_key}'):
+                db.session.add(PermissaoPerfil(blueprint=bp_key, role=role_key))
+    db.session.commit()
+    # Invalida o cache de permissões
+    from flask import current_app
+    current_app.config['PERMISSOES_MAPA'] = None
+    flash('Permissões atualizadas com sucesso!', 'success')
+    return redirect(url_for('usuarios.permissoes'))
 
 
 @bp.route('/<int:user_id>/deletar', methods=['POST'])
