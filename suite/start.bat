@@ -32,19 +32,17 @@ if errorlevel 1 (
     if errorlevel 1 ( echo ERRO ao instalar dependencias & pause & exit /b 1 )
 )
 
-:: Pre-instala dependencias do WMS se necessario
-if not exist "wms-rma\.venv\Scripts\python.exe" (
-    echo [3/3] Configurando WMS-RMA ^(primeira vez^)...
-    python -m venv wms-rma\.venv
-    wms-rma\.venv\Scripts\pip install -q -r wms-rma\requirements.txt
-)
+:: WMS-RMA - cria venv e instala deps (sempre garante que estao instaladas)
+echo [3/4] Configurando WMS-RMA...
+if not exist "wms-rma\.venv\Scripts\python.exe" python -m venv wms-rma\.venv
+wms-rma\.venv\Scripts\pip install -q -r wms-rma\requirements.txt
+if errorlevel 1 ( echo ERRO ao instalar deps do WMS & pause & exit /b 1 )
 
-:: Pre-instala dependencias do SCV se necessario
-if not exist "scv\.venv\Scripts\python.exe" (
-    echo [3/3] Configurando SCV ^(primeira vez^)...
-    python -m venv scv\.venv
-    scv\.venv\Scripts\pip install -q -r scv\requirements.txt
-)
+:: SCV - cria venv e instala deps
+echo [4/4] Configurando SCV...
+if not exist "scv\.venv\Scripts\python.exe" python -m venv scv\.venv
+scv\.venv\Scripts\pip install -q -r scv\requirements.txt
+if errorlevel 1 ( echo ERRO ao instalar deps do SCV & pause & exit /b 1 )
 
 echo.
 echo Iniciando icone na bandeja do sistema...

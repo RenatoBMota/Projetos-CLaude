@@ -29,9 +29,22 @@ processes = {}
 def python_bin(venv_dir):
     return os.path.join(venv_dir, "Scripts", "python.exe")
 
+def ensure_deps(venv_dir, req_file):
+    """Cria venv se nao existe e sempre garante que as deps estao instaladas."""
+    pip = os.path.join(venv_dir, "Scripts", "pip.exe")
+    if not os.path.exists(python_bin(venv_dir)):
+        log(f"Criando venv em {venv_dir}")
+        subprocess.run([sys.executable, "-m", "venv", venv_dir], check=True,
+                       creationflags=subprocess.CREATE_NO_WINDOW)
+    log(f"Instalando deps de {req_file}")
+    subprocess.run([pip, "install", "-q", "-r", req_file], check=True,
+                   creationflags=subprocess.CREATE_NO_WINDOW)
+
 def start_app(name, cwd, venv_dir, cmd, extra_env=None):
     try:
         env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "utf-8"  # fix encoding no Windows
+        env["PYTHONUTF8"] = "1"
         if extra_env:
             env.update(extra_env)
         log_file = open(os.path.join(BASE, f"{name}.log"), "w", encoding="utf-8")
@@ -51,11 +64,13 @@ def start_all():
         # WMS-RMA
         wms_dir = os.path.join(BASE, "wms-rma")
         wms_venv = os.path.join(wms_dir, ".venv")
+        ensure_deps(wms_venv, os.path.join(wms_dir, "requirements.txt"))
         start_app("wms", wms_dir, wms_venv, ["run.py"], {"PORT": str(WMS_PORT)})
 
         # SCV
         scv_dir = os.path.join(BASE, "scv")
         scv_venv = os.path.join(scv_dir, ".venv")
+        ensure_deps(scv_venv, os.path.join(scv_dir, "requirements.txt"))
         start_app("scv", scv_dir, scv_venv, ["app.py"], {"SCV_PORT": str(SCV_PORT)})
 
         # Hub
