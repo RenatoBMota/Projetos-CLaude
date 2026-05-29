@@ -1,28 +1,59 @@
 @echo off
 setlocal
-
-set "SUITE_DIR=%~dp0"
+cd /d "%~dp0"
 
 echo.
-echo Iniciando Suite de Aplicacoes...
-echo (aguarde, pode demorar na primeira vez)
+echo ============================================================
+echo   Suite de Aplicacoes - Iniciando...
+echo ============================================================
 echo.
 
-:: Cria venv do hub se nao existir
-cd /d "%SUITE_DIR%"
-if not exist ".venv\Scripts\pythonw.exe" (
-    echo [Suite] Criando ambiente virtual do Hub...
-    python -m venv .venv
-    echo [Suite] Instalando dependencias...
-    .venv\Scripts\pip install -q flask pystray pillow
+:: Verifica se Python esta instalado
+python --version >nul 2>&1
+if errorlevel 1 (
+    echo ERRO: Python nao encontrado. Instale em python.org
+    pause
+    exit /b 1
 )
 
-:: Roda o tray sem janela (pythonw)
-echo [Suite] Iniciando icone na bandeja do sistema...
-start "" .venv\Scripts\pythonw.exe tray.py
+:: Cria venv do Hub/Tray se nao existir
+if not exist ".venv\Scripts\python.exe" (
+    echo [1/3] Criando ambiente virtual...
+    python -m venv .venv
+    if errorlevel 1 ( echo ERRO ao criar venv & pause & exit /b 1 )
+)
+
+:: Instala dependencias do hub
+echo [2/3] Verificando dependencias...
+.venv\Scripts\pip install -q flask pystray pillow 2>nul
+if errorlevel 1 (
+    echo Tentando instalacao sem -q...
+    .venv\Scripts\pip install flask pystray pillow
+    if errorlevel 1 ( echo ERRO ao instalar dependencias & pause & exit /b 1 )
+)
+
+:: Pre-instala dependencias do WMS se necessario
+if not exist "wms-rma\.venv\Scripts\python.exe" (
+    echo [3/3] Configurando WMS-RMA ^(primeira vez^)...
+    python -m venv wms-rma\.venv
+    wms-rma\.venv\Scripts\pip install -q -r wms-rma\requirements.txt
+)
+
+:: Pre-instala dependencias do SCV se necessario
+if not exist "scv\.venv\Scripts\python.exe" (
+    echo [3/3] Configurando SCV ^(primeira vez^)...
+    python -m venv scv\.venv
+    scv\.venv\Scripts\pip install -q -r scv\requirements.txt
+)
 
 echo.
-echo Pronto! Procure o icone da Suite perto do relogio.
-echo Clique com o botao direito para acessar os apps ou encerrar.
+echo Iniciando icone na bandeja do sistema...
+echo Se nao aparecer, verifique suite_error.log nesta pasta.
 echo.
-timeout /t 4 /nobreak >nul
+
+:: Roda o tray sem janela
+start "" .venv\Scripts\pythonw.exe tray.py
+
+timeout /t 5 /nobreak >nul
+echo Pronto! Procure o icone perto do relogio (pode estar em ^"mostrar icones ocultos^" ^(seta ^)).
+pause
