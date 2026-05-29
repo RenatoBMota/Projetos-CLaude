@@ -25,24 +25,30 @@ if not exist ".venv\Scripts\python.exe" (
 
 :: Instala dependencias do hub
 echo [2/3] Verificando dependencias...
-.venv\Scripts\pip install -q flask pystray pillow 2>nul
+.venv\Scripts\pip install -q "flask" "pystray" "pillow>=11.1.0" 2>nul
 if errorlevel 1 (
     echo Tentando instalacao sem -q...
-    .venv\Scripts\pip install flask pystray pillow
+    .venv\Scripts\pip install "flask" "pystray" "pillow>=11.1.0"
     if errorlevel 1 ( echo ERRO ao instalar dependencias & pause & exit /b 1 )
 )
 
-:: WMS-RMA - cria venv e instala deps (sempre garante que estao instaladas)
+:: WMS-RMA - recria venv se Pillow falhou antes (arquivo sentinela)
 echo [3/4] Configurando WMS-RMA...
 if not exist "wms-rma\.venv\Scripts\python.exe" python -m venv wms-rma\.venv
-wms-rma\.venv\Scripts\pip install -q -r wms-rma\requirements.txt
-if errorlevel 1 ( echo ERRO ao instalar deps do WMS & pause & exit /b 1 )
+if not exist "wms-rma\.venv\.ok" (
+    wms-rma\.venv\Scripts\pip install -q -r wms-rma\requirements.txt
+    if errorlevel 1 ( echo ERRO ao instalar deps do WMS & pause & exit /b 1 )
+    echo ok > wms-rma\.venv\.ok
+)
 
 :: SCV - cria venv e instala deps
 echo [4/4] Configurando SCV...
 if not exist "scv\.venv\Scripts\python.exe" python -m venv scv\.venv
-scv\.venv\Scripts\pip install -q -r scv\requirements.txt
-if errorlevel 1 ( echo ERRO ao instalar deps do SCV & pause & exit /b 1 )
+if not exist "scv\.venv\.ok" (
+    scv\.venv\Scripts\pip install -q -r scv\requirements.txt
+    if errorlevel 1 ( echo ERRO ao instalar deps do SCV & pause & exit /b 1 )
+    echo ok > scv\.venv\.ok
+)
 
 echo.
 echo Iniciando icone na bandeja do sistema...
