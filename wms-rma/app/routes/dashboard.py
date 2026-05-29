@@ -38,15 +38,21 @@ def index():
         media_dias = 0
 
     # Por estado (para gráfico de rosca)
-    por_estado = db.session.query(RMA.estado, func.count(RMA.id)).group_by(RMA.estado).all()
+    por_estado = [
+        [e, c]
+        for e, c in db.session.query(RMA.estado, func.count(RMA.id)).group_by(RMA.estado).all()
+    ]
 
     # Por fornecedor (top 5)
-    por_fornecedor = db.session.query(
-        Fornecedor.nome, func.count(RMA.id)
-    ).join(RMA, RMA.fornecedor_id == Fornecedor.id)\
-     .group_by(Fornecedor.id)\
-     .order_by(func.count(RMA.id).desc())\
-     .limit(5).all()
+    por_fornecedor = [
+        [n, c]
+        for n, c in db.session.query(
+            Fornecedor.nome, func.count(RMA.id)
+        ).join(RMA, RMA.fornecedor_id == Fornecedor.id)
+         .group_by(Fornecedor.id)
+         .order_by(func.count(RMA.id).desc())
+         .limit(5).all()
+    ]
 
     # Evolução dos últimos 6 meses
     evolucao = []
