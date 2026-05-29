@@ -41,6 +41,8 @@ def create_app():
     from app.routes.relatorios   import bp as relatorios_bp
     from app.routes.usuarios     import bp as usuarios_bp
     from app.routes.configuracoes import bp as config_bp
+    from app.routes.lote          import bp as lote_bp
+    from app.routes.auditoria     import bp as auditoria_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -52,6 +54,8 @@ def create_app():
     app.register_blueprint(relatorios_bp)
     app.register_blueprint(usuarios_bp)
     app.register_blueprint(config_bp)
+    app.register_blueprint(lote_bp)
+    app.register_blueprint(auditoria_bp)
 
     # ── Context processors ────────────────────────────────────────────────────
     from app.models import Configuracao, RMA, PrazoSLA, EstadoRMA

@@ -299,6 +299,33 @@ class Apartamento(db.Model):
         return f'{m.codigo}-{ru.codigo}-{n.codigo}-{self.codigo}'
 
 
+
+class EmailAlerta(db.Model):
+    __tablename__ = 'emails_alerta'
+    id        = db.Column(db.Integer, primary_key=True)
+    nome      = db.Column(db.String(150), nullable=False)
+    email     = db.Column(db.String(150), nullable=False)
+    tipo      = db.Column(db.String(50), default='COMPRADOR')  # COMPRADOR, GESTOR
+    ativo     = db.Column(db.Boolean, default=True)
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class LoteDevolucao(db.Model):
+    __tablename__ = 'lotes_devolucao'
+    id            = db.Column(db.Integer, primary_key=True)
+    numero        = db.Column(db.String(50), unique=True, nullable=False)
+    nf_devolucao  = db.Column(db.String(50))
+    fornecedor_id = db.Column(db.Integer, db.ForeignKey('fornecedores.id'))
+    estado        = db.Column(db.String(20), default='ABERTO')
+    observacoes   = db.Column(db.Text)
+    criado_por_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'))
+    criado_em     = db.Column(db.DateTime, default=datetime.utcnow)
+    fornecedor    = db.relationship('Fornecedor', foreign_keys=[fornecedor_id])
+    criado_por    = db.relationship('Usuario', foreign_keys=[criado_por_id])
+    rmas          = db.relationship('RMA', backref='lote', lazy='dynamic',
+                                    foreign_keys='RMA.lote_id')
+
+
 class RMA(db.Model):
     __tablename__ = 'rmas'
     id                = db.Column(db.Integer, primary_key=True)
@@ -327,6 +354,7 @@ class RMA(db.Model):
     laudo_tecnico      = db.Column(db.Text)
     disposicao         = db.Column(db.String(50))
     apartamento_id     = db.Column(db.Integer, db.ForeignKey('apartamentos.id'))
+    lote_id            = db.Column(db.Integer, db.ForeignKey('lotes_devolucao.id'), nullable=True)
 
     # Financeiro
     valor_produto     = db.Column(db.Numeric(10, 2))
@@ -477,3 +505,31 @@ class PrazoSLA(db.Model):
         self.em_atraso = (self.prazo_resolucao and agora > self.prazo_resolucao)
         if self.em_atraso:
             self.violado = True
+
+class Inventario(db.Model):
+    __tablename__ = 'inventarios'
+    id            = db.Column(db.Integer, primary_key=True)
+    nome          = db.Column(db.String(200), nullable=False)
+    estado        = db.Column(db.String(20), default='ABERTO')
+    criado_por_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'))
+    criado_em     = db.Column(db.DateTime, default=datetime.utcnow)
+    finalizado_em = db.Column(db.DateTime)
+    criado_por    = db.relationship('Usuario', foreign_keys=[criado_por_id])
+    itens         = db.relationship('ItemInventario', backref='inventario', lazy='dynamic')
+
+
+class ItemInventario(db.Model):
+    __tablename__ = 'itens_inventario'
+    id             = db.Column(db.Integer, primary_key=True)
+    inventario_id  = db.Column(db.Integer, db.ForeignKey('inventarios.id'), nullable=False)
+    apartamento_id = db.Column(db.Integer, db.ForeignKey('apartamentos.id'), nullable=False)
+    rma_id         = db.Column(db.Integer, db.ForeignKey('rmas.id'))
+    ean_esperado   = db.Column(db.String(30))
+    ean_lido       = db.Column(db.String(30))
+    qtd_esperada   = db.Column(db.Integer, default=1)
+    qtd_encontrada = db.Column(db.Integer)
+    status         = db.Column(db.String(20), default='PENDENTE')  # PENDENTE, OK, AUSENTE, DIVERGENTE
+    observacao     = db.Column(db.Text)
+    verificado_em  = db.Column(db.DateTime)
+    apartamento    = db.relationship('Apartamento', foreign_keys=[apartamento_id])
+    rma            = db.relationship('RMA', foreign_keys=[rma_id])

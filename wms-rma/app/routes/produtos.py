@@ -1,4 +1,5 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+import io
+from flask import Blueprint, render_template, redirect, url_for, flash, request, send_file
 from flask_login import login_required, current_user
 from app.extensions import db
 from app.models import Produto, Fornecedor
@@ -92,3 +93,92 @@ def editar(prod_id):
 
     fornecedores = Fornecedor.query.filter_by(ativo=True).order_by(Fornecedor.nome).all()
     return render_template('produtos/form.html', produto=p, fornecedores=fornecedores)
+
+
+@bp.route('/importar', methods=['GET', 'POST'])
+@login_required
+def importar():
+    if request.method == 'POST':
+        arquivo = request.files.get('arquivo')
+        if not arquivo or not arquivo.filename.endswith(('.xls', '.xlsx')):
+            flash('Envie um arquivo Excel (.xlsx ou .xls).', 'warning')
+            return redirect(url_for('produtos.importar'))
+
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(arquivo, read_only=True, data_only=True)
+            ws = wb.active
+            rows = list(ws.iter_rows(min_row=2, values_only=True))
+        except Exception as e:
+            flash(f'Erro ao ler planilha: {e}', 'danger')
+            return redirect(url_for('produtos.importar'))
+
+        criados = atualizados = erros = 0
+        fornecedores_cache = {f.nome.upper(): f.id for f in Fornecedor.query.all()}
+
+        for i, row in enumerate(rows, start=2):
+            if not row or not row[0]:
+                continue
+            try:
+                codigo = str(row[0]).strip().upper()
+                descricao = str(row[1]).strip() if row[1] else ''
+                ean = str(row[2]).strip() if row[2] else None
+                marca = str(row[3]).strip() if row[3] else None
+                categoria = str(row[4]).strip() if row[4] else None
+                forn_nome = str(row[5]).strip() if row[5] else None
+                peso = float(row[6]) if row[6] else None
+                valor = float(row[7]) if row[7] else None
+                comprador = str(row[8]).strip() if len(row) > 8 and row[8] else None
+
+                forn_id = None
+                if forn_nome:
+                    forn_id = fornecedores_cache.get(forn_nome.upper())
+
+                p = Produto.query.filter_by(codigo=codigo).first()
+                if p:
+                    p.descricao = descricao or p.descricao
+                    p.ean = ean; p.marca = marca; p.categoria = categoria
+                    p.fornecedor_id = forn_id or p.fornecedor_id
+                    p.peso_kg = peso; p.valor_unitario = valor; p.comprador = comprador
+                    atualizados += 1
+                else:
+                    db.session.add(Produto(
+                        codigo=codigo, descricao=descricao, ean=ean, marca=marca,
+                        categoria=categoria, fornecedor_id=forn_id,
+                        peso_kg=peso, valor_unitario=valor, comprador=comprador,
+                    ))
+                    criados += 1
+            except Exception:
+                erros += 1
+
+        db.session.commit()
+        flash(f'Importação concluída: {criados} criados, {atualizados} atualizados, {erros} erros.', 'success')
+        return redirect(url_for('produtos.index'))
+
+    return render_template('produtos/importar.html')
+
+
+@bp.route('/template-excel')
+@login_required
+def template_excel():
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Produtos'
+    headers = ['codigo*', 'descricao*', 'ean', 'marca', 'categoria',
+               'fornecedor_nome', 'peso_kg', 'valor_unitario', 'comprador']
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.font = Font(bold=True, color='FFFFFF')
+        cell.fill = PatternFill(fill_type='solid', fgColor='2563EB')
+        cell.alignment = Alignment(horizontal='center')
+        ws.column_dimensions[cell.column_letter].width = 18
+    # Example row
+    ws.append(['PROD-001', 'Produto Exemplo', '7891234567890', 'Marca X',
+               'Eletrodomésticos', 'Fornecedor ABC', 1.5, 299.90, 'João Silva'])
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return send_file(buf, as_attachment=True, download_name='template_produtos.xlsx',
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')

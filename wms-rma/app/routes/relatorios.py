@@ -10,13 +10,14 @@ bp = Blueprint('relatorios', __name__, url_prefix='/relatorios')
 
 
 def _aplicar_filtros(q):
-    """Aplica filtros comuns de data, estado, canal e fornecedor."""
-    data_ini = request.args.get('data_ini') or request.form.get('data_ini')
-    data_fim = request.args.get('data_fim') or request.form.get('data_fim')
-    estado   = request.args.get('estado')   or request.form.get('estado')
-    canal    = request.args.get('canal')    or request.form.get('canal')
-    forn_id  = request.args.get('fornecedor_id', type=int) or \
-               request.form.get('fornecedor_id', type=int)
+    """Aplica filtros comuns de data, estado, canal, fornecedor e comprador."""
+    data_ini  = request.args.get('data_ini') or request.form.get('data_ini')
+    data_fim  = request.args.get('data_fim') or request.form.get('data_fim')
+    estado    = request.args.get('estado')   or request.form.get('estado')
+    canal     = request.args.get('canal')    or request.form.get('canal')
+    forn_id   = request.args.get('fornecedor_id', type=int) or \
+                request.form.get('fornecedor_id', type=int)
+    comprador = request.args.get('comprador') or request.form.get('comprador')
 
     filtros = {}
     if data_ini:
@@ -36,6 +37,10 @@ def _aplicar_filtros(q):
     if forn_id:
         q = q.filter_by(fornecedor_id=forn_id)
         filtros['fornecedor_id'] = forn_id
+    if comprador:
+        q = q.join(Produto, RMA.produto_id == Produto.id)\
+              .filter(Produto.comprador.ilike(f'%{comprador}%'))
+        filtros['comprador'] = comprador
 
     return q, filtros
 

@@ -292,7 +292,7 @@
 <div class="modal fade" id="modalTransicao" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
-      <form method="POST" action="{{ url_for('rma.transitar', rma_id=rma.id) }}">
+      <form method="POST" action="{{ url_for('rma.transitar', rma_id=rma.id) }}" enctype="multipart/form-data">
         <div class="modal-header">
           <h5 class="modal-title" id="modalTransicaoTitulo">Confirmar Ação</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -342,6 +342,31 @@
             </div>
           </div>
 
+          <div id="camposFinalizar" class="d-none">
+            <div class="mb-3">
+              <label class="form-label">Status de Finalização</label>
+              <select name="status_finalizacao" class="form-select">
+                <option value="">Manter destinação atual</option>
+                <option value="DEVOLVIDO_FORNECEDOR">Devolvido ao Fornecedor</option>
+                <option value="CREDITO_APROVADO">Crédito Aprovado</option>
+                <option value="REPARO_CONCLUIDO">Reparo Concluído</option>
+                <option value="DESCARTE">Descarte</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Evidência de Finalização</label>
+              <input type="file" name="arquivo_finalizacao" class="form-control">
+              <div class="form-text">
+                {% if rma.documentos.count() %}
+                <i class="fa-solid fa-circle-check text-success me-1"></i>
+                Já possui {{ rma.documentos.count() }} documento(s) — evidência adicional opcional.
+                {% else %}
+                <span class="text-danger">Obrigatório: anexe a evidência de finalização.</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
           <div class="mb-3">
             <label class="form-label">Observação</label>
             <textarea name="observacao" class="form-control" rows="2"
@@ -383,6 +408,9 @@ modalEl.addEventListener('show.bs.modal', function(e) {
   }
   if (dest === 'AGUARDANDO_COLETA') {
     document.getElementById('camposDestinacao').classList.remove('d-none');
+  }
+  if (dest === 'FINALIZADO') {
+    document.getElementById('camposFinalizar').classList.remove('d-none');
   }
 });
 </script>

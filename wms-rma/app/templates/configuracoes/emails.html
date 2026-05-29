@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% block title %}Destinatários de E-mail{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('configuracoes.index') }}">Configurações</a></li>
+<li class="breadcrumb-item active">Destinatários</li>
+{% endblock %}
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between">
+  <div>
+    <h1><i class="fa-solid fa-envelope-open-text me-2 text-primary"></i>Destinatários de E-mail</h1>
+    <p class="subtitle">Gerencie os destinatários que recebem alertas e notificações do sistema</p>
+  </div>
+  <a href="{{ url_for('configuracoes.index') }}" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i>Voltar
+  </a>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-8">
+    <div class="table-card">
+      <div class="table-header">
+        <i class="fa-solid fa-users text-primary"></i>
+        <strong>{{ lista|length }} destinatário(s)</strong>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>E-mail</th>
+              <th>Tipo</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ea in lista %}
+            <tr class="{% if not ea.ativo %}text-muted{% endif %}">
+              <td class="fw-bold">{{ ea.nome }}</td>
+              <td>{{ ea.email }}</td>
+              <td>
+                <span class="badge {% if ea.tipo == 'COMPRADOR' %}bg-primary{% else %}bg-success{% endif %}">
+                  {{ ea.tipo }}
+                </span>
+              </td>
+              <td>
+                <span class="badge {% if ea.ativo %}bg-success{% else %}bg-secondary{% endif %}">
+                  {{ 'Ativo' if ea.ativo else 'Inativo' }}
+                </span>
+              </td>
+              <td class="text-end">
+                <form method="POST" action="{{ url_for('configuracoes.email_toggle', id=ea.id) }}" class="d-inline">
+                  <button type="submit" class="btn btn-sm btn-outline-secondary" title="{{ 'Desativar' if ea.ativo else 'Ativar' }}">
+                    <i class="fa-solid fa-{% if ea.ativo %}toggle-on text-success{% else %}toggle-off{% endif %}"></i>
+                  </button>
+                </form>
+                <form method="POST" action="{{ url_for('configuracoes.email_excluir', id=ea.id) }}" class="d-inline"
+                      onsubmit="return confirm('Remover este destinatário?')">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center py-4 text-muted">Nenhum destinatário cadastrado.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="form-card">
+      <h6 class="fw-bold mb-3 pb-2 border-bottom">
+        <i class="fa-solid fa-plus me-2 text-primary"></i>Novo Destinatário
+      </h6>
+      <form method="POST" action="{{ url_for('configuracoes.email_novo') }}">
+        <div class="mb-3">
+          <label class="form-label">Nome *</label>
+          <input type="text" name="nome" class="form-control" required placeholder="Nome completo">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">E-mail *</label>
+          <input type="email" name="email" class="form-control" required placeholder="email@empresa.com">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Tipo</label>
+          <select name="tipo" class="form-select">
+            <option value="COMPRADOR">Comprador</option>
+            <option value="GESTOR">Gestor</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary-custom w-100">
+          <i class="fa-solid fa-plus me-1"></i>Adicionar
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

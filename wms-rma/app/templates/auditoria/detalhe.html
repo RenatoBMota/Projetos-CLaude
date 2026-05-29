@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+{% block title %}{{ inv.nome }}{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('auditoria.index') }}">Inventário</a></li>
+<li class="breadcrumb-item active">{{ inv.nome }}</li>
+{% endblock %}
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div>
+    <h1 class="d-flex align-items-center gap-2">
+      <i class="fa-solid fa-clipboard-list me-2 text-primary"></i>{{ inv.nome }}
+      <span class="badge {% if inv.estado == 'ABERTO' %}bg-warning text-dark{% else %}bg-success{% endif %} fs-6">
+        {{ inv.estado }}
+      </span>
+    </h1>
+    <p class="subtitle">Criado em {{ inv.criado_em|datahora }}
+      {% if inv.finalizado_em %} · Finalizado em {{ inv.finalizado_em|datahora }}{% endif %}
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    {% if inv.estado == 'ABERTO' %}
+    <form method="POST" action="{{ url_for('auditoria.finalizar', inv_id=inv.id) }}"
+          onsubmit="return confirm('Finalizar inventário? Itens não verificados serão marcados como AUSENTE.')">
+      <button type="submit" class="btn btn-success">
+        <i class="fa-solid fa-check me-1"></i>Finalizar Inventário
+      </button>
+    </form>
+    {% endif %}
+    <a href="{{ url_for('auditoria.index') }}" class="btn btn-outline-secondary">
+      <i class="fa-solid fa-arrow-left me-1"></i>Voltar
+    </a>
+  </div>
+</div>
+
+<!-- Resumo -->
+{% set total = inv.itens.count() %}
+{% set ok = inv.itens.filter_by(status='OK').count() %}
+{% set div_cnt = inv.itens.filter_by(status='DIVERGENTE').count() %}
+{% set aus = inv.itens.filter_by(status='AUSENTE').count() %}
+{% set pend = inv.itens.filter_by(status='PENDENTE').count() %}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3">
+    <div class="kpi-card text-center">
+      <div class="kpi-value">{{ total }}</div>
+      <div class="kpi-label">Total</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card text-center" style="border-left:4px solid #22c55e;">
+      <div class="kpi-value text-success">{{ ok }}</div>
+      <div class="kpi-label">OK</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card text-center" style="border-left:4px solid #f59e0b;">
+      <div class="kpi-value text-warning">{{ div_cnt }}</div>
+      <div class="kpi-label">Divergente</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card text-center" style="border-left:4px solid #ef4444;">
+      <div class="kpi-value text-danger">{{ aus }}</div>
+      <div class="kpi-label">Ausente</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabela de itens -->
+<div class="table-card">
+  {% if inv.estado == 'ABERTO' %}
+  <div class="table-header">
+    <i class="fa-solid fa-qrcode text-primary"></i>
+    <span class="small text-muted">Clique em "Verificar" para registrar a conferência de cada item</span>
+  </div>
+  {% endif %}
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Endereço</th>
+          <th>RMA</th>
+          <th>Produto</th>
+          <th>EAN Esperado</th>
+          <th>EAN Lido</th>
+          <th>Qtd Esp.</th>
+          <th>Qtd Enc.</th>
+          <th>Status</th>
+          {% if inv.estado == 'ABERTO' %}<th></th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in inv.itens.all() %}
+        <tr id="item-row-{{ item.id }}">
+          <td class="fw-bold font-monospace">{{ item.apartamento.endereco }}</td>
+          <td>
+            {% if item.rma %}
+            <a href="{{ url_for('rma.detalhe', rma_id=item.rma.id) }}" class="small">{{ item.rma.numero }}</a>
+            {% else %}—{% endif %}
+          </td>
+          <td class="small">{{ item.rma.produto.descricao if item.rma and item.rma.produto else '—' }}</td>
+          <td class="font-monospace small">{{ item.ean_esperado or '—' }}</td>
+          <td class="font-monospace small" id="ean-lido-{{ item.id }}">{{ item.ean_lido or '—' }}</td>
+          <td class="text-center">{{ item.qtd_esperada }}</td>
+          <td class="text-center" id="qtd-enc-{{ item.id }}">{{ item.qtd_encontrada or '—' }}</td>
+          <td id="status-{{ item.id }}">
+            {% if item.status == 'OK' %}
+            <span class="badge bg-success">OK</span>
+            {% elif item.status == 'DIVERGENTE' %}
+            <span class="badge bg-warning text-dark">Divergente</span>
+            {% elif item.status == 'AUSENTE' %}
+            <span class="badge bg-danger">Ausente</span>
+            {% else %}
+            <span class="badge bg-secondary">Pendente</span>
+            {% endif %}
+          </td>
+          {% if inv.estado == 'ABERTO' %}
+          <td>
+            <button class="btn btn-sm btn-outline-primary"
+                    onclick="abrirVerificacao({{ item.id }}, '{{ item.ean_esperado or '' }}', {{ item.qtd_esperada }})">
+              <i class="fa-solid fa-clipboard-check"></i> Verificar
+            </button>
+          </td>
+          {% endif %}
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" class="text-center py-4 text-muted">Nenhum item neste inventário.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal verificação -->
+{% if inv.estado == 'ABERTO' %}
+<div class="modal fade" id="modalVerificar" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Verificar Item</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="verItemId">
+        <div class="mb-3">
+          <label class="form-label">EAN Lido</label>
+          <input type="text" id="verEan" class="form-control font-monospace"
+                 placeholder="Leia ou digite o EAN">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Quantidade Encontrada</label>
+          <input type="number" id="verQtd" class="form-control" min="0" value="1">
+        </div>
+        <div id="verFeedback" class="d-none"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary-custom" onclick="salvarVerificacao()">
+          <i class="fa-solid fa-check me-1"></i>Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if inv.estado == 'ABERTO' %}
+<script>
+let verModal;
+window.addEventListener('DOMContentLoaded', () => {
+  verModal = new bootstrap.Modal(document.getElementById('modalVerificar'));
+});
+
+function abrirVerificacao(itemId, eanEsperado, qtdEsperada) {
+  document.getElementById('verItemId').value = itemId;
+  document.getElementById('verEan').value = eanEsperado;
+  document.getElementById('verQtd').value = qtdEsperada;
+  document.getElementById('verFeedback').className = 'd-none';
+  verModal.show();
+  setTimeout(() => document.getElementById('verEan').focus(), 300);
+}
+
+function salvarVerificacao() {
+  const itemId = document.getElementById('verItemId').value;
+  const eanLido = document.getElementById('verEan').value.trim();
+  const qtd = parseInt(document.getElementById('verQtd').value) || 0;
+
+  fetch('{{ url_for("auditoria.verificar", inv_id=inv.id) }}', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({item_id: parseInt(itemId), ean_lido: eanLido, qtd_encontrada: qtd}),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      // Update row
+      const statusMap = {
+        'OK': '<span class="badge bg-success">OK</span>',
+        'DIVERGENTE': '<span class="badge bg-warning text-dark">Divergente</span>',
+        'AUSENTE': '<span class="badge bg-danger">Ausente</span>',
+      };
+      document.getElementById(`status-${itemId}`).innerHTML = statusMap[data.status] || data.status;
+      document.getElementById(`ean-lido-${itemId}`).textContent = eanLido || '—';
+      document.getElementById(`qtd-enc-${itemId}`).textContent = qtd || '—';
+      verModal.hide();
+    } else {
+      const fb = document.getElementById('verFeedback');
+      fb.className = 'alert alert-danger py-2 small';
+      fb.textContent = data.msg || 'Erro ao salvar.';
+    }
+  })
+  .catch(() => {
+    const fb = document.getElementById('verFeedback');
+    fb.className = 'alert alert-danger py-2 small';
+    fb.textContent = 'Erro de conexão.';
+  });
+}
+</script>
+{% endif %}
+{% endblock %}

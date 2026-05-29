@@ -51,7 +51,14 @@ def laudo(rma_id):
 
         db.session.commit()
         flash(f'Laudo registrado para RMA {rma.numero}.', 'success')
-        return redirect(url_for('triagem.index'))
+        return redirect(url_for('triagem.etiqueta', rma_id=rma.id))
 
     opcoes_categoria = ListaOpcao.por_tipo(TipoLista.CATEGORIA_DEFEITO)
     return render_template('triagem/laudo.html', rma=rma, opcoes_categoria=opcoes_categoria)
+
+
+@bp.route('/<int:rma_id>/etiqueta')
+@login_required
+def etiqueta(rma_id):
+    rma = RMA.query.get_or_404(rma_id)
+    return render_template('triagem/etiqueta.html', rma=rma)

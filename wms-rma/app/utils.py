@@ -28,6 +28,13 @@ def admin_required(f):
     return decorated
 
 
+def gerar_numero_lote():
+    from app.models import LoteDevolucao
+    ano_mes = datetime.utcnow().strftime('%Y%m')
+    ultimo = LoteDevolucao.query.filter(LoteDevolucao.numero.like(f'LOTE-{ano_mes}-%')).count()
+    return f'LOTE-{ano_mes}-{ultimo + 1:04d}'
+
+
 def gerar_numero_rma():
     from app.models import RMA
     ano_mes = datetime.utcnow().strftime('%Y%m')

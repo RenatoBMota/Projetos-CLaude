@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from datetime import datetime
 from sqlalchemy import func
 from app.extensions import db
-from app.models import PoliticaSLA, PrazoSLA, RMA, EstadoRMA, Fornecedor
+from app.models import PoliticaSLA, PrazoSLA, RMA, EstadoRMA, Fornecedor, Produto
 
 bp = Blueprint('sla', __name__, url_prefix='/sla')
 
@@ -30,11 +30,15 @@ def index():
     total_ok       = total_ativos - total_atraso
     total_violados = PrazoSLA.query.filter_by(violado=True).count()
 
-    # RMAs em atraso
-    rmas_atrasados = RMA.query.join(PrazoSLA, RMA.prazo_sla_id == PrazoSLA.id)\
-                              .filter(PrazoSLA.em_atraso == True)\
-                              .filter(RMA.estado.notin_([EstadoRMA.FINALIZADO, EstadoRMA.CANCELADO]))\
-                              .order_by(PrazoSLA.prazo_resolucao).all()
+    # RMAs em atraso (com filtro opcional de comprador)
+    comprador = request.args.get('comprador', '').strip()
+    q_atrasados = RMA.query.join(PrazoSLA, RMA.prazo_sla_id == PrazoSLA.id)\
+                           .filter(PrazoSLA.em_atraso == True)\
+                           .filter(RMA.estado.notin_([EstadoRMA.FINALIZADO, EstadoRMA.CANCELADO]))
+    if comprador:
+        q_atrasados = q_atrasados.join(Produto, RMA.produto_id == Produto.id)\
+                                 .filter(Produto.comprador.ilike(f'%{comprador}%'))
+    rmas_atrasados = q_atrasados.order_by(PrazoSLA.prazo_resolucao).all()
 
     # Por fornecedor - ranking de atrasos
     por_fornecedor = db.session.query(
@@ -58,6 +62,7 @@ def index():
         por_fornecedor=por_fornecedor,
         politicas=politicas,
         agora=agora,
+        filtro_comprador=comprador,
     )
 
 

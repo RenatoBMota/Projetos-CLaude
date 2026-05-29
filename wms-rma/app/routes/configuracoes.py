@@ -3,7 +3,7 @@ import re
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
 from app.extensions import db
-from app.models import Configuracao, ListaOpcao, TipoLista, Roles
+from app.models import Configuracao, ListaOpcao, TipoLista, Roles, EmailAlerta
 from app.utils import role_required, salvar_arquivo, allowed_file
 
 bp = Blueprint('configuracoes', __name__, url_prefix='/configuracoes')
@@ -25,6 +25,7 @@ def salvar():
         'app_nome', 'app_descricao', 'app_versao',
         'empresa_nome', 'empresa_cnpj', 'empresa_email', 'empresa_telefone',
         'email_alertas', 'sla_alerta_pct',
+        'smtp_host', 'smtp_port', 'smtp_user', 'smtp_password',
     ]
     for campo in campos_texto:
         valor = request.form.get(campo, '')
@@ -50,6 +51,7 @@ def salvar():
         nome  = salvar_arquivo(favicon, pasta, prefixo='favicon_')
         Configuracao.set('app_favicon', f'uploads/logos/{nome}', tipo='imagem', grupo='app')
 
+    Configuracao.set('smtp_tls', '1' if request.form.get('smtp_tls') else '0')
     flash('Configurações salvas com sucesso!', 'success')
     return redirect(url_for('configuracoes.index'))
 
@@ -119,3 +121,50 @@ def lista_excluir(opcao_id):
     db.session.commit()
     flash('Opção removida permanentemente.', 'danger')
     return redirect(url_for('configuracoes.listas'))
+
+# ── E-mail Destinatários ──────────────────────────────────────────────────────
+
+@bp.route('/emails')
+@login_required
+@role_required(Roles.ADMIN, Roles.SUPERVISOR)
+def emails():
+    lista = EmailAlerta.query.order_by(EmailAlerta.nome).all()
+    return render_template('configuracoes/emails.html', lista=lista)
+
+
+@bp.route('/emails/novo', methods=['POST'])
+@login_required
+@role_required(Roles.ADMIN)
+def email_novo():
+    nome  = request.form.get('nome', '').strip()
+    email = request.form.get('email', '').strip()
+    tipo  = request.form.get('tipo', 'COMPRADOR')
+    if not nome or not email:
+        flash('Preencha nome e e-mail.', 'warning')
+        return redirect(url_for('configuracoes.emails'))
+    db.session.add(EmailAlerta(nome=nome, email=email, tipo=tipo))
+    db.session.commit()
+    flash(f'Destinatário {nome} adicionado.', 'success')
+    return redirect(url_for('configuracoes.emails'))
+
+
+@bp.route('/emails/<int:id>/toggle', methods=['POST'])
+@login_required
+@role_required(Roles.ADMIN)
+def email_toggle(id):
+    ea = EmailAlerta.query.get_or_404(id)
+    ea.ativo = not ea.ativo
+    db.session.commit()
+    flash(f'Destinatário {"ativado" if ea.ativo else "desativado"}.', 'info')
+    return redirect(url_for('configuracoes.emails'))
+
+
+@bp.route('/emails/<int:id>/excluir', methods=['POST'])
+@login_required
+@role_required(Roles.ADMIN)
+def email_excluir(id):
+    ea = EmailAlerta.query.get_or_404(id)
+    db.session.delete(ea)
+    db.session.commit()
+    flash('Destinatário removido.', 'danger')
+    return redirect(url_for('configuracoes.emails'))

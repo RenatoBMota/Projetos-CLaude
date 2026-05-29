@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}Importar Produtos{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('produtos.index') }}">Produtos</a></li>
+<li class="breadcrumb-item active">Importar</li>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="fa-solid fa-file-excel me-2 text-success"></i>Importar Produtos via Excel</h1>
+  <p class="subtitle">Cadastre ou atualize produtos em massa usando uma planilha Excel</p>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="form-card mb-3">
+      <h6 class="fw-bold mb-3 pb-2 border-bottom">
+        <i class="fa-solid fa-upload me-2 text-primary"></i>Enviar Planilha
+      </h6>
+      <form method="POST" enctype="multipart/form-data">
+        <div class="mb-3">
+          <label class="form-label">Arquivo Excel *</label>
+          <input type="file" name="arquivo" class="form-control" accept=".xlsx,.xls" required>
+          <div class="form-text">Formato .xlsx ou .xls. Máximo 16 MB.</div>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary-custom">
+            <i class="fa-solid fa-upload me-1"></i>Importar
+          </button>
+          <a href="{{ url_for('produtos.template_excel') }}" class="btn btn-outline-success">
+            <i class="fa-solid fa-file-arrow-down me-1"></i>Baixar Template
+          </a>
+          <a href="{{ url_for('produtos.index') }}" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-xmark me-1"></i>Cancelar
+          </a>
+        </div>
+      </form>
+    </div>
+
+    <div class="form-card">
+      <h6 class="fw-bold mb-3 pb-2 border-bottom">
+        <i class="fa-solid fa-circle-info me-2 text-info"></i>Formato da Planilha
+      </h6>
+      <p class="text-muted small mb-2">A planilha deve conter as seguintes colunas (na ordem exata):</p>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead>
+            <tr>
+              <th>#</th><th>Coluna</th><th>Obrigatório</th><th>Exemplo</th>
+            </tr>
+          </thead>
+          <tbody class="small">
+            <tr><td>A</td><td>codigo</td><td><span class="badge bg-danger">Sim</span></td><td>PROD-001</td></tr>
+            <tr><td>B</td><td>descricao</td><td><span class="badge bg-danger">Sim</span></td><td>Geladeira Frost Free</td></tr>
+            <tr><td>C</td><td>ean</td><td><span class="badge bg-secondary">Não</span></td><td>7891234567890</td></tr>
+            <tr><td>D</td><td>marca</td><td><span class="badge bg-secondary">Não</span></td><td>Samsung</td></tr>
+            <tr><td>E</td><td>categoria</td><td><span class="badge bg-secondary">Não</span></td><td>Eletrodomésticos</td></tr>
+            <tr><td>F</td><td>fornecedor_nome</td><td><span class="badge bg-secondary">Não</span></td><td>Fornecedor ABC</td></tr>
+            <tr><td>G</td><td>peso_kg</td><td><span class="badge bg-secondary">Não</span></td><td>1.500</td></tr>
+            <tr><td>H</td><td>valor_unitario</td><td><span class="badge bg-secondary">Não</span></td><td>299.90</td></tr>
+            <tr><td>I</td><td>comprador</td><td><span class="badge bg-secondary">Não</span></td><td>João Silva</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="alert alert-info mt-3 py-2 small mb-0">
+        <i class="fa-solid fa-lightbulb me-1"></i>
+        Se o código já existir, o produto será <strong>atualizado</strong>. Se não existir, será <strong>criado</strong>.
+        O nome do fornecedor deve corresponder exatamente ao cadastrado no sistema.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

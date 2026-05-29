@@ -177,6 +177,28 @@ def transitar(rma_id):
             novo_apt.ocupado = True
     if novo_estado in (EstadoRMA.FINALIZADO, EstadoRMA.CANCELADO):
         rma.finalizado_em = datetime.utcnow()
+
+    # Evidência obrigatória na finalização
+    if novo_estado == EstadoRMA.FINALIZADO:
+        status_fin = request.form.get('status_finalizacao')
+        if status_fin:
+            rma.disposicao = status_fin
+        arquivo_fin = request.files.get('arquivo_finalizacao')
+        if arquivo_fin and arquivo_fin.filename and allowed_file(arquivo_fin.filename):
+            from flask import current_app
+            pasta = os.path.join(current_app.config['UPLOAD_FOLDER'], f'rma_{rma_id}')
+            nome = salvar_arquivo(arquivo_fin, pasta, prefixo=f'rma{rma_id}_fin_')
+            db.session.add(Documento(
+                rma_id=rma.id,
+                nome=arquivo_fin.filename,
+                tipo='FINALIZACAO',
+                caminho=f'uploads/rma_{rma_id}/{nome}',
+                tamanho=os.path.getsize(os.path.join(pasta, nome)),
+                usuario_id=current_user.id,
+            ))
+        elif not rma.documentos.count():
+            flash('Anexe ao menos um documento de evidência para finalizar.', 'warning')
+            return redirect(url_for('rma.detalhe', rma_id=rma.id))
     if novo_estado in (EstadoRMA.EM_ANALISE, EstadoRMA.AGUARDANDO_DEST):
         if not rma.tecnico_id:
             rma.tecnico_id = current_user.id
