@@ -10,9 +10,14 @@
     <h1><i class="fa-solid fa-box-open me-2 text-primary"></i>Catálogo de Produtos</h1>
     <p class="subtitle">{{ produtos.total }} produto(s)</p>
   </div>
-  <a href="{{ url_for('produtos.novo') }}" class="btn btn-primary-custom">
-    <i class="fa-solid fa-plus me-1"></i>Novo Produto
-  </a>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('produtos.importar') }}" class="btn btn-outline-success">
+      <i class="fa-solid fa-file-excel me-1"></i>Importar Excel
+    </a>
+    <a href="{{ url_for('produtos.novo') }}" class="btn btn-primary-custom">
+      <i class="fa-solid fa-plus me-1"></i>Novo Produto
+    </a>
+  </div>
 </div>
 
 <div class="form-card mb-4">

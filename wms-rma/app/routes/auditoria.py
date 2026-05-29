@@ -2,7 +2,7 @@ from datetime import datetime
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from app.extensions import db
-from app.models import Inventario, ItemInventario, Apartamento, RMA
+from app.models import Inventario, ItemInventario, Apartamento, RMA, Fornecedor
 
 bp = Blueprint('auditoria', __name__, url_prefix='/auditoria')
 
@@ -11,34 +11,51 @@ bp = Blueprint('auditoria', __name__, url_prefix='/auditoria')
 @login_required
 def index():
     inventarios = Inventario.query.order_by(Inventario.criado_em.desc()).all()
-    return render_template('auditoria/index.html', inventarios=inventarios)
+    fornecedores = Fornecedor.query.filter_by(ativo=True).order_by(Fornecedor.nome).all()
+    return render_template('auditoria/index.html', inventarios=inventarios, fornecedores=fornecedores)
 
 
 @bp.route('/novo', methods=['POST'])
 @login_required
 def novo():
     nome = request.form.get('nome', '').strip() or f'Inventário {datetime.utcnow().strftime("%d/%m/%Y")}'
+    tipo_filtro   = request.form.get('tipo_filtro', 'todos')
+    fornecedor_id = request.form.get('fornecedor_id', type=int)
+    end_ini       = request.form.get('end_ini', '').strip().upper()
+    end_fim       = request.form.get('end_fim', '').strip().upper()
+
     inv = Inventario(nome=nome, criado_por_id=current_user.id)
     db.session.add(inv)
     db.session.flush()
 
-    # Pre-populate from occupied apartments with active RMAs
-    apts_ocupados = Apartamento.query.filter_by(ocupado=True).all()
-    for apt in apts_ocupados:
+    q = Apartamento.query.filter_by(ocupado=True)
+
+    if tipo_filtro == 'fornecedor' and fornecedor_id:
+        q = q.join(RMA, RMA.apartamento_id == Apartamento.id)\
+              .filter(RMA.fornecedor_id == fornecedor_id,
+                      RMA.estado.notin_(['FINALIZADO', 'CANCELADO']))
+    elif tipo_filtro == 'endereco' and end_ini:
+        if end_fim:
+            q = q.filter(Apartamento.endereco >= end_ini,
+                         Apartamento.endereco <= end_fim)
+        else:
+            q = q.filter(Apartamento.endereco >= end_ini)
+
+    apts = q.order_by(Apartamento.endereco).all()
+    for apt in apts:
         rma = RMA.query.filter_by(apartamento_id=apt.id).filter(
             RMA.estado.notin_(['FINALIZADO', 'CANCELADO'])
         ).first()
-        item = ItemInventario(
+        db.session.add(ItemInventario(
             inventario_id=inv.id,
             apartamento_id=apt.id,
             rma_id=rma.id if rma else None,
             ean_esperado=rma.produto.ean if rma and rma.produto else None,
             qtd_esperada=rma.quantidade if rma else 1,
-        )
-        db.session.add(item)
+        ))
 
     db.session.commit()
-    flash(f'Inventário "{inv.nome}" criado com {len(apts_ocupados)} posições.', 'success')
+    flash(f'Inventário "{inv.nome}" criado com {len(apts)} posições.', 'success')
     return redirect(url_for('auditoria.detalhe', inv_id=inv.id))
 
 

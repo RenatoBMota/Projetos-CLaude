@@ -357,9 +357,9 @@
               <label class="form-label">Evidência de Finalização</label>
               <input type="file" name="arquivo_finalizacao" class="form-control">
               <div class="form-text">
-                {% if rma.documentos.count() %}
+                {% if rma.documentos|length %}
                 <i class="fa-solid fa-circle-check text-success me-1"></i>
-                Já possui {{ rma.documentos.count() }} documento(s) — evidência adicional opcional.
+                Já possui {{ rma.documentos|length }} documento(s) — evidência adicional opcional.
                 {% else %}
                 <span class="text-danger">Obrigatório: anexe a evidência de finalização.</span>
                 {% endif %}

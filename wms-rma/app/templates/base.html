@@ -217,6 +217,7 @@
        class="nav-link {% if request.blueprint == 'rma' %}active{% endif %}">
       <i class="fa-solid fa-rotate-left"></i> RMA
     </a>
+    {% if current_user.has_role('admin','supervisor','tecnico','operador') %}
     <a href="{{ url_for('triagem.index') }}"
        class="nav-link {% if request.blueprint == 'triagem' %}active{% endif %}">
       <i class="fa-solid fa-clipboard-check"></i> Triagem
@@ -225,20 +226,28 @@
        class="nav-link {% if request.blueprint == 'armazem' %}active{% endif %}">
       <i class="fa-solid fa-warehouse"></i> Armazém
     </a>
+    {% endif %}
+    {% if current_user.has_role('admin','supervisor','compras','operador') %}
     <a href="{{ url_for('produtos.index') }}"
        class="nav-link {% if request.blueprint == 'produtos' %}active{% endif %}">
       <i class="fa-solid fa-box-open"></i> Produtos
     </a>
+    {% endif %}
+    {% if current_user.has_role('admin','supervisor','operador') %}
     <a href="{{ url_for('lote.index') }}"
        class="nav-link {% if request.blueprint == 'lote' %}active{% endif %}">
       <i class="fa-solid fa-boxes-stacked"></i> Lotes
     </a>
+    {% endif %}
 
     <span class="nav-section mt-2">Gestão</span>
+    {% if current_user.has_role('admin','supervisor','auditor') %}
     <a href="{{ url_for('auditoria.index') }}"
        class="nav-link {% if request.blueprint == 'auditoria' %}active{% endif %}">
       <i class="fa-solid fa-clipboard-list"></i> Inventário
     </a>
+    {% endif %}
+    {% if current_user.has_role('admin','supervisor','compras','financeiro','auditor') %}
     <a href="{{ url_for('sla.index') }}"
        class="nav-link {% if request.blueprint == 'sla' %}active{% endif %}">
       <i class="fa-solid fa-clock"></i> SLA
@@ -247,6 +256,7 @@
        class="nav-link {% if request.blueprint == 'relatorios' %}active{% endif %}">
       <i class="fa-solid fa-chart-bar"></i> Relatórios
     </a>
+    {% endif %}
 
     {% if current_user.pode_gerenciar_usuarios() %}
     <span class="nav-section mt-2">Administração</span>

@@ -5,6 +5,22 @@ from datetime import datetime
 import os
 
 
+# Mapa de acesso: blueprint -> roles com permissão (None = todos autenticados)
+BLUEPRINT_ROLES = {
+    'dashboard':    None,  # todos
+    'rma':          None,  # todos
+    'triagem':      ['admin', 'supervisor', 'tecnico', 'operador'],
+    'armazem':      ['admin', 'supervisor', 'tecnico', 'operador'],
+    'produtos':     ['admin', 'supervisor', 'compras', 'operador'],
+    'lote':         ['admin', 'supervisor', 'operador'],
+    'sla':          ['admin', 'supervisor', 'compras', 'financeiro', 'auditor'],
+    'relatorios':   ['admin', 'supervisor', 'compras', 'financeiro', 'auditor'],
+    'auditoria':    ['admin', 'supervisor', 'auditor'],
+    'configuracoes':['admin'],
+    'usuarios':     ['admin', 'supervisor'],
+}
+
+
 def role_required(*roles):
     """Decorator que exige um dos roles listados."""
     def decorator(f):
@@ -13,10 +29,28 @@ def role_required(*roles):
             if not current_user.is_authenticated:
                 return redirect(url_for('auth.login'))
             if current_user.role not in roles:
+                flash('Acesso negado: seu perfil não tem permissão para esta ação.', 'danger')
                 abort(403)
             return f(*args, **kwargs)
         return decorated
     return decorator
+
+
+def blueprint_access_required(f):
+    """Decorator automático baseado em BLUEPRINT_ROLES."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return redirect(url_for('auth.login'))
+        from flask import request as _req
+        bp = _req.blueprints.get(list(_req.blueprints.keys())[-1]) if _req.blueprints else None
+        bp_name = bp.name if bp else ''
+        allowed = BLUEPRINT_ROLES.get(bp_name)
+        if allowed is not None and current_user.role not in allowed:
+            flash('Acesso negado: seu perfil não tem permissão para esta tela.', 'danger')
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated
 
 
 def admin_required(f):

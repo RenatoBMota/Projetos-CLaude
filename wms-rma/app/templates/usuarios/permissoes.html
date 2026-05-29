@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Matriz de Permissões{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('usuarios.index') }}">Usuários</a></li>
+<li class="breadcrumb-item active">Permissões</li>
+{% endblock %}
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between">
+  <div>
+    <h1><i class="fa-solid fa-shield-halved me-2 text-primary"></i>Matriz de Permissões</h1>
+    <p class="subtitle">Controle de acesso por perfil de usuário</p>
+  </div>
+  <a href="{{ url_for('usuarios.index') }}" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i>Voltar
+  </a>
+</div>
+
+<div class="table-card">
+  <div class="table-responsive">
+    <table class="table table-bordered mb-0 text-center" style="font-size:.82rem;">
+      <thead>
+        <tr>
+          <th class="text-start" style="min-width:150px;">Tela / Módulo</th>
+          {% for role_key, role_label in roles.items() %}
+          <th>{{ role_label }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for bp_key, tela_label in telas.items() %}
+        {% set allowed = BLUEPRINT_ROLES.get(bp_key) %}
+        <tr>
+          <td class="text-start fw-bold">{{ tela_label }}</td>
+          {% for role_key in roles.keys() %}
+          {% if allowed is none %}
+          <td><span class="badge bg-success"><i class="fa-solid fa-check"></i></span></td>
+          {% elif role_key in allowed %}
+          <td><span class="badge bg-success"><i class="fa-solid fa-check"></i></span></td>
+          {% else %}
+          <td><span class="badge bg-light text-muted border"><i class="fa-solid fa-minus"></i></span></td>
+          {% endif %}
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="p-3">
+    <span class="badge bg-success me-2"><i class="fa-solid fa-check"></i></span> Tem acesso
+    <span class="badge bg-light text-muted border ms-3 me-2"><i class="fa-solid fa-minus"></i></span> Sem acesso
+    <span class="text-muted small ms-3">* O perfil Administrador tem acesso a tudo</span>
+  </div>
+</div>
+
+<div class="alert alert-info mt-3 small">
+  <i class="fa-solid fa-circle-info me-1"></i>
+  As permissões são definidas por perfil. Para alterar o acesso de um usuário, edite o <strong>perfil</strong> do usuário em
+  <a href="{{ url_for('usuarios.index') }}">Gerenciar Usuários</a>.
+</div>
+{% endblock %}

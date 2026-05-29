@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from datetime import datetime
 from app.extensions import db
 from app.models import Usuario, Roles
-from app.utils import role_required
+from app.utils import role_required, BLUEPRINT_ROLES
 
 bp = Blueprint('usuarios', __name__, url_prefix='/usuarios')
 
@@ -113,6 +113,28 @@ def toggle_ativo(user_id):
         status = 'ativado' if u.ativo else 'desativado'
         flash(f'Usuário {u.nome} {status}.', 'info')
     return redirect(url_for('usuarios.index'))
+
+
+@bp.route('/permissoes')
+@login_required
+@role_required(Roles.ADMIN)
+def permissoes():
+    """Tela de visualização da matriz de permissões por perfil."""
+    telas = {
+        'dashboard':    'Dashboard',
+        'rma':          'RMA',
+        'triagem':      'Triagem',
+        'armazem':      'Armazém',
+        'produtos':     'Produtos',
+        'lote':         'Lotes',
+        'sla':          'Monitor SLA',
+        'relatorios':   'Relatórios',
+        'auditoria':    'Inventário',
+        'configuracoes':'Configurações',
+        'usuarios':     'Usuários',
+    }
+    return render_template('usuarios/permissoes.html',
+        telas=telas, roles=Roles.LABELS, BLUEPRINT_ROLES=BLUEPRINT_ROLES)
 
 
 @bp.route('/<int:user_id>/deletar', methods=['POST'])

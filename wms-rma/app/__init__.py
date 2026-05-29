@@ -1,5 +1,5 @@
 import os
-from flask import Flask
+from flask import Flask, render_template
 from app.extensions import db, login_manager
 
 
@@ -56,6 +56,28 @@ def create_app():
     app.register_blueprint(config_bp)
     app.register_blueprint(lote_bp)
     app.register_blueprint(auditoria_bp)
+
+    # ── Controle de acesso por perfil ─────────────────────────────────────────
+    from app.utils import BLUEPRINT_ROLES
+    from flask_login import current_user as cu
+
+    @app.before_request
+    def check_blueprint_access():
+        from flask import request as req, abort
+        from flask_login import current_user as u
+        bp_name = req.blueprints.get(list(req.blueprints.keys())[-1]).name \
+                  if req.blueprints else ''
+        if bp_name == 'auth' or not bp_name:
+            return
+        if not u.is_authenticated:
+            return  # login_required handles redirect
+        allowed = BLUEPRINT_ROLES.get(bp_name)
+        if allowed is not None and u.role not in allowed:
+            abort(403)
+
+    @app.errorhandler(403)
+    def forbidden(e):
+        return render_template('errors/403.html'), 403
 
     # ── Context processors ────────────────────────────────────────────────────
     from app.models import Configuracao, RMA, PrazoSLA, EstadoRMA

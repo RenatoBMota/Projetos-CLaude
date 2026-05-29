@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from datetime import datetime
 from sqlalchemy import func
 from app.extensions import db
-from app.models import PoliticaSLA, PrazoSLA, RMA, EstadoRMA, Fornecedor, Produto
+from app.models import PoliticaSLA, PrazoSLA, RMA, EstadoRMA, Fornecedor, Produto, ListaOpcao, TipoLista
 
 bp = Blueprint('sla', __name__, url_prefix='/sla')
 
@@ -30,14 +30,34 @@ def index():
     total_ok       = total_ativos - total_atraso
     total_violados = PrazoSLA.query.filter_by(violado=True).count()
 
-    # RMAs em atraso (com filtro opcional de comprador)
-    comprador = request.args.get('comprador', '').strip()
+    # Filtros
+    comprador   = request.args.get('comprador', '').strip()
+    forn_id     = request.args.get('fornecedor_id', type=int)
+    canal       = request.args.get('canal', '').strip()
+    status_fil  = request.args.get('status', 'atrasados')  # atrasados | todos
+    data_ini    = request.args.get('data_ini', '').strip()
+    data_fim    = request.args.get('data_fim', '').strip()
+
     q_atrasados = RMA.query.join(PrazoSLA, RMA.prazo_sla_id == PrazoSLA.id)\
-                           .filter(PrazoSLA.em_atraso == True)\
                            .filter(RMA.estado.notin_([EstadoRMA.FINALIZADO, EstadoRMA.CANCELADO]))
+
+    if status_fil == 'atrasados':
+        q_atrasados = q_atrasados.filter(PrazoSLA.em_atraso == True)
+
     if comprador:
         q_atrasados = q_atrasados.join(Produto, RMA.produto_id == Produto.id)\
                                  .filter(Produto.comprador.ilike(f'%{comprador}%'))
+    if forn_id:
+        q_atrasados = q_atrasados.filter(RMA.fornecedor_id == forn_id)
+    if canal:
+        q_atrasados = q_atrasados.filter(RMA.canal == canal)
+    if data_ini:
+        from datetime import datetime as dt
+        q_atrasados = q_atrasados.filter(RMA.criado_em >= dt.strptime(data_ini, '%Y-%m-%d'))
+    if data_fim:
+        from datetime import datetime as dt
+        q_atrasados = q_atrasados.filter(RMA.criado_em < dt.strptime(data_fim, '%Y-%m-%d'))
+
     rmas_atrasados = q_atrasados.order_by(PrazoSLA.prazo_resolucao).all()
 
     # Por fornecedor - ranking de atrasos
@@ -53,6 +73,9 @@ def index():
 
     politicas = PoliticaSLA.query.filter_by(ativa=True).all()
 
+    fornecedores = Fornecedor.query.filter_by(ativo=True).order_by(Fornecedor.nome).all()
+    opcoes_canal = ListaOpcao.por_tipo(TipoLista.CANAL)
+
     return render_template('sla/index.html',
         total_ativos=total_ativos,
         total_atraso=total_atraso,
@@ -62,7 +85,14 @@ def index():
         por_fornecedor=por_fornecedor,
         politicas=politicas,
         agora=agora,
+        fornecedores=fornecedores,
+        opcoes_canal=opcoes_canal,
         filtro_comprador=comprador,
+        filtro_forn=forn_id,
+        filtro_canal=canal,
+        filtro_status=status_fil,
+        filtro_data_ini=data_ini,
+        filtro_data_fim=data_fim,
     )
 
 

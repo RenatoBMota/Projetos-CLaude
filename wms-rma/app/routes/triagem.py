@@ -1,9 +1,48 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from app.extensions import db
-from app.models import RMA, EstadoRMA, HistoricoRMA, ListaOpcao, TipoLista
+from app.models import RMA, EstadoRMA, HistoricoRMA, ListaOpcao, TipoLista, Apartamento
 
 bp = Blueprint('triagem', __name__, url_prefix='/triagem')
+
+
+def _alocar_apartamento(rma):
+    """Aloca apartamento livre, tentando agrupar RMAs do mesmo fornecedor."""
+    from app.models import Numero, Rua, Modulo
+    apt = None
+
+    if rma.fornecedor_id:
+        # Módulos que já têm RMAs deste fornecedor
+        modulo_ids = [row[0] for row in db.session.query(Modulo.id).join(
+            Rua, Rua.modulo_id == Modulo.id
+        ).join(
+            Numero, Numero.rua_id == Rua.id
+        ).join(
+            Apartamento, Apartamento.numero_id == Numero.id
+        ).join(
+            RMA, RMA.apartamento_id == Apartamento.id
+        ).filter(
+            RMA.fornecedor_id == rma.fornecedor_id,
+            RMA.estado.notin_([EstadoRMA.FINALIZADO, EstadoRMA.CANCELADO]),
+            RMA.id != rma.id,
+        ).distinct().all()]
+
+        if modulo_ids:
+            apt = Apartamento.query.join(
+                Numero, Apartamento.numero_id == Numero.id
+            ).join(
+                Rua, Numero.rua_id == Rua.id
+            ).filter(
+                Rua.modulo_id.in_(modulo_ids),
+                Apartamento.ocupado == False,
+            ).first()
+
+    if not apt:
+        apt = Apartamento.query.filter_by(ocupado=False).first()
+
+    if apt:
+        rma.apartamento_id = apt.id
+        apt.ocupado = True
 
 
 @bp.route('/')
@@ -48,6 +87,10 @@ def laudo(rma_id):
 
         if rma.prazo_sla:
             rma.prazo_sla.atualizar_status()
+
+        # Auto-atribuir endereço agrupando por fornecedor
+        if not rma.apartamento_id:
+            _alocar_apartamento(rma)
 
         db.session.commit()
         flash(f'Laudo registrado para RMA {rma.numero}.', 'success')

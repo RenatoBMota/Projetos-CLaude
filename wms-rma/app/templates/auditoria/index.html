@@ -67,7 +67,7 @@
 
 <!-- Modal novo inventário -->
 <div class="modal fade" id="modalNovoInv" tabindex="-1">
-  <div class="modal-dialog modal-sm">
+  <div class="modal-dialog">
     <div class="modal-content">
       <form method="POST" action="{{ url_for('auditoria.novo') }}">
         <div class="modal-header">
@@ -75,19 +75,60 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <label class="form-label">Nome / Descrição</label>
-          <input type="text" name="nome" class="form-control"
-                 placeholder="Ex: Inventário Mensal Mai/2025">
-          <div class="form-text">
-            As posições serão pré-preenchidas com os apartamentos ocupados.
+          <div class="mb-3">
+            <label class="form-label">Nome / Descrição</label>
+            <input type="text" name="nome" class="form-control"
+                   placeholder="Ex: Inventário Mensal Mai/2025">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Escopo do Inventário</label>
+            <select name="tipo_filtro" id="invTipoFiltro" class="form-select">
+              <option value="todos">Todos os apartamentos ocupados</option>
+              <option value="fornecedor">Filtrar por Fornecedor</option>
+              <option value="endereco">Filtrar por Faixa de Endereço</option>
+            </select>
+          </div>
+          <!-- Por fornecedor -->
+          <div id="filtroFornecedor" class="mb-3 d-none">
+            <label class="form-label">Fornecedor</label>
+            <select name="fornecedor_id" class="form-select">
+              <option value="">Selecione...</option>
+              {% for f in fornecedores %}
+              <option value="{{ f.id }}">{{ f.nome }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <!-- Por endereço -->
+          <div id="filtroEndereco" class="d-none">
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label">Endereço Inicial</label>
+                <input type="text" name="end_ini" class="form-control font-monospace"
+                       placeholder="Ex: 01-01-01-01">
+              </div>
+              <div class="col-6">
+                <label class="form-label">Endereço Final</label>
+                <input type="text" name="end_fim" class="form-control font-monospace"
+                       placeholder="Ex: 01-02-10-03">
+              </div>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary-custom">Criar</button>
+          <button type="submit" class="btn btn-primary-custom">Criar Inventário</button>
         </div>
       </form>
     </div>
   </div>
 </div>
+
+{% block scripts %}
+<script>
+document.getElementById('invTipoFiltro').addEventListener('change', function() {
+  document.getElementById('filtroFornecedor').classList.toggle('d-none', this.value !== 'fornecedor');
+  document.getElementById('filtroEndereco').classList.toggle('d-none', this.value !== 'endereco');
+});
+</script>
+{% endblock %}
 {% endblock %}
