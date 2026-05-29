@@ -2,6 +2,8 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required
 from app.extensions import db
 from app.models import Armazem, Zona, Modulo, Rua, Numero, Apartamento, TipoZona
+from app.utils import role_required
+from app.models import Roles
 
 bp = Blueprint('armazem', __name__, url_prefix='/armazem')
 
@@ -27,6 +29,20 @@ def modulo_detalhe(modulo_id):
     modulo = Modulo.query.get_or_404(modulo_id)
     ruas   = modulo.ruas.filter_by(ativa=True).all()
     return render_template('armazem/modulo.html', modulo=modulo, ruas=ruas)
+
+
+# ── Edição de zona ───────────────────────────────────────────────────────────
+
+@bp.route('/zona/<int:zona_id>/editar-nome', methods=['POST'])
+@login_required
+def editar_zona_nome(zona_id):
+    zona = Zona.query.get_or_404(zona_id)
+    novo_nome = request.form.get('nome', '').strip()
+    if novo_nome:
+        zona.nome = novo_nome
+        db.session.commit()
+        flash(f'Zona renomeada para "{novo_nome}".', 'success')
+    return redirect(url_for('armazem.index'))
 
 
 # ── Gerador de endereços em lote ──────────────────────────────────────────────

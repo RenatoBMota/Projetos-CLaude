@@ -4,7 +4,8 @@ from datetime import datetime, timedelta
 from app.extensions import db
 from app.models import (
     RMA, EstadoRMA, HistoricoRMA, Produto, Fornecedor,
-    Apartamento, PoliticaSLA, PrazoSLA, Documento
+    Apartamento, PoliticaSLA, PrazoSLA, Documento,
+    ListaOpcao, TipoLista
 )
 from app.utils import gerar_numero_rma, salvar_arquivo, allowed_file
 import os
@@ -117,17 +118,27 @@ def novo():
         flash(f'RMA {rma.numero} criado com sucesso!', 'success')
         return redirect(url_for('rma.detalhe', rma_id=rma.id))
 
-    produtos     = Produto.query.filter_by(ativo=True).order_by(Produto.descricao).all()
-    fornecedores = Fornecedor.query.filter_by(ativo=True).order_by(Fornecedor.nome).all()
-    return render_template('rma/form.html', rma=None, produtos=produtos, fornecedores=fornecedores)
+    produtos          = Produto.query.filter_by(ativo=True).order_by(Produto.descricao).all()
+    fornecedores      = Fornecedor.query.filter_by(ativo=True).order_by(Fornecedor.nome).all()
+    opcoes_canal      = ListaOpcao.por_tipo(TipoLista.CANAL)
+    opcoes_motivo     = ListaOpcao.por_tipo(TipoLista.MOTIVO_DEVOLUCAO)
+    opcoes_categoria  = ListaOpcao.por_tipo(TipoLista.CATEGORIA_DEFEITO)
+    return render_template('rma/form.html',
+        rma=None, produtos=produtos, fornecedores=fornecedores,
+        opcoes_canal=opcoes_canal, opcoes_motivo=opcoes_motivo,
+        opcoes_categoria=opcoes_categoria,
+    )
 
 
 @bp.route('/<int:rma_id>')
 @login_required
 def detalhe(rma_id):
-    rma = RMA.query.get_or_404(rma_id)
-    apartamentos = Apartamento.query.filter_by(ocupado=False).limit(50).all()
-    return render_template('rma/detail.html', rma=rma, apartamentos=apartamentos)
+    rma               = RMA.query.get_or_404(rma_id)
+    apartamentos      = Apartamento.query.filter_by(ocupado=False).limit(50).all()
+    opcoes_destinacao = ListaOpcao.por_tipo(TipoLista.DESTINACAO)
+    opcoes_categoria  = ListaOpcao.por_tipo(TipoLista.CATEGORIA_DEFEITO)
+    return render_template('rma/detail.html', rma=rma, apartamentos=apartamentos,
+        opcoes_destinacao=opcoes_destinacao, opcoes_categoria=opcoes_categoria)
 
 
 @bp.route('/<int:rma_id>/transitar', methods=['POST'])
@@ -219,7 +230,7 @@ def upload_doc(rma_id):
     db.session.add(doc)
     db.session.commit()
     flash('Documento anexado com sucesso!', 'success')
-    return redirect(url_for('rma.detalhe', rma_id=rma_id))
+    return redirect(url_for('rma.detalhe', rma_id=rma_id) + '#documentos')
 
 
 @bp.route('/api/produto/<int:prod_id>')

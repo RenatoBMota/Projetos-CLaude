@@ -61,6 +61,7 @@ def novo():
                 peso_kg=request.form.get('peso_kg', type=float),
                 valor_unitario=request.form.get('valor_unitario', type=float),
                 observacoes=request.form.get('observacoes'),
+                comprador=request.form.get('comprador'),
             )
             db.session.add(p)
             db.session.commit()
@@ -84,6 +85,7 @@ def editar(prod_id):
         p.peso_kg        = request.form.get('peso_kg', type=float)
         p.valor_unitario = request.form.get('valor_unitario', type=float)
         p.observacoes    = request.form.get('observacoes')
+        p.comprador      = request.form.get('comprador')
         db.session.commit()
         flash('Produto atualizado!', 'success')
         return redirect(url_for('produtos.index'))

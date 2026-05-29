@@ -52,9 +52,16 @@
              class="btn btn-sm btn-outline-primary flex-grow-1">
             <i class="fa-solid fa-eye me-1"></i>Ver Módulos
           </a>
+          <button type="button" class="btn btn-sm btn-outline-secondary"
+                  data-bs-toggle="modal" data-bs-target="#modalEditarZona"
+                  data-zona-id="{{ zona.id }}" data-zona-nome="{{ zona.nome }}"
+                  title="Renomear Zona">
+            <i class="fa-solid fa-pen"></i>
+          </button>
           <button type="button" class="btn btn-sm btn-outline-success"
                   data-bs-toggle="modal" data-bs-target="#modalGerar"
-                  data-zona-id="{{ zona.id }}" data-zona-nome="{{ zona.nome }}">
+                  data-zona-id="{{ zona.id }}" data-zona-nome="{{ zona.nome }}"
+                  title="Gerar Endereços">
             <i class="fa-solid fa-wand-magic-sparkles"></i>
           </button>
         </div>
@@ -64,6 +71,28 @@
   </div>
 </div>
 {% endfor %}
+
+<!-- Modal Editar Nome da Zona -->
+<div class="modal fade" id="modalEditarZona" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <form method="POST" id="formEditarZona">
+        <div class="modal-header">
+          <h5 class="modal-title">Renomear Zona</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label">Novo Nome</label>
+          <input type="text" name="nome" id="inputZonaNomeEdit" class="form-control" required maxlength="100">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary-custom">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
 <!-- Modal Gerar Endereços -->
 <div class="modal fade" id="modalGerar" tabindex="-1">
@@ -119,8 +148,15 @@
 <script>
 document.getElementById('modalGerar').addEventListener('show.bs.modal', function(e) {
   const btn = e.relatedTarget;
-  document.getElementById('inputZonaId').value    = btn.dataset.zonaId;
+  document.getElementById('inputZonaId').value = btn.dataset.zonaId;
   document.getElementById('textoZonaNome').textContent = btn.dataset.zonaNome;
+});
+
+document.getElementById('modalEditarZona').addEventListener('show.bs.modal', function(e) {
+  const btn = e.relatedTarget;
+  const zonaId = btn.dataset.zonaId;
+  document.getElementById('inputZonaNomeEdit').value = btn.dataset.zonaNome;
+  document.getElementById('formEditarZona').action = `/armazem/zona/${zonaId}/editar-nome`;
 });
 </script>
 {% endblock %}

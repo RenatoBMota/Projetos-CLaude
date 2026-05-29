@@ -39,13 +39,9 @@
           <label class="form-label">Categoria do Defeito *</label>
           <select name="categoria_defeito" class="form-select" required>
             <option value="">Selecione...</option>
-            <option value="DEFEITO_FABRICACAO">Defeito de Fabricação</option>
-            <option value="AVARIA_TRANSPORTE">Avaria no Transporte</option>
-            <option value="USO_INCORRETO">Uso Incorreto pelo Cliente</option>
-            <option value="DESGASTE_PREMATURO">Desgaste Prematuro</option>
-            <option value="COMPONENTE_FALTANDO">Componente Faltando</option>
-            <option value="SEM_DEFEITO">Sem Defeito Identificado</option>
-            <option value="OUTRO">Outro</option>
+            {% for o in opcoes_categoria %}
+            <option value="{{ o.valor }}" {% if rma.categoria_defeito == o.valor %}selected{% endif %}>{{ o.label }}</option>
+            {% endfor %}
           </select>
         </div>
         <div class="mb-3">
@@ -54,15 +50,11 @@
                     placeholder="Descreva detalhadamente o resultado da análise técnica...">{{ rma.laudo_tecnico or '' }}</textarea>
         </div>
         <div class="mb-3">
-          <label class="form-label">Destinação Recomendada *</label>
-          <select name="disposicao" class="form-select" required>
-            <option value="">Selecione...</option>
-            <option value="DEVOLUCAO_FORNECEDOR">Devolução ao Fornecedor</option>
-            <option value="REPARO">Reparo</option>
-            <option value="SUBSTITUICAO">Substituição</option>
-            <option value="CREDITO">Crédito ao Cliente</option>
-            <option value="SUCATA">Sucata / Descarte</option>
-          </select>
+          <label class="form-label">Destinação Recomendada</label>
+          <div class="form-control bg-light fw-bold text-primary">
+            <i class="fa-solid fa-handshake me-2"></i>Negociação com Fornecedor
+          </div>
+          <div class="form-text">A destinação final é definida após negociação com o fornecedor.</div>
         </div>
         <div class="mb-3">
           <label class="form-label">Observações</label>

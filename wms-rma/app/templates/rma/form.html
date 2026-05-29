@@ -27,9 +27,10 @@
           <div class="col-md-4">
             <label class="form-label">Canal *</label>
             <select name="canal" class="form-select" required>
-              <option value="LOJA">Loja Física</option>
-              <option value="ECOMMERCE">E-commerce</option>
-              <option value="B2B">B2B / Corporativo</option>
+              <option value="">Selecione...</option>
+              {% for o in opcoes_canal %}
+              <option value="{{ o.valor }}" {% if rma and rma.canal == o.valor %}selected{% endif %}>{{ o.label }}</option>
+              {% endfor %}
             </select>
           </div>
           <div class="col-md-4">
@@ -103,27 +104,18 @@
             <label class="form-label">Motivo da Devolução *</label>
             <select name="motivo_devolucao" class="form-select" required>
               <option value="">Selecione...</option>
-              <option>Defeito de fabricação</option>
-              <option>Produto chegou danificado</option>
-              <option>Não funciona</option>
-              <option>Peça quebrada</option>
-              <option>Produto diferente do pedido</option>
-              <option>Avaria no transporte</option>
-              <option>Produto incompleto</option>
-              <option>Outro</option>
+              {% for o in opcoes_motivo %}
+              <option value="{{ o.valor }}" {% if rma and rma.motivo_devolucao == o.valor %}selected{% endif %}>{{ o.label }}</option>
+              {% endfor %}
             </select>
           </div>
           <div class="col-md-6">
             <label class="form-label">Categoria do Defeito</label>
             <select name="categoria_defeito" class="form-select">
               <option value="">Selecione (opcional)...</option>
-              <option value="DEFEITO_FABRICACAO">Defeito de Fabricação</option>
-              <option value="AVARIA_TRANSPORTE">Avaria no Transporte</option>
-              <option value="USO_INCORRETO">Uso Incorreto</option>
-              <option value="DESGASTE_PREMATURO">Desgaste Prematuro</option>
-              <option value="COMPONENTE_FALTANDO">Componente Faltando</option>
-              <option value="PRODUTO_ERRADO">Produto Errado</option>
-              <option value="OUTRO">Outro</option>
+              {% for o in opcoes_categoria %}
+              <option value="{{ o.valor }}" {% if rma and rma.categoria_defeito == o.valor %}selected{% endif %}>{{ o.label }}</option>
+              {% endfor %}
             </select>
           </div>
           <div class="col-12">

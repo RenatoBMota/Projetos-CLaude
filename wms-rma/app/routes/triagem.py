@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from app.extensions import db
-from app.models import RMA, EstadoRMA, HistoricoRMA
+from app.models import RMA, EstadoRMA, HistoricoRMA, ListaOpcao, TipoLista
 
 bp = Blueprint('triagem', __name__, url_prefix='/triagem')
 
@@ -27,15 +27,14 @@ def laudo(rma_id):
     if request.method == 'POST':
         laudo_texto  = request.form.get('laudo_tecnico', '')
         categoria    = request.form.get('categoria_defeito', '')
-        disposicao   = request.form.get('disposicao', '')
         observacao   = request.form.get('observacao', '')
 
         estado_anterior = rma.estado
         novo_estado = EstadoRMA.AGUARDANDO_DEST
 
-        rma.laudo_tecnico    = laudo_texto
+        rma.laudo_tecnico     = laudo_texto
         rma.categoria_defeito = categoria
-        rma.disposicao        = disposicao
+        rma.disposicao        = 'NEGOCIACAO_FORNECEDOR'  # sempre fixo após triagem
         rma.tecnico_id        = current_user.id
         rma.estado            = novo_estado
 
@@ -54,4 +53,5 @@ def laudo(rma_id):
         flash(f'Laudo registrado para RMA {rma.numero}.', 'success')
         return redirect(url_for('triagem.index'))
 
-    return render_template('triagem/laudo.html', rma=rma)
+    opcoes_categoria = ListaOpcao.por_tipo(TipoLista.CATEGORIA_DEFEITO)
+    return render_template('triagem/laudo.html', rma=rma, opcoes_categoria=opcoes_categoria)

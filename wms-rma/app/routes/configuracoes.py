@@ -1,10 +1,10 @@
+import os
+import re
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
 from app.extensions import db
-from app.models import Configuracao
+from app.models import Configuracao, ListaOpcao, TipoLista, Roles
 from app.utils import role_required, salvar_arquivo, allowed_file
-from app.models import Roles
-import os
 
 bp = Blueprint('configuracoes', __name__, url_prefix='/configuracoes')
 
@@ -61,3 +61,61 @@ def resetar_logo():
     Configuracao.set('app_logo', '', tipo='imagem', grupo='app')
     flash('Logo removida.', 'info')
     return redirect(url_for('configuracoes.index'))
+
+
+# ── Listas Configuráveis ──────────────────────────────────────────────────────
+
+@bp.route('/listas')
+@login_required
+@role_required(Roles.ADMIN, Roles.SUPERVISOR)
+def listas():
+    opcoes = {
+        tipo: ListaOpcao.query.filter_by(tipo=tipo).order_by(ListaOpcao.ordem, ListaOpcao.label).all()
+        for tipo in TipoLista.ALL
+    }
+    return render_template('configuracoes/listas.html', opcoes=opcoes, TipoLista=TipoLista)
+
+
+@bp.route('/listas/nova', methods=['POST'])
+@login_required
+@role_required(Roles.ADMIN)
+def lista_nova():
+    tipo  = request.form.get('tipo', '').strip()
+    label = request.form.get('label', '').strip()
+    if not tipo or not label:
+        flash('Preencha o tipo e o rótulo.', 'warning')
+        return redirect(url_for('configuracoes.listas'))
+
+    valor = re.sub(r'[^A-Z0-9]+', '_', label.upper()).strip('_')
+    if ListaOpcao.query.filter_by(tipo=tipo, valor=valor).first():
+        flash('Já existe uma opção com esse rótulo.', 'warning')
+    else:
+        max_ordem = db.session.query(
+            db.func.max(ListaOpcao.ordem)
+        ).filter_by(tipo=tipo).scalar() or 0
+        db.session.add(ListaOpcao(tipo=tipo, valor=valor, label=label, ordem=max_ordem + 1))
+        db.session.commit()
+        flash(f'Opção "{label}" adicionada.', 'success')
+    return redirect(url_for('configuracoes.listas'))
+
+
+@bp.route('/listas/<int:opcao_id>/toggle', methods=['POST'])
+@login_required
+@role_required(Roles.ADMIN)
+def lista_toggle(opcao_id):
+    opcao = ListaOpcao.query.get_or_404(opcao_id)
+    opcao.ativo = not opcao.ativo
+    db.session.commit()
+    flash(f'Opção "{opcao.label}" {"ativada" if opcao.ativo else "desativada"}.', 'info')
+    return redirect(url_for('configuracoes.listas'))
+
+
+@bp.route('/listas/<int:opcao_id>/excluir', methods=['POST'])
+@login_required
+@role_required(Roles.ADMIN)
+def lista_excluir(opcao_id):
+    opcao = ListaOpcao.query.get_or_404(opcao_id)
+    db.session.delete(opcao)
+    db.session.commit()
+    flash('Opção removida permanentemente.', 'danger')
+    return redirect(url_for('configuracoes.listas'))

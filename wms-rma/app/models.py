@@ -72,7 +72,37 @@ class TipoZona:
     }
 
 
+class TipoLista:
+    CANAL             = 'CANAL'
+    MOTIVO_DEVOLUCAO  = 'MOTIVO_DEVOLUCAO'
+    CATEGORIA_DEFEITO = 'CATEGORIA_DEFEITO'
+    DESTINACAO        = 'DESTINACAO'
+
+    LABELS = {
+        'CANAL':             'Canais de Atendimento',
+        'MOTIVO_DEVOLUCAO':  'Motivos de Devolução',
+        'CATEGORIA_DEFEITO': 'Categorias de Defeito',
+        'DESTINACAO':        'Destinações',
+    }
+    ALL = ['CANAL', 'MOTIVO_DEVOLUCAO', 'CATEGORIA_DEFEITO', 'DESTINACAO']
+
+
 # ── Models ────────────────────────────────────────────────────────────────────
+
+class ListaOpcao(db.Model):
+    """Opções configuráveis de listas (Canal, Motivo, Categoria, Destinação)."""
+    __tablename__ = 'lista_opcoes'
+    id    = db.Column(db.Integer, primary_key=True)
+    tipo  = db.Column(db.String(50), nullable=False, index=True)
+    valor = db.Column(db.String(100), nullable=False)
+    label = db.Column(db.String(200), nullable=False)
+    ordem = db.Column(db.Integer, default=0)
+    ativo = db.Column(db.Boolean, default=True)
+
+    @classmethod
+    def por_tipo(cls, tipo):
+        return cls.query.filter_by(tipo=tipo, ativo=True).order_by(cls.ordem, cls.label).all()
+
 
 class Configuracao(db.Model):
     __tablename__ = 'configuracoes'
@@ -163,6 +193,7 @@ class Produto(db.Model):
     peso_kg        = db.Column(db.Float)
     valor_unitario = db.Column(db.Float)
     observacoes    = db.Column(db.Text)
+    comprador      = db.Column(db.String(150))
     ativo          = db.Column(db.Boolean, default=True)
     criado_em      = db.Column(db.DateTime, default=datetime.utcnow)
     rmas           = db.relationship('RMA', backref='produto', lazy='dynamic')

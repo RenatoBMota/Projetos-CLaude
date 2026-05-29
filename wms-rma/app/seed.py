@@ -4,7 +4,8 @@ from app.extensions import db
 from app.models import (
     Configuracao, Usuario, Roles, Fornecedor, Produto,
     Armazem, Zona, Modulo, Rua, Numero, Apartamento,
-    PoliticaSLA, RMA, EstadoRMA, HistoricoRMA, PrazoSLA, TipoZona
+    PoliticaSLA, RMA, EstadoRMA, HistoricoRMA, PrazoSLA, TipoZona,
+    ListaOpcao, TipoLista
 )
 import random
 
@@ -240,6 +241,38 @@ def seed_banco():
             usuario_id=us[2].id,
             criado_em=criado,
         ))
+
+    # ── Listas configuráveis ──────────────────────────────────────────────────
+    listas_padrao = [
+        (TipoLista.CANAL, 'LOJA',        'Loja Física',              1),
+        (TipoLista.CANAL, 'ECOMMERCE',   'E-commerce',               2),
+        (TipoLista.CANAL, 'B2B',         'B2B / Corporativo',        3),
+        (TipoLista.CANAL, 'MARKETPLACE', 'Marketplace',              4),
+        (TipoLista.MOTIVO_DEVOLUCAO, 'DEFEITO_FABRICACAO', 'Defeito de Fabricação',       1),
+        (TipoLista.MOTIVO_DEVOLUCAO, 'CHEGOU_DANIFICADO',  'Produto chegou danificado',   2),
+        (TipoLista.MOTIVO_DEVOLUCAO, 'NAO_FUNCIONA',       'Não funciona',                3),
+        (TipoLista.MOTIVO_DEVOLUCAO, 'PECA_QUEBRADA',      'Peça quebrada',               4),
+        (TipoLista.MOTIVO_DEVOLUCAO, 'PRODUTO_ERRADO',     'Produto diferente do pedido', 5),
+        (TipoLista.MOTIVO_DEVOLUCAO, 'AVARIA_TRANSPORTE',  'Avaria no transporte',        6),
+        (TipoLista.MOTIVO_DEVOLUCAO, 'INCOMPLETO',         'Produto incompleto',          7),
+        (TipoLista.MOTIVO_DEVOLUCAO, 'OUTRO',              'Outro',                       8),
+        (TipoLista.CATEGORIA_DEFEITO, 'DEFEITO_FABRICACAO',  'Defeito de Fabricação',    1),
+        (TipoLista.CATEGORIA_DEFEITO, 'AVARIA_TRANSPORTE',   'Avaria no Transporte',     2),
+        (TipoLista.CATEGORIA_DEFEITO, 'USO_INCORRETO',       'Uso Incorreto',            3),
+        (TipoLista.CATEGORIA_DEFEITO, 'DESGASTE_PREMATURO',  'Desgaste Prematuro',       4),
+        (TipoLista.CATEGORIA_DEFEITO, 'COMPONENTE_FALTANDO', 'Componente Faltando',      5),
+        (TipoLista.CATEGORIA_DEFEITO, 'SEM_DEFEITO',         'Sem Defeito Identificado', 6),
+        (TipoLista.CATEGORIA_DEFEITO, 'OUTRO',               'Outro',                    7),
+        (TipoLista.DESTINACAO, 'NEGOCIACAO_FORNECEDOR', 'Negociação com Fornecedor', 1),
+        (TipoLista.DESTINACAO, 'DEVOLUCAO_FORNECEDOR',  'Devolução ao Fornecedor',   2),
+        (TipoLista.DESTINACAO, 'REPARO',                'Reparo',                    3),
+        (TipoLista.DESTINACAO, 'SUBSTITUICAO',          'Substituição',              4),
+        (TipoLista.DESTINACAO, 'CREDITO',               'Crédito ao Cliente',        5),
+        (TipoLista.DESTINACAO, 'SUCATA',                'Sucata / Descarte',         6),
+    ]
+    for tipo, valor, label, ordem in listas_padrao:
+        if not ListaOpcao.query.filter_by(tipo=tipo, valor=valor).first():
+            db.session.add(ListaOpcao(tipo=tipo, valor=valor, label=label, ordem=ordem))
 
     db.session.commit()
     print("  [seed] Banco populado com dados de exemplo.")

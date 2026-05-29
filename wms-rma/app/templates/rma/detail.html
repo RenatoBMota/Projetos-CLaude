@@ -104,14 +104,16 @@
           <span class="badge bg-primary">{{ rma.disposicao }}</span>
         </div>
         {% endif %}
-        {% if rma.apt_ref %}
         <div class="col-md-6">
           <div class="text-muted small fw-bold text-uppercase">Endereço no Armazém</div>
+          {% if rma.apt_ref %}
           <span class="badge bg-dark fs-6">
             <i class="fa-solid fa-location-dot me-1"></i>{{ rma.apt_ref.endereco }}
           </span>
+          {% else %}
+          <span class="text-muted">—</span>
+          {% endif %}
         </div>
-        {% endif %}
       </div>
     </div>
 
@@ -134,7 +136,7 @@
     {% endif %}
 
     <!-- Upload de documentos -->
-    <div class="form-card mb-3">
+    <div class="form-card mb-3" id="documentos">
       <h6 class="fw-bold mb-3 pb-2 border-bottom">
         <i class="fa-solid fa-paperclip me-2 text-primary"></i>Documentos e Evidências
       </h6>
@@ -224,6 +226,24 @@
     </div>
     {% endif %}
 
+    <!-- Endereço de armazenagem (sempre visível) -->
+    <div class="form-card mb-3">
+      <h6 class="fw-bold mb-2 pb-2 border-bottom">
+        <i class="fa-solid fa-location-dot me-2 text-primary"></i>Armazenagem
+      </h6>
+      {% if rma.apt_ref %}
+      <div class="text-center">
+        <span class="badge bg-dark py-2 px-3" style="font-size:1rem;letter-spacing:.05em;">
+          <i class="fa-solid fa-location-dot me-1"></i>{{ rma.apt_ref.endereco }}
+        </span>
+      </div>
+      {% else %}
+      <p class="text-muted small text-center mb-0">
+        <i class="fa-solid fa-circle-info me-1"></i>Endereço não atribuído
+      </p>
+      {% endif %}
+    </div>
+
     <!-- Responsáveis -->
     <div class="form-card mb-3">
       <h6 class="fw-bold mb-3 pb-2 border-bottom">
@@ -291,12 +311,9 @@
               <label class="form-label">Categoria do Defeito</label>
               <select name="categoria_defeito" class="form-select">
                 <option value="">Selecione...</option>
-                <option value="DEFEITO_FABRICACAO">Defeito de Fabricação</option>
-                <option value="AVARIA_TRANSPORTE">Avaria no Transporte</option>
-                <option value="USO_INCORRETO">Uso Incorreto</option>
-                <option value="DESGASTE_PREMATURO">Desgaste Prematuro</option>
-                <option value="COMPONENTE_FALTANDO">Componente Faltando</option>
-                <option value="OUTRO">Outro</option>
+                {% for o in opcoes_categoria %}
+                <option value="{{ o.valor }}">{{ o.label }}</option>
+                {% endfor %}
               </select>
             </div>
           </div>
@@ -306,17 +323,18 @@
               <label class="form-label">Destinação</label>
               <select name="disposicao" class="form-select">
                 <option value="">Selecione...</option>
-                <option value="DEVOLUCAO_FORNECEDOR">Devolução ao Fornecedor</option>
-                <option value="REPARO">Reparo</option>
-                <option value="SUBSTITUICAO">Substituição</option>
-                <option value="CREDITO">Crédito ao Cliente</option>
-                <option value="SUCATA">Sucata</option>
+                {% for o in opcoes_destinacao %}
+                <option value="{{ o.valor }}">{{ o.label }}</option>
+                {% endfor %}
               </select>
             </div>
             <div class="mb-3">
               <label class="form-label">Endereço no Armazém</label>
               <select name="apartamento_id" class="form-select">
                 <option value="">Nenhum (selecione se aplicável)</option>
+                {% if rma.apt_ref %}
+                <option value="{{ rma.apt_ref.id }}" selected>{{ rma.apt_ref.endereco }} (atual)</option>
+                {% endif %}
                 {% for a in apartamentos %}
                 <option value="{{ a.id }}">{{ a.endereco }}</option>
                 {% endfor %}

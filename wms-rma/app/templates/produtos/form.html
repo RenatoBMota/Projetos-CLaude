@@ -101,6 +101,13 @@
             </div>
           </div>
 
+          <div class="col-md-6">
+            <label class="form-label">Comprador Responsável</label>
+            <input type="text" name="comprador" class="form-control"
+                   value="{{ produto.comprador if produto else '' }}"
+                   placeholder="Nome do comprador responsável">
+          </div>
+
           <div class="col-12">
             <label class="form-label">Observações</label>
             <textarea name="observacoes" class="form-control" rows="2"
