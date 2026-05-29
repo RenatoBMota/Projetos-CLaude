@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Lotes de Devolução{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Início</a></li>
+<li class="breadcrumb-item active">Lotes</li>
+{% endblock %}
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div>
+    <h1><i class="fa-solid fa-boxes-stacked me-2 text-primary"></i>Lotes de Devolução</h1>
+    <p class="subtitle">Agrupe RMAs para devolução em lote ao fornecedor</p>
+  </div>
+  <a href="{{ url_for('lote.novo') }}" class="btn btn-primary-custom">
+    <i class="fa-solid fa-plus me-1"></i>Novo Lote
+  </a>
+</div>
+
+<div class="table-card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Número</th>
+          <th>Fornecedor</th>
+          <th>NF Devolução</th>
+          <th>RMAs</th>
+          <th>Estado</th>
+          <th>Criado em</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lote in lotes %}
+        <tr>
+          <td class="fw-bold font-monospace">{{ lote.numero }}</td>
+          <td>{{ lote.fornecedor.nome if lote.fornecedor else '—' }}</td>
+          <td>{{ lote.nf_devolucao or '—' }}</td>
+          <td class="text-center">
+            <span class="badge bg-primary">{{ lote.rmas.count() }}</span>
+          </td>
+          <td>
+            <span class="badge {% if lote.estado == 'ABERTO' %}bg-warning text-dark{% else %}bg-success{% endif %}">
+              {{ lote.estado }}
+            </span>
+          </td>
+          <td class="text-muted small">{{ lote.criado_em|datahora }}</td>
+          <td>
+            <a href="{{ url_for('lote.detalhe', lote_id=lote.id) }}" class="btn btn-sm btn-outline-primary">
+              <i class="fa-solid fa-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center py-4 text-muted">Nenhum lote criado ainda.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

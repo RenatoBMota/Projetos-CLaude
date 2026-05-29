@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block title %}Matriz de Permissões{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('usuarios.index') }}">Usuários</a></li>
+<li class="breadcrumb-item active">Permissões</li>
+{% endblock %}
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between">
+  <div>
+    <h1><i class="fa-solid fa-shield-halved me-2 text-primary"></i>Matriz de Permissões</h1>
+    <p class="subtitle">Defina quais perfis podem acessar cada módulo do sistema</p>
+  </div>
+  <a href="{{ url_for('usuarios.index') }}" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i>Voltar
+  </a>
+</div>
+
+<form method="POST" action="{{ url_for('usuarios.permissoes_salvar') }}">
+  <div class="table-card mb-3">
+    <div class="table-responsive">
+      <table class="table table-bordered mb-0 text-center align-middle" style="font-size:.82rem;">
+        <thead>
+          <tr class="table-dark">
+            <th class="text-start ps-3" style="min-width:160px;">Módulo</th>
+            {% for role_key, role_label in roles.items() %}
+            <th style="min-width:90px;">
+              {{ role_label }}
+              <div class="mt-1">
+                <button type="button" class="btn btn-xs btn-outline-light py-0 px-1"
+                        style="font-size:.65rem;"
+                        onclick="toggleColuna('{{ role_key }}')">
+                  <i class="fa-solid fa-toggle-on"></i> todos
+                </button>
+              </div>
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for bp_key, tela_label in telas.items() %}
+          {% set roles_com_acesso = mapa.get(bp_key) %}
+          <tr>
+            <td class="text-start ps-3 fw-bold">
+              <i class="fa-solid fa-{% if bp_key == 'dashboard' %}gauge-high{% elif bp_key == 'rma' %}rotate-left{% elif bp_key == 'triagem' %}clipboard-check{% elif bp_key == 'armazem' %}warehouse{% elif bp_key == 'produtos' %}box-open{% elif bp_key == 'lote' %}boxes-stacked{% elif bp_key == 'sla' %}clock{% elif bp_key == 'relatorios' %}chart-bar{% elif bp_key == 'auditoria' %}clipboard-list{% elif bp_key == 'configuracoes' %}gear{% else %}users{% endif %} me-2 text-primary"></i>
+              {{ tela_label }}
+              {% if roles_com_acesso is none %}
+              <span class="badge bg-success-subtle text-success border ms-1" style="font-size:.65rem;">todos</span>
+              {% endif %}
+            </td>
+            {% for role_key in roles.keys() %}
+            <td>
+              {% if bp_key == 'usuarios' and role_key == 'admin' %}
+              {# Admin sempre tem acesso a usuários — não pode ser removido #}
+              <input type="checkbox" name="{{ bp_key }}__{{ role_key }}"
+                     class="form-check-input perm-check col-{{ role_key }}"
+                     checked disabled>
+              <input type="hidden" name="{{ bp_key }}__{{ role_key }}" value="on">
+              {% elif roles_com_acesso is none %}
+              {# Blueprint de acesso livre: checkboxes marcados e desabilitados #}
+              <input type="checkbox" class="form-check-input" checked disabled title="Acesso livre para todos">
+              {% else %}
+              <input type="checkbox" name="{{ bp_key }}__{{ role_key }}"
+                     class="form-check-input perm-check col-{{ role_key }}"
+                     {% if roles_com_acesso and role_key in roles_com_acesso %}checked{% endif %}>
+              {% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="d-flex align-items-center gap-3 flex-wrap">
+    <button type="submit" class="btn btn-primary-custom">
+      <i class="fa-solid fa-save me-1"></i>Salvar Permissões
+    </button>
+    <div class="text-muted small">
+      <i class="fa-solid fa-circle-info me-1"></i>
+      Módulos com badge <span class="badge bg-success-subtle text-success border" style="font-size:.65rem;">todos</span>
+      são de acesso livre e não podem ser restringidos aqui.<br>
+      O perfil <strong>Administrador</strong> sempre tem acesso total ao sistema.
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Marca/desmarca toda uma coluna de perfil
+function toggleColuna(role) {
+  const checks = document.querySelectorAll(`.col-${role}:not(:disabled)`);
+  const allChecked = Array.from(checks).every(c => c.checked);
+  checks.forEach(c => c.checked = !allChecked);
+}
+</script>
+{% endblock %}

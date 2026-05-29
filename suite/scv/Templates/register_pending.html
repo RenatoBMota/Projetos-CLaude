@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>SCV — Aguardando Aprovação</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#1a4e8f,#1a2e4a);min-height:100vh;display:flex;align-items:center;justify-content:center}
+    .card{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);padding:48px 44px;width:100%;max-width:460px;text-align:center}
+    .icon{font-size:56px;margin-bottom:20px}
+    h2{font-size:22px;font-weight:700;color:#1a4e8f;margin-bottom:10px}
+    p{font-size:14px;color:#6b7280;line-height:1.7;margin-bottom:16px}
+    .steps{background:#f0f4f9;border-radius:10px;padding:20px 24px;margin:20px 0;text-align:left}
+    .step{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px;font-size:13px;color:#374151}
+    .step:last-child{margin-bottom:0}
+    .step-num{background:#1a4e8f;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px}
+    .btn{display:inline-block;padding:11px 28px;background:#1a4e8f;color:#fff;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none;margin-top:8px}
+    .btn:hover{background:#153f75}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">⏳</div>
+    <h2>Solicitação Enviada!</h2>
+    <p>Sua solicitação de acesso foi registrada com sucesso. Aguarde a aprovação do administrador.</p>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><span>Administrador será notificado e revisará sua solicitação</span></div>
+      <div class="step"><div class="step-num">2</div><span>Após aprovação, você receberá a senha padrão <strong>1234</strong></span></div>
+      <div class="step"><div class="step-num">3</div><span>No primeiro login, o sistema solicitará que você crie uma nova senha</span></div>
+    </div>
+    <a href="/login" class="btn">Voltar ao Login</a>
+  </div>
+</body>
+</html>

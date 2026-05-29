@@ -1,0 +1,247 @@
+{% extends 'base.html' %}
+{% block title %}Configurações{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Início</a></li>
+<li class="breadcrumb-item active">Configurações</li>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="fa-solid fa-gear me-2 text-primary"></i>Configurações do Sistema</h1>
+  <p class="subtitle">Personalize o nome, logo, cores e dados da empresa</p>
+</div>
+
+<form method="POST" action="{{ url_for('configuracoes.salvar') }}" enctype="multipart/form-data">
+  <div class="row g-3">
+
+    <!-- App / Marca -->
+    <div class="col-md-8">
+      <div class="form-card mb-3">
+        <h6 class="fw-bold mb-3 pb-2 border-bottom">
+          <i class="fa-solid fa-paintbrush me-2 text-primary"></i>Identidade do Sistema
+        </h6>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Nome do Sistema *</label>
+            <input type="text" name="app_nome" class="form-control"
+                   value="{{ cfg.get('app_nome','WMS RMA Enterprise') }}" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Versão</label>
+            <input type="text" name="app_versao" class="form-control"
+                   value="{{ cfg.get('app_versao','1.0.0') }}">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Cor Primária</label>
+            <div class="input-group">
+              <input type="color" name="app_cor_primaria" class="form-control form-control-color"
+                     value="{{ cfg.get('app_cor_primaria','#2563eb') }}" style="max-width:60px;">
+              <input type="text" class="form-control" id="txtCorPrimaria"
+                     value="{{ cfg.get('app_cor_primaria','#2563eb') }}" readonly>
+            </div>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Descrição / Subtítulo</label>
+            <input type="text" name="app_descricao" class="form-control"
+                   value="{{ cfg.get('app_descricao','Sistema de Gestão de Logística Reversa') }}">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Cor do Sidebar</label>
+            <div class="input-group">
+              <input type="color" name="app_cor_sidebar" class="form-control form-control-color"
+                     value="{{ cfg.get('app_cor_sidebar','#1e293b') }}" style="max-width:60px;"
+                     id="pickerSidebar">
+              <input type="text" class="form-control" id="txtCorSidebar"
+                     value="{{ cfg.get('app_cor_sidebar','#1e293b') }}" readonly>
+            </div>
+            <div class="form-text">Preview ao salvar</div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Logo do Sistema</label>
+            {% if cfg.get('app_logo') %}
+            <div class="mb-2">
+              <img src="{{ url_for('static', filename=cfg.app_logo) }}"
+                   style="height:50px;border-radius:8px;border:1px solid #e2e8f0;" alt="Logo atual">
+              <form method="POST" action="{{ url_for('configuracoes.resetar_logo') }}" style="display:inline;">
+                <button type="submit" class="btn btn-sm btn-outline-danger ms-2">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </form>
+            </div>
+            {% endif %}
+            <input type="file" name="app_logo" class="form-control" accept=".png,.jpg,.jpeg,.gif,.svg,.webp">
+            <div class="form-text">PNG, JPG ou SVG. Recomendado: fundo transparente.</div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Favicon</label>
+            {% if cfg.get('app_favicon') %}
+            <div class="mb-2">
+              <img src="{{ url_for('static', filename=cfg.app_favicon) }}"
+                   style="height:30px;" alt="Favicon atual">
+            </div>
+            {% endif %}
+            <input type="file" name="app_favicon" class="form-control" accept=".png,.ico,.svg">
+            <div class="form-text">ICO, PNG ou SVG (32×32 recomendado)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empresa -->
+      <div class="form-card">
+        <h6 class="fw-bold mb-3 pb-2 border-bottom">
+          <i class="fa-solid fa-building me-2 text-primary"></i>Dados da Empresa
+        </h6>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Razão Social / Nome</label>
+            <input type="text" name="empresa_nome" class="form-control"
+                   value="{{ cfg.get('empresa_nome','') }}" placeholder="Empresa Ltda.">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">CNPJ</label>
+            <input type="text" name="empresa_cnpj" class="form-control"
+                   value="{{ cfg.get('empresa_cnpj','') }}" placeholder="00.000.000/0001-00">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">E-mail Corporativo</label>
+            <input type="email" name="empresa_email" class="form-control"
+                   value="{{ cfg.get('empresa_email','') }}" placeholder="rma@empresa.com.br">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Telefone</label>
+            <input type="text" name="empresa_telefone" class="form-control"
+                   value="{{ cfg.get('empresa_telefone','') }}" placeholder="(11) 3000-0000">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Coluna direita: Notificações + SLA -->
+    <div class="col-md-4">
+      <div class="form-card mb-3">
+        <h6 class="fw-bold mb-3 pb-2 border-bottom">
+          <i class="fa-solid fa-bell me-2 text-warning"></i>Notificações
+        </h6>
+        <div class="mb-3">
+          <label class="form-label">E-mail para Alertas</label>
+          <input type="email" name="email_alertas" class="form-control"
+                 value="{{ cfg.get('email_alertas','') }}" placeholder="alertas@empresa.com.br">
+        </div>
+        <div>
+          <label class="form-label">Alertar SLA quando atingir (%)</label>
+          <div class="input-group">
+            <input type="number" name="sla_alerta_pct" class="form-control"
+                   value="{{ cfg.get('sla_alerta_pct','80') }}" min="50" max="100">
+            <span class="input-group-text">%</span>
+          </div>
+          <div class="form-text">Ex: 80% = alerta quando restar 20% do prazo</div>
+        </div>
+      </div>
+
+      <!-- Preview -->
+      <div class="form-card mb-3" id="previewCard">
+        <h6 class="fw-bold mb-2 pb-2 border-bottom">
+          <i class="fa-solid fa-eye me-2"></i>Preview do Sidebar
+        </h6>
+        <div id="sidebarPreview" class="rounded p-3"
+             style="background:{{ cfg.get('app_cor_sidebar','#1e293b') }};">
+          <div class="d-flex align-items-center gap-2 mb-3">
+            {% if cfg.get('app_logo') %}
+            <img src="{{ url_for('static', filename=cfg.app_logo) }}"
+                 style="width:32px;height:32px;border-radius:6px;object-fit:contain;" alt="">
+            {% else %}
+            <div style="width:32px;height:32px;border-radius:6px;background:{{ cfg.get('app_cor_primaria','#2563eb') }};
+                        display:flex;align-items:center;justify-content:center;color:#fff;font-size:.8rem;">
+              <i class="fa-solid fa-rotate-left"></i>
+            </div>
+            {% endif %}
+            <div>
+              <div style="color:#fff;font-size:.8rem;font-weight:700;" id="previewNome">
+                {{ cfg.get('app_nome','WMS RMA') }}
+              </div>
+              <div style="color:rgba(255,255,255,.4);font-size:.65rem;">Logística Reversa</div>
+            </div>
+          </div>
+          <div style="height:1px;background:rgba(255,255,255,.1);margin-bottom:.5rem;"></div>
+          {% for item in [('fa-gauge-high','Dashboard'),('fa-rotate-left','RMA'),('fa-clipboard-check','Triagem'),('fa-clock','SLA')] %}
+          <div style="color:rgba(255,255,255,.65);font-size:.78rem;padding:.3rem .5rem;border-radius:6px;display:flex;align-items:center;gap:.5rem;">
+            <i class="fa-solid {{ item[0] }}" style="width:14px;text-align:center;"></i>{{ item[1] }}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- SMTP -->
+      <div class="form-card mb-3">
+        <h6 class="fw-bold mb-3 pb-2 border-bottom">
+          <i class="fa-solid fa-envelope me-2 text-primary"></i>Configuração SMTP
+        </h6>
+        <div class="row g-2">
+          <div class="col-8">
+            <label class="form-label">Servidor SMTP</label>
+            <input type="text" name="smtp_host" class="form-control form-control-sm"
+                   value="{{ cfg.get('smtp_host','') }}" placeholder="smtp.empresa.com.br">
+          </div>
+          <div class="col-4">
+            <label class="form-label">Porta</label>
+            <input type="number" name="smtp_port" class="form-control form-control-sm"
+                   value="{{ cfg.get('smtp_port','587') }}" placeholder="587">
+          </div>
+          <div class="col-6">
+            <label class="form-label">Usuário</label>
+            <input type="text" name="smtp_user" class="form-control form-control-sm"
+                   value="{{ cfg.get('smtp_user','') }}" placeholder="usuario@empresa.com">
+          </div>
+          <div class="col-6">
+            <label class="form-label">Senha</label>
+            <input type="password" name="smtp_password" class="form-control form-control-sm"
+                   value="{{ cfg.get('smtp_password','') }}" autocomplete="new-password">
+          </div>
+          <div class="col-12">
+            <div class="form-check">
+              <input type="checkbox" name="smtp_tls" class="form-check-input" id="chkTLS"
+                     {% if cfg.get('smtp_tls','1') == '1' %}checked{% endif %}>
+              <label class="form-check-label small" for="chkTLS">Usar TLS/STARTTLS</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-primary-custom btn-lg">
+          <i class="fa-solid fa-save me-2"></i>Salvar Configurações
+        </button>
+        <a href="{{ url_for('configuracoes.listas') }}" class="btn btn-outline-secondary">
+          <i class="fa-solid fa-list-ul me-2"></i>Listas Configuráveis
+        </a>
+        <a href="{{ url_for('configuracoes.emails') }}" class="btn btn-outline-secondary">
+          <i class="fa-solid fa-envelope-open-text me-2"></i>Destinatários de E-mail
+        </a>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Sync color pickers
+function syncCor(pickerId, txtId, previewProp) {
+  const picker = document.querySelector(`[name="${pickerId}"]`);
+  const txt    = document.getElementById(txtId);
+  picker.addEventListener('input', function() {
+    txt.value = this.value;
+    if (previewProp === 'sidebar') {
+      document.getElementById('sidebarPreview').style.background = this.value;
+    }
+  });
+}
+syncCor('app_cor_primaria', 'txtCorPrimaria', 'primary');
+syncCor('app_cor_sidebar',  'txtCorSidebar',  'sidebar');
+
+// Preview nome
+document.querySelector('[name="app_nome"]').addEventListener('input', function() {
+  const el = document.getElementById('previewNome');
+  if (el) el.textContent = this.value;
+});
+</script>
+{% endblock %}

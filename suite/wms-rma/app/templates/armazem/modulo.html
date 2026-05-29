@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block title %}Módulo {{ modulo.codigo }}{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('armazem.index') }}">Armazém</a></li>
+<li class="breadcrumb-item"><a href="{{ url_for('armazem.zona_detalhe', zona_id=modulo.zona_id) }}">{{ modulo.zona.nome }}</a></li>
+<li class="breadcrumb-item active">Módulo {{ modulo.codigo }}</li>
+{% endblock %}
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div>
+    <h1>
+      <i class="fa-solid fa-layer-group me-2 text-primary"></i>
+      Módulo {{ modulo.codigo }}
+      <span class="badge bg-light text-dark border ms-2" style="font-size:.7em;">{{ modulo.zona.nome }}</span>
+    </h1>
+    <p class="subtitle">{{ ruas|length }} rua(s) cadastrada(s)</p>
+  </div>
+  <a href="{{ url_for('armazem.zona_detalhe', zona_id=modulo.zona_id) }}" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i>Voltar à Zona
+  </a>
+</div>
+
+{% if not ruas %}
+<div class="table-card text-center py-5 text-muted">
+  <i class="fa-solid fa-inbox fa-3x mb-3 d-block opacity-25"></i>
+  <p>Nenhuma rua cadastrada neste módulo.</p>
+  <a href="{{ url_for('armazem.index') }}" class="btn btn-primary-custom">
+    <i class="fa-solid fa-plus me-1"></i>Gerar Endereços
+  </a>
+</div>
+{% else %}
+{% for rua in ruas %}
+<div class="form-card mb-3">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h6 class="fw-bold mb-0">
+      <i class="fa-solid fa-road me-2 text-primary"></i>
+      Rua {{ rua.codigo }}
+    </h6>
+    {% set total_apts = namespace(v=0) %}
+    {% set livres = namespace(v=0) %}
+    {% for num in rua.numeros %}
+      {% for apt in num.apartamentos %}
+        {% set total_apts.v = total_apts.v + 1 %}
+        {% if not apt.ocupado %}{% set livres.v = livres.v + 1 %}{% endif %}
+      {% endfor %}
+    {% endfor %}
+    {% set pct = ((total_apts.v - livres.v) / total_apts.v * 100)|round(0)|int if total_apts.v > 0 else 0 %}
+    <div class="d-flex align-items-center gap-3">
+      <span class="text-muted small">
+        <span class="text-success fw-bold">{{ livres.v }}</span> livres /
+        <span class="text-danger fw-bold">{{ total_apts.v - livres.v }}</span> ocupados
+      </span>
+      <div class="sla-bar" style="width:120px;height:8px;">
+        <div class="sla-bar-fill {% if pct > 80 %}bg-danger{% elif pct > 50 %}bg-warning{% else %}bg-success{% endif %}"
+             style="width:{{ pct }}%;height:8px;"></div>
+      </div>
+      <small class="text-muted">{{ pct }}%</small>
+    </div>
+  </div>
+
+  <div class="row g-2">
+    {% for num in rua.numeros %}
+    <div class="col-auto">
+      <div class="border rounded p-2" style="min-width:80px;">
+        <div class="text-center text-muted small mb-1 fw-bold">Nº {{ num.codigo }}</div>
+        {% for apt in num.apartamentos %}
+        <div class="mb-1">
+          <span class="badge {% if apt.ocupado %}bg-danger{% else %}bg-success{% endif %} w-100"
+                style="font-size:.7rem;cursor:{% if apt.ocupado %}pointer{% else %}default{% endif %};"
+                {% if apt.ocupado and apt.rmas.count() > 0 %}
+                title="RMA: {{ apt.rmas.order_by(apt.rmas._entity_zero().entity.id.desc()).first().numero if apt.rmas.count() > 0 else '' }}"
+                {% endif %}>
+            {{ apt.endereco }}
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+
+<!-- Legenda -->
+<div class="d-flex gap-3 align-items-center mt-2 text-muted small">
+  <span><span class="badge bg-success">■</span> Livre</span>
+  <span><span class="badge bg-danger">■</span> Ocupado</span>
+</div>
+{% endif %}
+{% endblock %}

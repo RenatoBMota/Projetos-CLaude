@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% block title %}Etiqueta — {{ rma.numero }}{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('triagem.index') }}">Triagem</a></li>
+<li class="breadcrumb-item active">Etiqueta</li>
+{% endblock %}
+
+{% block head %}
+<style>
+  @media print {
+    #sidebar, .topbar, .page-header .btn, footer, .no-print { display: none !important; }
+    #main-content { margin-left: 0 !important; }
+    .etiqueta-box { border: 2px solid #000 !important; }
+    body { background: #fff !important; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between no-print">
+  <h1><i class="fa-solid fa-tag me-2 text-primary"></i>Etiqueta de Triagem</h1>
+  <div class="d-flex gap-2">
+    <button onclick="window.print()" class="btn btn-primary-custom">
+      <i class="fa-solid fa-print me-1"></i>Imprimir
+    </button>
+    <a href="{{ url_for('triagem.index') }}" class="btn btn-outline-secondary">
+      <i class="fa-solid fa-arrow-left me-1"></i>Voltar à Triagem
+    </a>
+  </div>
+</div>
+
+<div class="d-flex justify-content-center">
+  <div class="etiqueta-box bg-white rounded p-4" style="width:400px;border:2px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,.1);">
+    <!-- Cabeçalho -->
+    <div class="text-center mb-3 pb-3 border-bottom">
+      <div class="fw-bold" style="font-size:1.1rem;letter-spacing:.05em;">{{ app_nome }}</div>
+      <div class="text-muted small">Sistema de Logística Reversa</div>
+    </div>
+
+    <!-- Número RMA grande -->
+    <div class="text-center mb-3">
+      <div class="text-muted small fw-bold text-uppercase mb-1">RMA</div>
+      <div class="fw-bold font-monospace" style="font-size:1.8rem;letter-spacing:.1em;">{{ rma.numero }}</div>
+    </div>
+
+    <!-- QR Code -->
+    <div class="text-center mb-3" id="qrcode"></div>
+
+    <!-- Dados -->
+    <table class="w-100" style="font-size:.85rem;border-collapse:collapse;">
+      <tr>
+        <td class="fw-bold text-muted pe-2" style="white-space:nowrap;">Produto:</td>
+        <td>{{ rma.produto.descricao if rma.produto else '—' }}</td>
+      </tr>
+      <tr>
+        <td class="fw-bold text-muted pe-2">Cód.:</td>
+        <td class="font-monospace">{{ rma.produto.codigo if rma.produto else '—' }}</td>
+      </tr>
+      {% if rma.produto and rma.produto.ean %}
+      <tr>
+        <td class="fw-bold text-muted pe-2">EAN:</td>
+        <td class="font-monospace">{{ rma.produto.ean }}</td>
+      </tr>
+      {% endif %}
+      <tr>
+        <td class="fw-bold text-muted pe-2">Qtd.:</td>
+        <td>{{ rma.quantidade }}</td>
+      </tr>
+      <tr>
+        <td class="fw-bold text-muted pe-2">Fornecedor:</td>
+        <td>{{ rma.fornecedor.nome if rma.fornecedor else '—' }}</td>
+      </tr>
+      <tr>
+        <td class="fw-bold text-muted pe-2">Categoria:</td>
+        <td>{{ rma.categoria_defeito or '—' }}</td>
+      </tr>
+      <tr>
+        <td class="fw-bold text-muted pe-2">Destinação:</td>
+        <td>{{ rma.disposicao or '—' }}</td>
+      </tr>
+      {% if rma.apt_ref %}
+      <tr>
+        <td class="fw-bold text-muted pe-2">Endereço:</td>
+        <td><strong>{{ rma.apt_ref.endereco }}</strong></td>
+      </tr>
+      {% endif %}
+    </table>
+
+    <!-- Rodapé -->
+    <div class="text-center mt-3 pt-2 border-top text-muted small">
+      Triagem: {{ rma.recebido_em|datahora }} &nbsp;|&nbsp; Técnico: {{ rma.tecnico.nome if rma.tecnico else '—' }}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+  new QRCode(document.getElementById('qrcode'), {
+    text: window.location.origin + '{{ url_for("rma.detalhe", rma_id=rma.id) }}',
+    width: 140,
+    height: 140,
+    correctLevel: QRCode.CorrectLevel.M,
+  });
+</script>
+{% endblock %}

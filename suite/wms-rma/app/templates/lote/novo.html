@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}Novo Lote{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('lote.index') }}">Lotes</a></li>
+<li class="breadcrumb-item active">Novo</li>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="fa-solid fa-boxes-stacked me-2 text-primary"></i>Novo Lote de Devolução</h1>
+</div>
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="form-card">
+      <form method="POST">
+        <div class="mb-3">
+          <label class="form-label">Fornecedor</label>
+          <select name="fornecedor_id" class="form-select">
+            <option value="">— Selecione (opcional) —</option>
+            {% for f in fornecedores %}
+            <option value="{{ f.id }}">{{ f.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">NF de Devolução</label>
+          <input type="text" name="nf_devolucao" class="form-control"
+                 placeholder="Número da nota fiscal de devolução">
+          <div class="form-text">Pode ser preenchido depois, ao finalizar o lote.</div>
+        </div>
+        <div class="mb-4">
+          <label class="form-label">Observações</label>
+          <textarea name="observacoes" class="form-control" rows="2"
+                    placeholder="Observações sobre o lote..."></textarea>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary-custom">
+            <i class="fa-solid fa-save me-1"></i>Criar Lote
+          </button>
+          <a href="{{ url_for('lote.index') }}" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-xmark me-1"></i>Cancelar
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

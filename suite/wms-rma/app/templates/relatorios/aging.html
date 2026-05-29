@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Aging RMA{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('relatorios.index') }}">Relatórios</a></li>
+<li class="breadcrumb-item active">Aging</li>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="fa-solid fa-hourglass me-2 text-warning"></i>Relatório de Aging</h1>
+  <p class="subtitle">Distribuição de RMAs em aberto por tempo de permanência</p>
+</div>
+<ul class="nav nav-pills mb-4">
+  <li class="nav-item"><a class="nav-link" href="{{ url_for('relatorios.index') }}">Listagem Geral</a></li>
+  <li class="nav-item"><a class="nav-link active" href="{{ url_for('relatorios.aging') }}">Aging</a></li>
+  <li class="nav-item"><a class="nav-link" href="{{ url_for('relatorios.por_fornecedor') }}">Por Fornecedor</a></li>
+</ul>
+
+<div class="row g-3 mb-4">
+  {% for faixa in resultado %}
+  {% set cores = ['success','info','warning','danger','dark'] %}
+  {% set cor = cores[loop.index0 % cores|length] %}
+  <div class="col-md">
+    <div class="kpi-card text-center">
+      <div class="kpi-icon mx-auto" style="background:var(--bs-{{ cor }}-bg-subtle,#f8f9fa);color:var(--bs-{{ cor }},#333);">
+        <i class="fa-solid fa-hourglass{% if loop.index0 < 2 %}-start{% elif loop.index0 < 4 %}-half{% else %}{% endif %}"></i>
+      </div>
+      <div class="kpi-value">{{ faixa.count }}</div>
+      <div class="kpi-label">{{ faixa.label }}</div>
+      <div class="small text-muted mt-1">{{ faixa.valor|moeda }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% for faixa in resultado %}
+{% if faixa.rmas %}
+<div class="table-card mb-3">
+  <div class="table-header">
+    <span class="badge bg-warning text-dark">{{ faixa.label }}</span>
+    <span class="fw-bold">{{ faixa.count }} RMAs · {{ faixa.valor|moeda }}</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead><tr><th>Número</th><th>Estado</th><th>Fornecedor</th><th>Dias</th><th>Valor</th><th></th></tr></thead>
+      <tbody>
+        {% for r in faixa.rmas %}
+        <tr>
+          <td><a href="{{ url_for('rma.detalhe', rma_id=r.id) }}" class="fw-bold text-decoration-none text-primary">{{ r.numero }}</a></td>
+          <td><span class="badge bg-{{ r.estado_badge }}">{{ r.estado_label }}</span></td>
+          <td>{{ r.fornecedor.nome if r.fornecedor else '—' }}</td>
+          <td><strong class="{% if r.dias_em_aberto > 30 %}text-danger{% elif r.dias_em_aberto > 15 %}text-warning{% endif %}">{{ r.dias_em_aberto }}d</strong></td>
+          <td>{{ r.valor_produto|moeda }}</td>
+          <td><a href="{{ url_for('rma.detalhe', rma_id=r.id) }}" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-eye"></i></a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endfor %}
+{% endblock %}

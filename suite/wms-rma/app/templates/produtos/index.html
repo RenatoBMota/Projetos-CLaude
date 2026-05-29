@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block title %}Produtos{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Início</a></li>
+<li class="breadcrumb-item active">Produtos</li>
+{% endblock %}
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div>
+    <h1><i class="fa-solid fa-box-open me-2 text-primary"></i>Catálogo de Produtos</h1>
+    <p class="subtitle">{{ produtos.total }} produto(s)</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('produtos.importar') }}" class="btn btn-outline-success">
+      <i class="fa-solid fa-file-excel me-1"></i>Importar Excel
+    </a>
+    <a href="{{ url_for('produtos.novo') }}" class="btn btn-primary-custom">
+      <i class="fa-solid fa-plus me-1"></i>Novo Produto
+    </a>
+  </div>
+</div>
+
+<div class="form-card mb-4">
+  <form method="GET" class="row g-2 align-items-end">
+    <div class="col-md-4">
+      <label class="form-label">Busca</label>
+      <input type="text" name="busca" class="form-control"
+             placeholder="Código, descrição ou EAN..." value="{{ filtro_busca }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Fornecedor</label>
+      <select name="fornecedor_id" class="form-select">
+        <option value="">Todos</option>
+        {% for f in fornecedores %}
+        <option value="{{ f.id }}" {% if filtro_forn == f.id %}selected{% endif %}>{{ f.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Categoria</label>
+      <select name="categoria" class="form-select">
+        <option value="">Todas</option>
+        {% for cat in categorias %}
+        <option {% if filtro_categoria == cat %}selected{% endif %}>{{ cat }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2 d-flex gap-2">
+      <button type="submit" class="btn btn-primary-custom flex-grow-1">
+        <i class="fa-solid fa-search"></i>
+      </button>
+      <a href="{{ url_for('produtos.index') }}" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-xmark"></i>
+      </a>
+    </div>
+  </form>
+</div>
+
+<div class="table-card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Descrição</th>
+          <th>EAN</th>
+          <th>Marca</th>
+          <th>Categoria</th>
+          <th>Fornecedor</th>
+          <th>Comprador</th>
+          <th>Peso (kg)</th>
+          <th>RMAs</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in produtos.items %}
+        <tr>
+          <td class="fw-bold font-monospace">{{ p.codigo }}</td>
+          <td>{{ p.descricao }}</td>
+          <td class="text-muted small">{{ p.ean or '—' }}</td>
+          <td>{{ p.marca or '—' }}</td>
+          <td><span class="badge bg-light text-dark border">{{ p.categoria or '—' }}</span></td>
+          <td>{{ p.fornecedor.nome if p.fornecedor else '—' }}</td>
+          <td class="text-muted small">{{ p.comprador or '—' }}</td>
+          <td class="text-center">{{ p.peso_kg or '—' }}</td>
+          <td class="text-center">
+            <span class="badge bg-primary">{{ p.rmas.count() }}</span>
+          </td>
+          <td>
+            <a href="{{ url_for('produtos.editar', prod_id=p.id) }}"
+               class="btn btn-sm btn-outline-primary">
+              <i class="fa-solid fa-pen"></i>
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" class="text-center py-4 text-muted">Nenhum produto encontrado.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if produtos.pages > 1 %}
+  <div class="d-flex justify-content-center p-3">
+    <nav>
+      <ul class="pagination pagination-sm mb-0">
+        {% for p in produtos.iter_pages() %}
+          {% if p %}
+          <li class="page-item {% if p == produtos.page %}active{% endif %}">
+            <a class="page-link" href="?page={{ p }}&busca={{ filtro_busca }}">{{ p }}</a>
+          </li>
+          {% else %}
+          <li class="page-item disabled"><span class="page-link">…</span></li>
+          {% endif %}
+        {% endfor %}
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block title %}Triagem{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Início</a></li>
+<li class="breadcrumb-item active">Triagem</li>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="fa-solid fa-clipboard-check me-2 text-primary"></i>Triagem Técnica</h1>
+  <p class="subtitle">Fila de itens aguardando análise e laudo técnico</p>
+</div>
+
+<div class="row g-3">
+  <!-- Aguardando triagem -->
+  <div class="col-md-6">
+    <div class="table-card">
+      <div class="table-header">
+        <span class="badge bg-warning text-dark">{{ rmas_aguardando|length }}</span>
+        <span class="fw-bold">Aguardando Triagem</span>
+      </div>
+      {% for r in rmas_aguardando %}
+      <div class="p-3 border-bottom d-flex align-items-center gap-3">
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center gap-2">
+            <a href="{{ url_for('rma.detalhe', rma_id=r.id) }}"
+               class="fw-bold text-decoration-none">{{ r.numero }}</a>
+            {% if r.em_atraso %}
+            <span class="badge bg-danger">Atrasado</span>
+            {% endif %}
+          </div>
+          <small class="text-muted">
+            {{ r.produto.descricao if r.produto else '—' }} ·
+            {{ r.fornecedor.nome if r.fornecedor else '—' }}
+          </small>
+          <div class="text-muted" style="font-size:.75rem;">
+            <i class="fa-regular fa-calendar me-1"></i>{{ r.recebido_em|datahora }}
+            · {{ r.dias_em_aberto }}d em aberto
+          </div>
+        </div>
+        <a href="{{ url_for('triagem.laudo', rma_id=r.id) }}"
+           class="btn btn-sm btn-primary-custom">
+          <i class="fa-solid fa-clipboard-check me-1"></i>Analisar
+        </a>
+      </div>
+      {% else %}
+      <div class="p-4 text-center text-muted">
+        <i class="fa-solid fa-check-circle fa-2x mb-2 d-block text-success"></i>
+        Nenhum RMA aguardando triagem.
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Em análise -->
+  <div class="col-md-6">
+    <div class="table-card">
+      <div class="table-header">
+        <span class="badge bg-info">{{ rmas_em_analise|length }}</span>
+        <span class="fw-bold">Em Análise</span>
+      </div>
+      {% for r in rmas_em_analise %}
+      <div class="p-3 border-bottom d-flex align-items-center gap-3">
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center gap-2">
+            <a href="{{ url_for('rma.detalhe', rma_id=r.id) }}"
+               class="fw-bold text-decoration-none">{{ r.numero }}</a>
+          </div>
+          <small class="text-muted">
+            {{ r.produto.descricao if r.produto else '—' }}
+          </small>
+          <div class="text-muted" style="font-size:.75rem;">
+            Técnico: {{ r.tecnico.nome if r.tecnico else 'Não atribuído' }}
+          </div>
+        </div>
+        <a href="{{ url_for('triagem.laudo', rma_id=r.id) }}"
+           class="btn btn-sm btn-outline-info">
+          <i class="fa-solid fa-pen me-1"></i>Concluir
+        </a>
+      </div>
+      {% else %}
+      <div class="p-4 text-center text-muted">
+        <i class="fa-solid fa-inbox fa-2x mb-2 d-block"></i>
+        Nenhum RMA em análise.
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

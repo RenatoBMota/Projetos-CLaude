@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% block title %}{{ lote.numero }}{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('lote.index') }}">Lotes</a></li>
+<li class="breadcrumb-item active">{{ lote.numero }}</li>
+{% endblock %}
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div>
+    <h1 class="d-flex align-items-center gap-2">
+      {{ lote.numero }}
+      <span class="badge {% if lote.estado == 'ABERTO' %}bg-warning text-dark{% else %}bg-success{% endif %} fs-6">
+        {{ lote.estado }}
+      </span>
+    </h1>
+    <p class="subtitle">
+      Fornecedor: {{ lote.fornecedor.nome if lote.fornecedor else '—' }} &nbsp;|&nbsp;
+      NF: {{ lote.nf_devolucao or '—' }} &nbsp;|&nbsp;
+      Criado em {{ lote.criado_em|datahora }}
+    </p>
+  </div>
+  <a href="{{ url_for('lote.index') }}" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i>Voltar
+  </a>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-8">
+    <!-- RMAs no lote -->
+    <div class="table-card mb-3">
+      <div class="table-header">
+        <i class="fa-solid fa-rotate-left text-primary"></i>
+        <strong>{{ lote.rmas.count() }} RMA(s) neste lote</strong>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>RMA</th><th>Produto</th><th>Fornecedor</th><th>Estado</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for rma in lote.rmas.all() %}
+            <tr>
+              <td class="fw-bold font-monospace">
+                <a href="{{ url_for('rma.detalhe', rma_id=rma.id) }}">{{ rma.numero }}</a>
+              </td>
+              <td>{{ rma.produto.descricao if rma.produto else '—' }}</td>
+              <td>{{ rma.fornecedor.nome if rma.fornecedor else '—' }}</td>
+              <td><span class="badge bg-{{ rma.estado_badge }}">{{ rma.estado_label }}</span></td>
+              <td>
+                {% if lote.estado == 'ABERTO' %}
+                <form method="POST" action="{{ url_for('lote.remover_rma', lote_id=lote.id, rma_id=rma.id) }}"
+                      onsubmit="return confirm('Remover este RMA do lote?')">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center py-3 text-muted">Nenhum RMA adicionado ainda.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Adicionar RMA (só se aberto) -->
+    {% if lote.estado == 'ABERTO' and rmas_disponiveis %}
+    <div class="form-card mb-3">
+      <h6 class="fw-bold mb-3 pb-2 border-bottom">
+        <i class="fa-solid fa-plus me-2 text-primary"></i>Adicionar RMA ao Lote
+      </h6>
+      <form method="POST" action="{{ url_for('lote.adicionar_rma', lote_id=lote.id) }}" class="d-flex gap-2">
+        <select name="rma_id" class="form-select">
+          {% for rma in rmas_disponiveis %}
+          <option value="{{ rma.id }}">
+            {{ rma.numero }} — {{ rma.produto.descricao if rma.produto else '?' }}
+            {% if rma.fornecedor %}({{ rma.fornecedor.nome }}){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary-custom" style="white-space:nowrap;">
+          <i class="fa-solid fa-plus me-1"></i>Adicionar
+        </button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="col-md-4">
+    {% if lote.estado == 'ABERTO' and lote.rmas.count() > 0 %}
+    <!-- Finalizar lote -->
+    <div class="form-card mb-3">
+      <h6 class="fw-bold mb-3 pb-2 border-bottom">
+        <i class="fa-solid fa-check-circle me-2 text-success"></i>Finalizar Lote
+      </h6>
+      <p class="text-muted small">
+        Ao finalizar, todos os RMAs do lote serão marcados como <strong>FINALIZADO</strong>.
+        O documento enviado será anexado a cada RMA.
+      </p>
+      <form method="POST" action="{{ url_for('lote.finalizar_lote', lote_id=lote.id) }}"
+            enctype="multipart/form-data">
+        <div class="mb-3">
+          <label class="form-label">NF de Devolução</label>
+          <input type="text" name="nf_devolucao" class="form-control"
+                 value="{{ lote.nf_devolucao or '' }}"
+                 placeholder="Número da NF">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Evidência (obrigatório) *</label>
+          <input type="file" name="arquivo" class="form-control" required>
+          <div class="form-text">PDF, imagem ou documento comprobatório.</div>
+        </div>
+        <button type="submit" class="btn btn-success w-100"
+                onclick="return confirm('Finalizar lote com {{ lote.rmas.count() }} RMA(s)?')">
+          <i class="fa-solid fa-check me-1"></i>Finalizar Lote
+        </button>
+      </form>
+    </div>
+    {% elif lote.estado == 'ABERTO' %}
+    <div class="form-card">
+      <div class="alert alert-info mb-0 small">
+        <i class="fa-solid fa-circle-info me-1"></i>Adicione RMAs ao lote para poder finalizá-lo.
+      </div>
+    </div>
+    {% else %}
+    <div class="form-card">
+      <div class="alert alert-success mb-0 small">
+        <i class="fa-solid fa-check-circle me-1"></i>Lote finalizado em {{ lote.criado_em|datahora }}.
+      </div>
+    </div>
+    {% endif %}
+
+    {% if lote.observacoes %}
+    <div class="form-card mt-3">
+      <h6 class="fw-bold mb-2 pb-2 border-bottom text-muted">Observações</h6>
+      <p class="small mb-0">{{ lote.observacoes }}</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% block title %}Inventário{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Início</a></li>
+<li class="breadcrumb-item active">Inventário</li>
+{% endblock %}
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div>
+    <h1><i class="fa-solid fa-clipboard-list me-2 text-primary"></i>Inventário / Auditoria</h1>
+    <p class="subtitle">Confira fisicamente os itens armazenados no armazém</p>
+  </div>
+  <button type="button" class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#modalNovoInv">
+    <i class="fa-solid fa-plus me-1"></i>Novo Inventário
+  </button>
+</div>
+
+<div class="table-card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Posições</th>
+          <th>OK</th>
+          <th>Divergentes</th>
+          <th>Ausentes</th>
+          <th>Estado</th>
+          <th>Criado em</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in inventarios %}
+        {% set itens = inv.itens %}
+        {% set total = itens.count() %}
+        {% set ok = itens.filter_by(status='OK').count() %}
+        {% set div = itens.filter_by(status='DIVERGENTE').count() %}
+        {% set aus = itens.filter_by(status='AUSENTE').count() %}
+        <tr>
+          <td class="fw-bold">{{ inv.nome }}</td>
+          <td class="text-center">{{ total }}</td>
+          <td class="text-center"><span class="badge bg-success">{{ ok }}</span></td>
+          <td class="text-center"><span class="badge bg-warning text-dark">{{ div }}</span></td>
+          <td class="text-center"><span class="badge bg-danger">{{ aus }}</span></td>
+          <td>
+            <span class="badge {% if inv.estado == 'ABERTO' %}bg-warning text-dark{% else %}bg-success{% endif %}">
+              {{ inv.estado }}
+            </span>
+          </td>
+          <td class="text-muted small">{{ inv.criado_em|datahora }}</td>
+          <td>
+            <a href="{{ url_for('auditoria.detalhe', inv_id=inv.id) }}" class="btn btn-sm btn-outline-primary">
+              <i class="fa-solid fa-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-center py-4 text-muted">Nenhum inventário criado.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal novo inventário -->
+<div class="modal fade" id="modalNovoInv" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('auditoria.novo') }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Novo Inventário</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Nome / Descrição</label>
+            <input type="text" name="nome" class="form-control"
+                   placeholder="Ex: Inventário Mensal Mai/2025">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Escopo do Inventário</label>
+            <select name="tipo_filtro" id="invTipoFiltro" class="form-select">
+              <option value="todos">Todos os apartamentos ocupados</option>
+              <option value="fornecedor">Filtrar por Fornecedor</option>
+              <option value="endereco">Filtrar por Faixa de Endereço</option>
+            </select>
+          </div>
+          <!-- Por fornecedor -->
+          <div id="filtroFornecedor" class="mb-3 d-none">
+            <label class="form-label">Fornecedor</label>
+            <select name="fornecedor_id" class="form-select">
+              <option value="">Selecione...</option>
+              {% for f in fornecedores %}
+              <option value="{{ f.id }}">{{ f.nome }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <!-- Por endereço -->
+          <div id="filtroEndereco" class="d-none">
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label">Endereço Inicial</label>
+                <input type="text" name="end_ini" class="form-control font-monospace"
+                       placeholder="Ex: 01-01-01-01">
+              </div>
+              <div class="col-6">
+                <label class="form-label">Endereço Final</label>
+                <input type="text" name="end_fim" class="form-control font-monospace"
+                       placeholder="Ex: 01-02-10-03">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary-custom">Criar Inventário</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+document.getElementById('invTipoFiltro').addEventListener('change', function() {
+  document.getElementById('filtroFornecedor').classList.toggle('d-none', this.value !== 'fornecedor');
+  document.getElementById('filtroEndereco').classList.toggle('d-none', this.value !== 'endereco');
+});
+</script>
+{% endblock %}
+{% endblock %}

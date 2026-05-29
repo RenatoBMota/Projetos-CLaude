@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>SCV — R&J Logistics</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--primary:#1a4e8f;--pd:#153f75;--pl:#dce8f5;--acc:#e8a020;--al:#fdf3e0;
+  --ok:#16a34a;--okl:#dcfce7;--dn:#dc2626;--dl:#fef2f2;--wn:#d97706;--wl:#fef3c7;
+  --info:#0284c7;--infol:#e0f2fe;--bg:#f0f4f9;--card:#fff;--sb:#1a2e4a;
+  --txt:#111827;--muted:#6b7280;--brd:#e5e7eb;--r:10px;--sw:240px}
+body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--txt);height:100vh;display:flex;overflow:hidden}
+
+/* SIDEBAR */
+#sb{width:var(--sw);background:var(--sb);display:flex;flex-direction:column;flex-shrink:0;height:100vh;overflow-y:auto}
+.sb-head{padding:16px 14px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sb-logo{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.sb-logo img,.sb-logo .sb-icon{height:38px;width:38px;border-radius:8px;object-fit:contain;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.sb-txt .sys{font-size:13px;font-weight:700;color:#fff;line-height:1.3}
+.sb-txt .co{font-size:11px;color:var(--acc);font-weight:600;margin-top:3px;text-transform:uppercase}
+.uchip{background:rgba(255,255,255,.06);border-radius:8px;padding:7px 10px;display:flex;align-items:center;gap:8px}
+.uav{width:26px;height:26px;border-radius:50%;background:var(--acc);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+.uinfo .un{font-size:12px;font-weight:600;color:#fff}
+.uinfo .ur{font-size:10px;color:rgba(255,255,255,.4);text-transform:capitalize}
+nav{padding:8px;flex:1}
+.ns{font-size:10px;font-weight:700;color:rgba(255,255,255,.28);letter-spacing:1px;padding:10px 8px 4px;text-transform:uppercase}
+.ni{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;color:rgba(255,255,255,.6);font-size:13px;font-weight:500;transition:background .15s,color .15s;position:relative;user-select:none;margin-bottom:1px}
+.ni:hover{background:rgba(255,255,255,.07);color:#fff}
+.ni.active{background:var(--primary);color:#fff}
+.ni .ic{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.nbadge{background:var(--dn);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:auto}
+.sb-foot{padding:10px 8px;border-top:1px solid rgba(255,255,255,.08)}
+.btnout{width:100%;padding:8px;background:rgba(255,255,255,.05);border:none;border-radius:8px;color:rgba(255,255,255,.5);font-size:13px;cursor:pointer;transition:background .15s}
+.btnout:hover{background:rgba(220,38,38,.2);color:#fca5a5}
+
+/* MAIN */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;height:100vh}
+#topbar{background:#fff;border-bottom:1px solid var(--brd);padding:0 22px;height:54px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#topbar .pt{font-size:16px;font-weight:700;color:var(--primary)}
+#content{flex:1;overflow-y:auto;padding:22px}
+
+/* CARDS */
+.card{background:var(--card);border-radius:var(--r);border:1px solid var(--brd);padding:18px;margin-bottom:18px}
+.ct{font-size:14px;font-weight:700;color:var(--primary);margin-bottom:14px;padding-bottom:9px;border-bottom:1px solid var(--brd)}
+.kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:18px}
+.kpi{background:#fff;border-radius:var(--r);border:1px solid var(--brd);padding:16px;border-left:4px solid var(--primary)}
+.kpi.dn{border-left-color:var(--dn)}.kpi.wn{border-left-color:var(--wn)}.kpi.ok{border-left-color:var(--ok)}.kpi.ac{border-left-color:var(--acc)}
+.kv{font-size:30px;font-weight:800;line-height:1}.kl{font-size:11px;color:var(--muted);margin-top:3px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:background .15s,transform .1s;text-decoration:none}
+.btn:active{transform:scale(.97)}
+.bp{background:var(--primary);color:#fff}.bp:hover{background:var(--pd)}
+.ba{background:var(--acc);color:#fff}.ba:hover{background:#c8880e}
+.bs{background:var(--ok);color:#fff}.bs:hover{background:#15803d}
+.bd{background:var(--dn);color:#fff}.bd:hover{background:#b91c1c}
+.bo{background:#fff;color:var(--primary);border:1.5px solid var(--primary)}.bo:hover{background:var(--pl)}
+.bg{background:transparent;color:var(--muted);border:1.5px solid var(--brd)}.bg:hover{background:var(--bg)}
+.bsm{padding:4px 9px;font-size:12px;border-radius:6px}
+
+/* TABLES */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{background:var(--primary);color:#fff;padding:9px 11px;text-align:left;font-weight:600;white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--brd);transition:background .1s}
+tbody tr:hover{background:#f8fafc}
+tbody td{padding:9px 11px;vertical-align:middle}
+
+/* FORMS */
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px}
+.fc{width:100%;padding:8px 11px;border:1.5px solid #d1d5db;border-radius:7px;font-size:13px;color:var(--txt);transition:border .2s}
+.fc:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,78,143,.1)}
+.frow{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+.fbar{display:flex;flex-wrap:wrap;gap:9px;align-items:flex-end;background:#fff;border:1px solid var(--brd);border-radius:var(--r);padding:12px;margin-bottom:16px}
+.fbar .fg{min-width:130px;flex:1;margin-bottom:0}
+.fbar .fg label{font-size:11px}
+
+/* BADGES */
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
+.bc{background:var(--dl);color:var(--dn)}.bw{background:var(--wl);color:var(--wn)}.bok{background:var(--okl);color:var(--ok)}
+.bse{background:#f3f4f6;color:#374151}.badm{background:#ede9fe;color:#7c3aed}
+.baud{background:var(--infol);color:var(--info)}.bvw{background:#f0fdf4;color:var(--ok)}
+
+/* MODAL */
+.mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center}
+.mo.open{display:flex}
+.mb{background:#fff;border-radius:14px;padding:26px;width:100%;max-width:520px;box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto}
+.mt{font-size:16px;font-weight:700;color:var(--primary);margin-bottom:18px}
+.mf{display:flex;gap:9px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--brd)}
+
+/* TOAST */
+#toast{position:fixed;bottom:22px;right:22px;z-index:9999;display:flex;flex-direction:column;gap:7px}
+.ti{padding:11px 18px;border-radius:9px;color:#fff;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.2);animation:si .3s ease;min-width:210px}
+.ti.success{background:var(--ok)}.ti.error{background:var(--dn)}.ti.warn{background:var(--wn)}.ti.info{background:var(--info)}
+@keyframes si{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}
+
+/* DROP ZONE */
+.dz{border:2px dashed var(--brd);border-radius:var(--r);padding:32px;text-align:center;cursor:pointer;transition:background .2s,border-color .2s;margin:10px 0}
+.dz:hover,.dz.dov{background:var(--pl);border-color:var(--primary)}
+.dz .dzi{font-size:2.2rem;margin-bottom:6px}.dz p{font-size:13px;color:var(--muted)}
+.ll{color:var(--primary);cursor:pointer;text-decoration:underline;font-weight:600}
+.fs{background:var(--okl);border-radius:7px;padding:7px 12px;font-size:13px;color:#14532d;margin-bottom:10px;display:none}
+
+/* INFO BOXES */
+.ib{border-radius:8px;padding:11px 14px;font-size:13px;margin-bottom:14px}
+.ib.blue{background:var(--pl);border-left:4px solid var(--primary);color:#1e3a5f}
+.ib.yel{background:var(--al);border-left:4px solid var(--acc);color:#7c4a00}
+.ib.red{background:var(--dl);border-left:4px solid var(--dn);color:#7f1d1d}
+.ib.grn{background:var(--okl);border-left:4px solid var(--ok);color:#14532d}
+
+/* CHART */
+.cbw{display:flex;gap:5px;align-items:flex-end;height:110px;padding:0 4px}
+.bc2{display:flex;flex-direction:column;align-items:center;flex:1;gap:3px}
+.bc2 .bv{font-size:10px;color:var(--muted)}.bc2 .br{width:100%;border-radius:4px 4px 0 0;min-height:3px;background:var(--primary)}
+.bc2 .bl{font-size:9px;color:var(--muted);white-space:nowrap}
+
+/* MISC */
+.ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:9px}
+.ph h2{font-size:19px;font-weight:800;color:var(--primary)}
+.es{text-align:center;padding:44px;color:var(--muted)}.es .ei{font-size:44px;margin-bottom:10px}
+code{background:#f3f4f6;padding:2px 5px;border-radius:4px;font-size:11px;font-family:monospace}
+.tab-btns{display:flex;gap:0;margin-bottom:16px;border-radius:8px;overflow:hidden;border:1.5px solid var(--primary);width:fit-content}
+.tab-btn{padding:7px 16px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:#fff;color:var(--primary);transition:background .15s}
+.tab-btn.active{background:var(--primary);color:#fff}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div id="sb">
+  <div class="sb-head">
+    <div class="sb-logo">
+      <div id="sb-logo-wrap"><div class="sb-icon">📦</div></div>
+      <div class="sb-txt">
+        <div class="sys" id="sb-sys">SCV - Sistema de Controle de Validade</div>
+        <div class="co"  id="sb-co">R&J LOGISTICS</div>
+      </div>
+    </div>
+    <div class="uchip">
+      <div class="uav" id="sb-av">A</div>
+      <div class="uinfo">
+        <div class="un" id="sb-un">{{ user_nome }}</div>
+        <div class="ur" id="sb-ur">{{ user_perfil }}</div>
+      </div>
+    </div>
+  </div>
+  <nav>
+    <div class="ns">Principal</div>
+    <div class="ni" data-p="dashboard" onclick="go('dashboard')"><span class="ic">📊</span>Dashboard</div>
+    <div class="ni" data-p="alertas"   onclick="go('alertas')">  <span class="ic">🔔</span>Alertas<span class="nbadge" id="bdg-al" style="display:none">0</span></div>
+    <div class="ni" data-p="estoque"   onclick="go('estoque')">  <span class="ic">📦</span>Estoque</div>
+    <div class="ns">Dados</div>
+    <div class="ni" data-p="import"    onclick="go('import')">   <span class="ic">📥</span>Importação</div>
+    <div class="ni" data-p="filiais"   onclick="go('filiais')">  <span class="ic">🏢</span>Filiais</div>
+    <div class="ns">Análise</div>
+    <div class="ni" data-p="relat"     onclick="go('relat')">    <span class="ic">📋</span>Relatórios</div>
+    <div class="ns" id="ns-adm" style="display:none">Admin</div>
+    <div class="ni" data-p="users"  onclick="go('users')"  id="ni-usr" style="display:none"><span class="ic">👥</span>Usuários<span class="nbadge" id="bdg-pend" style="display:none">0</span></div>
+    <div class="ni" data-p="audit"  onclick="go('audit')"  id="ni-aud" style="display:none"><span class="ic">🔍</span>Auditoria</div>
+    <div class="ni" data-p="config" onclick="go('config')" id="ni-cfg" style="display:none"><span class="ic">⚙️</span>Configurações</div>
+  </nav>
+  <div class="sb-foot">
+    <button class="btnout" onclick="location.href='/logout'">↩ Sair</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="topbar">
+    <div class="pt" id="tb-title">Dashboard</div>
+    <div style="font-size:11px;color:var(--muted)" id="tb-clock"></div>
+  </div>
+  <div id="content"><div class="es"><div class="ei">⏳</div><p>Carregando...</p></div></div>
+</div>
+
+<!-- MODAL -->
+<div class="mo" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="mb"><div class="mt" id="m-title"></div><div id="m-body"></div><div class="mf" id="m-foot"></div></div>
+</div>
+<div id="toast"></div>
+
+<script>
+// ── STATE ────────────────────────────────────────────────────────────────────
+const S={
+  page:'dashboard', perfil:'{{ user_perfil }}', nome:'{{ user_nome }}',
+  filiais:[], settings:{},
+  // filters
+  dashFil:'', alFil:'', alNiv:'', alIni:'', alFim:'', alRes:'0',
+  estFil:'', estCat:'', estNiv:'', estIni:'', estFim:'', estSrch:'', estVend:'0',
+  relTipo:'alertas', relFil:'', relNiv:'', relIni:'', relFim:'', relRes:'', relMotivo:'',
+  audAct:'', audIni:'', audFim:'',
+  _estData:[], _alData:[],
+};
+
+const PAGE_TITLES={dashboard:'Dashboard',alertas:'Alertas',estoque:'Estoque',
+  import:'Importação de Planilhas',filiais:'Filiais',relat:'Relatórios',
+  users:'Gestão de Usuários',audit:'Auditoria',config:'Configurações'};
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded',async()=>{
+  clk(); setInterval(clk,1000);
+  document.getElementById('sb-av').textContent=S.nome.charAt(0).toUpperCase();
+  setupAdminNav();
+  await loadSettings(); await loadFiliais();
+  await loadBadgeAlertas(); if(S.perfil==='admin') await loadBadgePend();
+  go('dashboard');
+  setInterval(async()=>{await loadBadgeAlertas();if(S.perfil==='admin')await loadBadgePend();renderPage();},60000);
+});
+
+function setupAdminNav(){
+  if(S.perfil==='admin'){
+    ['ns-adm','ni-usr','ni-aud','ni-cfg'].forEach(id=>document.getElementById(id).style.display='');
+  } else if(S.perfil==='auditor'){
+    document.getElementById('ns-adm').style.display='';
+    document.getElementById('ni-aud').style.display='';
+  }
+}
+
+function go(page){
+  S.page=page;
+  document.querySelectorAll('.ni').forEach(el=>el.classList.toggle('active',el.dataset.p===page));
+  document.getElementById('tb-title').textContent=PAGE_TITLES[page]||page;
+  renderPage();
+}
+
+function renderPage(){
+  const fns={dashboard:renderDashboard,alertas:renderAlertas,estoque:renderEstoque,
+    import:renderImport,filiais:renderFiliais,relat:renderRelat,
+    users:renderUsers,audit:renderAudit,config:renderConfig};
+  (fns[S.page]||(() => {}))();
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function clk(){
+  document.getElementById('tb-clock').textContent=
+    new Date().toLocaleDateString('pt-BR')+' '+new Date().toLocaleTimeString('pt-BR');
+}
+
+async function api(url,method='GET',body=null){
+  const opts={method,headers:{'Content-Type':'application/json'}};
+  if(body) opts.body=JSON.stringify(body);
+  const r=await fetch(url,opts);
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function loadFiliais(){try{S.filiais=await api('/api/filiais');}catch{}}
+async function loadSettings(){
+  try{
+    S.settings=await api('/api/settings');
+    const sys=S.settings.nome_sistema||'SCV - Sistema de Controle de Validade';
+    const emp=S.settings.nome_empresa||'R&J Logistics';
+    document.getElementById('sb-sys').textContent=sys;
+    document.getElementById('sb-co').textContent=emp.toUpperCase();
+    document.title=sys+' — SCV';
+    // Logo
+    const logo=S.settings.logo_base64||'';
+    const wrap=document.getElementById('sb-logo-wrap');
+    if(logo){wrap.innerHTML=`<img src="${logo}" style="height:38px;width:38px;border-radius:8px;object-fit:contain">`;}
+    else{wrap.innerHTML='<div class="sb-icon">📦</div>';}
+  }catch{}
+}
+async function loadBadgeAlertas(){
+  try{const d=await api('/api/alertas?resolvido=0');const n=d.length;const b=document.getElementById('bdg-al');b.textContent=n;b.style.display=n>0?'':'none';}catch{}
+}
+async function loadBadgePend(){
+  try{const d=await api('/api/usuarios');const n=(d.pending||[]).length;const b=document.getElementById('bdg-pend');b.textContent=n;b.style.display=n>0?'':'none';}catch{}
+}
+
+function showToast(msg,type='success'){
+  const t=document.createElement('div');t.className=`ti ${type}`;t.textContent=msg;
+  document.getElementById('toast').appendChild(t);setTimeout(()=>t.remove(),3500);
+}
+function openModal(title,body,foot){
+  document.getElementById('m-title').textContent=title;
+  document.getElementById('m-body').innerHTML=body;
+  document.getElementById('m-foot').innerHTML=foot||'<button class="btn bg" onclick="closeModal()">Fechar</button>';
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(){document.getElementById('modal').classList.remove('open');}
+
+function filOpts(sel='',all=true){
+  let o=all?'<option value="">Todas as filiais</option>':'<option value="">Selecione a filial...</option>';
+  S.filiais.forEach(f=>{o+=`<option value="${f.id}" ${String(sel)===String(f.id)?'selected':''}>${f.nome} (${f.codigo})</option>`;});
+  return o;
+}
+function nivOpts(sel=''){
+  return [['','Todos os níveis'],['critico','🔴 Crítico'],['atencao','🟡 Atenção'],['ok','🟢 OK']]
+    .map(([v,l])=>`<option value="${v}" ${v===sel?'selected':''}>${l}</option>`).join('');
+}
+function fmtDt(dt){if(!dt)return'—';try{return new Date(dt).toLocaleString('pt-BR');}catch{return dt;}}
+function fmtN(v){if(v==null)return'—';return Number(v).toLocaleString('pt-BR');}
+function badgeLbl(n){return{critico:'🔴 Crítico',atencao:'🟡 Atenção',ok:'🟢 OK',sem_estoque:'⚫ Sem Estoque'}[n]||n;}
+function today(){return new Date().toISOString().slice(0,10);}
+function dlFile(content,name,type){const b=new Blob([content],{type});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
+
+// ══ DASHBOARD ══════════════════════════════════════════════════════════════════
+async function renderDashboard(){
+  let data;
+  try{data=await api(`/api/dashboard?filial_id=${S.dashFil||''}`);}
+  catch{document.getElementById('content').innerHTML='<div class="ib red">Erro ao carregar.</div>';return;}
+  const maxT=Math.max(...(data.tendencia_7d||[]).map(d=>d.alertas),1);
+  document.getElementById('content').innerHTML=`
+  <div class="ph">
+    <h2>📊 Dashboard</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <select class="fc" style="min-width:160px" onchange="S.dashFil=this.value;renderDashboard()">${filOpts(S.dashFil)}</select>
+      <button class="btn bg bsm" onclick="S.dashFil='';renderDashboard()">Limpar</button>
+    </div>
+  </div>
+  <div class="kgrid">
+    <div class="kpi"><div class="kv">${data.total_itens}</div><div class="kl">Total de Itens</div></div>
+    <div class="kpi dn"><div class="kv">${data.criticos}</div><div class="kl">🔴 Itens Críticos</div></div>
+    <div class="kpi wn"><div class="kv">${data.alertas_ativos}</div><div class="kl">🔔 Alertas Ativos</div></div>
+    <div class="kpi ac"><div class="kv">${(data.por_nivel||[]).find(p=>p.nivel==='atencao')?.total||0}</div><div class="kl">🟡 Em Atenção</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:18px">
+    <div class="card">
+      <div class="ct">📈 Alertas — Últimos 7 Dias</div>
+      <div class="cbw" id="chart"></div>
+    </div>
+    <div class="card">
+      <div class="ct">🔔 Por Nível</div>
+      ${(data.por_nivel||[]).length?data.por_nivel.map(p=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--brd)"><span class="badge b${p.nivel==='critico'?'c':p.nivel==='atencao'?'w':'ok'}">${badgeLbl(p.nivel)}</span><strong>${p.total}</strong></div>`).join(''):'<div class="es" style="padding:16px"><div class="ei" style="font-size:32px">✅</div><p>Nenhum alerta ativo</p></div>'}
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct">⚡ Ações Rápidas</div>
+    <div style="display:flex;gap:9px;flex-wrap:wrap">
+      <button class="btn ba" onclick="go('alertas')">🔔 Ver Alertas</button>
+      <button class="btn bo" onclick="go('estoque')">📦 Ver Estoque</button>
+      <button class="btn bo" onclick="go('import')">📥 Importar Planilha</button>
+      ${S.perfil!=='viewer'?'<button class="btn bp" onclick="rodarEngine()">⚙️ Rodar Engine de Alertas</button>':''}
+    </div>
+  </div>`;
+  const ch=document.getElementById('chart');
+  if(ch&&data.tendencia_7d){
+    ch.innerHTML=data.tendencia_7d.map(d=>{
+      const h=Math.max(Math.round((d.alertas/maxT)*100),d.alertas>0?6:2);
+      return`<div class="bc2"><div class="bv">${d.alertas||''}</div><div class="br" style="height:${h}px;background:${d.alertas>0?'var(--dn)':'var(--brd)'}"></div><div class="bl">${d.data.slice(5).replace('-','/')}</div></div>`;
+    }).join('');
+  }
+}
+
+// ══ ALERTAS ════════════════════════════════════════════════════════════════════
+async function renderAlertas(){
+  let data;
+  try{data=await api(`/api/alertas?filial_id=${S.alFil}&nivel=${S.alNiv}&data_ini=${S.alIni}&data_fim=${S.alFim}&resolvido=${S.alRes}`);}
+  catch{document.getElementById('content').innerHTML='<div class="ib red">Erro.</div>';return;}
+  S._alData=data;
+  const rows=data.map(a=>`<tr>
+    <td>${a.filial_nome||'-'}</td><td><code>${a.codigo_produto}</code></td>
+    <td>${a.produto_nome||'-'}</td>
+    <td><span class="badge b${a.nivel==='critico'?'c':a.nivel==='atencao'?'w':'ok'}">${badgeLbl(a.nivel)}</span></td>
+    <td>${a.cobertura_dias!=null?a.cobertura_dias+' dias':'—'}</td>
+    <td>${a.validade||'—'}</td>
+    <td style="font-size:11px;color:var(--muted)">${fmtDt(a.criado_em)}</td>
+    <td>
+      ${!a.resolvido
+        ? `<div style="display:flex;gap:3px;flex-wrap:wrap">
+            <button class="btn bs bsm" onclick="darBaixaAlerta(${a.id},'vendido')" title="Estoque vendido">✔ Vendido</button>
+            <button class="btn bsm" style="background:#6b7280;color:#fff;padding:4px 7px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;border:none" onclick="darBaixaAlerta(${a.id},'descarte')" title="Descartar">🗑 Descarte</button>
+            <button class="btn bsm" style="background:#7c3aed;color:#fff;padding:4px 7px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;border:none" onclick="darBaixaAlerta(${a.id},'devolucao')" title="Devolução ao fornecedor">↩ Devolução</button>
+          </div>`
+        : `<span style="font-size:11px;color:var(--muted)">${a.motivo_baixa==='descarte'?'🗑 Descarte':a.motivo_baixa==='devolucao'?'↩ Devolução':'✔ Vendido'} em ${fmtDt(a.resolvido_em)}</span>`
+      }
+    </td>
+  </tr>`).join('');
+  document.getElementById('content').innerHTML=`
+  <div class="ph"><h2>🔔 Alertas</h2>${S.perfil!=='viewer'?'<button class="btn bp" onclick="rodarEngine()">⚙️ Rodar Engine</button>':''}</div>
+  <div class="fbar">
+    <div class="fg"><label>Filial</label><select class="fc" onchange="S.alFil=this.value;renderAlertas()">${filOpts(S.alFil)}</select></div>
+    <div class="fg"><label>Nível</label><select class="fc" onchange="S.alNiv=this.value;renderAlertas()">${nivOpts(S.alNiv)}</select></div>
+    <div class="fg"><label>De</label><input type="date" class="fc" value="${S.alIni}" onchange="S.alIni=this.value;renderAlertas()"></div>
+    <div class="fg"><label>Até</label><input type="date" class="fc" value="${S.alFim}" onchange="S.alFim=this.value;renderAlertas()"></div>
+    <div class="fg"><label>Status</label><select class="fc" onchange="S.alRes=this.value;renderAlertas()">
+      <option value="0" ${S.alRes==='0'?'selected':''}>Ativos</option>
+      <option value="1" ${S.alRes==='1'?'selected':''}>Resolvidos</option>
+    </select></div>
+    <div class="fg" style="flex:0"><label>&nbsp;</label><button class="btn bg" onclick="S.alFil='';S.alNiv='';S.alIni='';S.alFim='';S.alRes='0';renderAlertas()">Limpar</button></div>
+  </div>
+  <div class="card">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${data.length} alerta(s)</div>
+    ${data.length?`<div class="tw"><table><thead><tr><th>Filial</th><th>Código</th><th>Produto</th><th>Nível</th><th>Cobertura</th><th>Validade</th><th>Gerado em</th><th>Ação</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<div class="es"><div class="ei">✅</div><p>Nenhum alerta com os filtros aplicados.</p></div>'}
+  </div>`;
+}
+
+async function darBaixaAlerta(id, motivo){
+  const labels={vendido:'vendido',descarte:'descartado',devolucao:'devolvido ao fornecedor'};
+  if(!confirm(`Confirmar que o estoque foi ${labels[motivo]}?`)) return;
+  try{
+    // Resolve o alerta com motivo
+    await api(`/api/alertas/${id}/resolver`,'POST',{motivo});
+    showToast(`✅ Registrado: ${labels[motivo]}`);
+    await loadBadgeAlertas();
+    renderAlertas();
+  }catch{showToast('Erro','error');}
+}
+
+async function rodarEngine(){
+  const btn=event.target; btn.disabled=true; btn.textContent='⏳ Rodando...';
+  try{
+    const r=await api('/api/alertas/rodar','POST',{filial_id:S.alFil||null});
+    showToast(`Engine executada — ${r.gerados} alerta(s) gerado(s)`);
+    await loadBadgeAlertas(); renderPage();
+  }catch{showToast('Erro ao rodar engine','error');}
+  finally{btn.disabled=false;btn.textContent='⚙️ Rodar Engine';}
+}
+
+// ══ ESTOQUE ════════════════════════════════════════════════════════════════════
+async function renderEstoque(){
+  let data,cats=[];
+  try{
+    [data,cats]=await Promise.all([
+      api(`/api/estoque?filial_id=${S.estFil}&categoria=${S.estCat}&alerta=${S.estNiv}&search=${S.estSrch}&data_ini=${S.estIni}&data_fim=${S.estFim}&vendido=0`),
+      api('/api/estoque/categorias'),
+    ]);
+  }catch{document.getElementById('content').innerHTML='<div class="ib red">Erro.</div>';return;}
+  S._estData=data;
+  const crit=data.filter(r=>r.nivel_alerta==='critico').length;
+  const atenc=data.filter(r=>r.nivel_alerta==='atencao').length;
+  const catOpts='<option value="">Todas</option>'+cats.map(c=>`<option value="${c}" ${c===S.estCat?'selected':''}>${c}</option>`).join('');
+  const rows=data.map(r=>`<tr>
+    <td><code>${r.codigo_produto}</code></td><td>${r.descricao}</td>
+    <td>${r.filial_nome||'-'}</td><td>${r.categoria||'-'}</td>
+    <td>${r.localizacao||'—'}</td>
+    <td>${fmtN(r.estoque_atual)} ${r.unidade_medida||''}</td>
+    <td>${r.venda_media_diaria?fmtN(r.venda_media_diaria):'<span style="color:var(--muted);font-size:11px">Sem dado</span>'}</td>
+    <td>${r.cobertura_dias!=null?r.cobertura_dias+' dias':'—'}</td>
+    <td>${r.validade||'—'}</td>
+    <td><span class="badge b${r.nivel_alerta==='critico'?'c':r.nivel_alerta==='atencao'?'w':'ok'}">${badgeLbl(r.nivel_alerta)}</span></td>
+
+  </tr>`).join('');
+  document.getElementById('content').innerHTML=`
+  <div class="ph">
+    <h2>📦 Estoque</h2>
+    <div style="display:flex;gap:8px">
+      ${S.perfil!=='viewer'?'<button class="btn bp" onclick="modalEstoqueManual()">+ Lançamento Manual</button>':''}
+      <button class="btn bo bsm" onclick="exportEstCSV()">⬇️ CSV</button>
+    </div>
+  </div>
+  <div class="kgrid" style="grid-template-columns:repeat(4,1fr)">
+    <div class="kpi"><div class="kv">${data.length}</div><div class="kl">Total</div></div>
+    <div class="kpi dn"><div class="kv">${crit}</div><div class="kl">🔴 Críticos</div></div>
+    <div class="kpi wn"><div class="kv">${atenc}</div><div class="kl">🟡 Atenção</div></div>
+    <div class="kpi ok"><div class="kv">${data.length-crit-atenc}</div><div class="kl">🟢 OK</div></div>
+  </div>
+  <div class="fbar">
+    <div class="fg"><label>Filial</label><select class="fc" onchange="S.estFil=this.value;renderEstoque()">${filOpts(S.estFil)}</select></div>
+    <div class="fg"><label>Categoria</label><select class="fc" onchange="S.estCat=this.value;renderEstoque()">${catOpts}</select></div>
+    <div class="fg"><label>Alerta</label><select class="fc" onchange="S.estNiv=this.value;renderEstoque()">${nivOpts(S.estNiv)}</select></div>
+    <div class="fg"><label>Validade De</label><input type="date" class="fc" value="${S.estIni}" onchange="S.estIni=this.value;renderEstoque()"></div>
+    <div class="fg"><label>Até</label><input type="date" class="fc" value="${S.estFim}" onchange="S.estFim=this.value;renderEstoque()"></div>
+    <div class="fg" style="flex:2"><label>Buscar</label><input type="text" class="fc" placeholder="Código ou descrição..." value="${S.estSrch}" oninput="S.estSrch=this.value;renderEstoque()"></div>
+
+    <div class="fg" style="flex:0"><label>&nbsp;</label><button class="btn bg" onclick="S.estFil='';S.estCat='';S.estNiv='';S.estIni='';S.estFim='';S.estSrch='';renderEstoque()">Limpar</button></div>
+  </div>
+  <div class="card">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${data.length} item(ns)</div>
+    ${data.length?`<div class="tw"><table><thead><tr><th>Código</th><th>Descrição</th><th>Filial</th><th>Categoria</th><th>Localização</th><th>Estoque</th><th>VMD</th><th>Cobertura</th><th>Validade</th><th>Alerta</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<div class="es"><div class="ei">📦</div><p>Nenhum item encontrado.</p></div>'}
+  </div>`;
+}
+
+async function darBaixa(id, motivo){
+  const labels = {vendido:'vendido', descarte:'descartado', devolucao:'devolvido ao fornecedor'};
+  const icons  = {vendido:'✔', descarte:'🗑', devolucao:'↩'};
+  if(!confirm(`Confirmar que o estoque foi ${labels[motivo]}? O alerta será resolvido automaticamente.`)) return;
+  try{
+    await api(`/api/estoque/${id}/marcar-vendido`,'POST',{motivo});
+    showToast(`Item registrado: ${icons[motivo]} ${labels[motivo]}!`);
+    await loadBadgeAlertas();
+    renderEstoque();
+  }catch{showToast('Erro','error');}
+}
+
+function exportEstCSV(){
+  if(!S._estData.length)return showToast('Sem dados','warn');
+  const cols=['codigo_produto','descricao','filial_nome','categoria','localizacao','estoque_atual','unidade_medida','venda_media_diaria','cobertura_dias','nivel_alerta','validade','data_referencia'];
+  dlFile('\uFEFF'+[cols.join(';'),...S._estData.map(r=>cols.map(c=>r[c]??'').join(';'))].join('\n'),`estoque_${today()}.csv`,'text/csv');
+}
+
+function modalEstoqueManual(){
+  openModal('Lançamento Manual — Estoque',
+    `<div class="frow">
+      <div class="fg"><label>Filial *</label><select id="em-fil" class="fc">${filOpts('',false)}</select></div>
+      <div class="fg"><label>Código do Produto *</label><input id="em-cod" class="fc" placeholder="Ex: PROD001"></div>
+    </div>
+    <div class="fg"><label>Descrição *</label><input id="em-desc" class="fc"></div>
+    <div class="frow">
+      <div class="fg"><label>Estoque Atual *</label><input id="em-est" class="fc" type="number" step="0.01" min="0"></div>
+      <div class="fg"><label>Validade * (AAAA-MM-DD)</label><input id="em-val" class="fc" type="date"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Unidade</label><input id="em-un" class="fc" value="UN"></div>
+      <div class="fg"><label>Categoria</label><input id="em-cat" class="fc"></div>
+    </div>
+    <div class="fg"><label>Localização <span style="font-size:10px;color:var(--muted)">(ex: Estoque Loja, Depósito, Gaiola)</span></label><input id="em-loc" class="fc" placeholder="Onde o produto está fisicamente"></div>
+    <div class="fg"><label>Data de Referência</label><input id="em-dr" class="fc" type="date" value="${today()}"></div>
+    <div class="ib yel">Ao atualizar um item existente, os alertas ativos serão resolvidos automaticamente.</div>`,
+    `<button class="btn bg" onclick="closeModal()">Cancelar</button>
+     <button class="btn bp" onclick="salvarEstoqueManual()">💾 Salvar</button>`
+  );
+}
+
+async function salvarEstoqueManual(){
+  const d={
+    filial_id:document.getElementById('em-fil').value||null,
+    codigo_produto:document.getElementById('em-cod').value.trim(),
+    descricao:document.getElementById('em-desc').value.trim(),
+    estoque_atual:document.getElementById('em-est').value,
+    validade:document.getElementById('em-val').value,
+    unidade_medida:document.getElementById('em-un').value||'UN',
+    categoria:document.getElementById('em-cat').value||'',
+    localizacao:document.getElementById('em-loc').value.trim()||'',
+    data_referencia:document.getElementById('em-dr').value,
+  };
+  if(!d.filial_id||!d.codigo_produto||!d.descricao||!d.estoque_atual||!d.validade)
+    return showToast('Preencha todos os campos obrigatórios','warn');
+  try{
+    const r=await api('/api/estoque/manual','POST',d);
+    showToast(r.action==='updated'?'Item atualizado!':'Item inserido!');
+    closeModal(); renderEstoque();
+  }catch(e){showToast('Erro: '+e.message,'error');}
+}
+
+// ══ IMPORTAÇÃO ══════════════════════════════════════════════════════════════════
+const _files={};
+function setFile(k,f){_files[k]=f;const el=document.getElementById(`fn-${k}`);el.textContent=`✅ ${f.name} (${(f.size/1024).toFixed(1)} KB)`;el.style.display='block';}
+
+function renderImport(){
+  document.getElementById('content').innerHTML=`
+  <div class="ph"><h2>📥 Importação de Planilhas</h2></div>
+  <div class="tab-btns">
+    <button class="tab-btn active" id="tab-est" onclick="showTab('est')">📦 Estoque</button>
+    <button class="tab-btn" id="tab-vnd" onclick="showTab('vnd')">🛒 Vendas</button>
+  </div>
+
+  <!-- ESTOQUE -->
+  <div id="section-est">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+      <!-- Upload -->
+      <div class="card">
+        <div class="ct">📂 Upload de Planilha</div>
+        <div class="frow">
+          <div class="fg"><label>Filial</label><select id="ie-fil" class="fc">${filOpts('',false)}</select></div>
+          <div class="fg"><label>Ou informe o Código da Filial</label><input id="ie-cod" class="fc" placeholder="Ex: MTZ" style="text-transform:uppercase"></div>
+        </div>
+        <div class="dz" id="dz-e" onclick="document.getElementById('fi-e').click()">
+          <div class="dzi">📂</div>
+          <p>Arraste ou <span class="ll">clique para selecionar</span></p>
+          <p style="font-size:11px;margin-top:4px;color:var(--muted)">.xlsx · .xls · .csv</p>
+          <input type="file" id="fi-e" style="display:none" accept=".xlsx,.xls,.csv">
+        </div>
+        <div class="fs" id="fn-e"></div>
+        <div class="ib blue" style="font-size:12px">
+          <strong>Obrigatórias:</strong> <code>codigo_produto</code> · <code>descricao</code> · <code>estoque_atual</code> · <code>validade</code><br>
+          <strong>Opcionais:</strong> <code>filial_codigo</code> · <code>unidade_medida</code> · <code>categoria</code> · <code>localizacao</code> · <code>data_referencia</code><br>
+          <strong>VMD:</strong> calculada automaticamente após importação de vendas.
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn bp" id="btn-ie" onclick="importar('estoque')">📤 Importar</button>
+          <a href="/api/import/modelo/estoque" class="btn bg">⬇️ Baixar Modelo</a>
+        </div>
+        <div id="res-e" style="margin-top:10px"></div>
+      </div>
+      <!-- Manual -->
+      <div class="card">
+        <div class="ct">✏️ Cadastro Manual — Linha a Linha</div>
+        <div class="frow">
+          <div class="fg"><label>Filial *</label><select id="me-fil" class="fc">${filOpts('',false)}</select></div>
+          <div class="fg"><label>Código *</label><input id="me-cod" class="fc" placeholder="PROD001"></div>
+        </div>
+        <div class="fg"><label>Descrição *</label><input id="me-desc" class="fc"></div>
+        <div class="frow">
+          <div class="fg"><label>Estoque Atual *</label><input id="me-est" class="fc" type="number" step="0.01" min="0"></div>
+          <div class="fg"><label>Validade * (AAAA-MM-DD)</label><input id="me-val" class="fc" type="date"></div>
+        </div>
+        <div class="frow">
+          <div class="fg"><label>Unidade</label><input id="me-un" class="fc" value="UN"></div>
+          <div class="fg"><label>Categoria</label><input id="me-cat" class="fc"></div>
+        </div>
+        <div class="fg"><label>Localização <span style="font-size:10px;color:var(--muted)">(ex: Estoque Loja, Depósito, Gaiola)</span></label><input id="me-loc" class="fc" placeholder="Onde o produto está"></div>
+        <div class="fg"><label>Data Referência</label><input id="me-dr" class="fc" type="date" value="${today()}"></div>
+        <button class="btn bp" onclick="lancarEstManual()">💾 Lançar Item</button>
+        <div id="res-me" style="margin-top:10px"></div>
+      </div>
+    </div>
+    <div class="card" id="hist-est"><div class="es" style="padding:16px"><p>Carregando histórico...</p></div></div>
+  </div>
+
+  <!-- VENDAS -->
+  <div id="section-vnd" style="display:none">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+      <!-- Upload -->
+      <div class="card">
+        <div class="ct">📂 Upload de Planilha de Vendas</div>
+        <div class="frow">
+          <div class="fg"><label>Filial</label><select id="iv-fil" class="fc">${filOpts('',false)}</select></div>
+          <div class="fg"><label>Ou Código da Filial</label><input id="iv-cod" class="fc" placeholder="Ex: MTZ" style="text-transform:uppercase"></div>
+        </div>
+        <div class="dz" id="dz-v" onclick="document.getElementById('fi-v').click()">
+          <div class="dzi">📂</div>
+          <p>Arraste ou <span class="ll">clique para selecionar</span></p>
+          <p style="font-size:11px;margin-top:4px;color:var(--muted)">.xlsx · .xls · .csv</p>
+          <input type="file" id="fi-v" style="display:none" accept=".xlsx,.xls,.csv">
+        </div>
+        <div class="fs" id="fn-v"></div>
+        <div class="ib blue" style="font-size:12px">
+          <strong>Obrigatórias:</strong> <code>codigo_produto</code> · <code>quantidade</code> · <code>data_venda</code><br>
+          <strong>Opcionais:</strong> <code>filial_codigo</code> · <code>numero_nf</code><br>
+          <strong>VMD calculada automaticamente:</strong> Σ quantidade ÷ nº de dias distintos com venda.
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn bp" id="btn-iv" onclick="importar('vendas')">📤 Importar</button>
+          <a href="/api/import/modelo/vendas" class="btn bg">⬇️ Baixar Modelo</a>
+        </div>
+        <div id="res-v" style="margin-top:10px"></div>
+      </div>
+      <!-- Manual -->
+      <div class="card">
+        <div class="ct">✏️ Lançamento Manual de Venda</div>
+        <div class="frow">
+          <div class="fg"><label>Filial *</label><select id="mv-fil" class="fc">${filOpts('',false)}</select></div>
+          <div class="fg"><label>Código do Produto *</label><input id="mv-cod" class="fc" placeholder="PROD001"></div>
+        </div>
+        <div class="frow">
+          <div class="fg"><label>Quantidade *</label><input id="mv-qtd" class="fc" type="number" step="0.01" min="0.01"></div>
+          <div class="fg"><label>Data da Venda *</label><input id="mv-dt" class="fc" type="date" value="${today()}"></div>
+        </div>
+        <div class="fg"><label>Número da NF</label><input id="mv-nf" class="fc" placeholder="NF-12345"></div>
+        <div class="ib yel" style="font-size:12px">A VMD do produto será recalculada automaticamente após o lançamento.</div>
+        <button class="btn bp" onclick="lancarVendaManual()">💾 Lançar Venda</button>
+        <div id="res-mv" style="margin-top:10px"></div>
+      </div>
+    </div>
+    <div class="card" id="hist-vnd"><div class="es" style="padding:16px"><p>Carregando histórico...</p></div></div>
+  </div>`;
+
+  // Bind DnD
+  ['e','v'].forEach(k=>{
+    const dz=document.getElementById(`dz-${k}`); const fi=document.getElementById(`fi-${k}`);
+    fi.addEventListener('change',()=>{if(fi.files[0])setFile(k,fi.files[0]);});
+    dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dov');});
+    dz.addEventListener('dragleave',()=>dz.classList.remove('dov'));
+    dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dov');if(e.dataTransfer.files[0])setFile(k,e.dataTransfer.files[0]);});
+  });
+
+  loadHist('est'); loadHist('vnd');
+}
+
+function showTab(tab){
+  document.getElementById('section-est').style.display=tab==='est'?'':'none';
+  document.getElementById('section-vnd').style.display=tab==='vnd'?'':'none';
+  document.getElementById('tab-est').classList.toggle('active',tab==='est');
+  document.getElementById('tab-vnd').classList.toggle('active',tab==='vnd');
+}
+
+async function importar(tipo){
+  const isEst=tipo==='estoque'; const k=isEst?'e':'v';
+  const fil=document.getElementById(isEst?'ie-fil':'iv-fil').value;
+  const cod=document.getElementById(isEst?'ie-cod':'iv-cod').value.trim().toUpperCase();
+  if(!fil&&!cod)return showToast('Informe a filial ou o código da filial','warn');
+  if(!_files[k])return showToast('Selecione o arquivo','warn');
+  const btn=document.getElementById(`btn-i${k}`); btn.disabled=true; btn.textContent='⏳ Processando...';
+  const fd=new FormData(); fd.append('file',_files[k]);
+  if(fil) fd.append('filial_id',fil); else fd.append('filial_codigo',cod);
+  try{
+    const r=await fetch(`/api/import/${tipo}`,{method:'POST',body:fd});
+    const d=await r.json();
+    const resEl=document.getElementById(`res-${k}`);
+    if(d.error){resEl.innerHTML=`<div class="ib red">❌ ${d.error}</div>`;return;}
+    let msg=`✅ ${d.inserted||0} inseridos · ${d.updated||0} atualizados · ${(d.errors||[]).length||d.errors||0} erros`;
+    if(d.vmd_atualizados) msg+=` · ${d.vmd_atualizados} VMDs recalculados`;
+    resEl.innerHTML=`<div class="ib grn">${msg}</div>`;
+    if((d.errors||[]).length) resEl.innerHTML+=`<div class="ib red">${(d.errors||[]).map(e=>`<div>${e}</div>`).join('')}</div>`;
+    showToast('Importação concluída!');
+    loadHist(isEst?'est':'vnd');
+  }catch(e){document.getElementById(`res-${k}`).innerHTML=`<div class="ib red">❌ Erro: ${e.message}</div>`;}
+  finally{btn.disabled=false;btn.textContent='📤 Importar';}
+}
+
+async function lancarEstManual(){
+  const d={
+    filial_id:document.getElementById('me-fil').value||null,
+    codigo_produto:document.getElementById('me-cod').value.trim(),
+    descricao:document.getElementById('me-desc').value.trim(),
+    estoque_atual:document.getElementById('me-est').value,
+    validade:document.getElementById('me-val').value,
+    unidade_medida:document.getElementById('me-un').value||'UN',
+    categoria:document.getElementById('me-cat').value||'',
+    localizacao:document.getElementById('me-loc').value.trim()||'',
+    data_referencia:document.getElementById('me-dr').value,
+  };
+  if(!d.filial_id||!d.codigo_produto||!d.descricao||!d.estoque_atual||!d.validade)
+    return showToast('Preencha todos os campos obrigatórios','warn');
+  try{
+    const r=await api('/api/estoque/manual','POST',d);
+    document.getElementById('res-me').innerHTML=`<div class="ib grn">✅ ${r.action==='updated'?'Item atualizado!':'Item inserido com sucesso!'}</div>`;
+    showToast(r.action==='updated'?'Atualizado!':'Inserido!');
+    // Limpa campos
+    ['me-cod','me-desc','me-est','me-un','me-cat','me-loc'].forEach(id=>{const el=document.getElementById(id);if(el){el.value=id==='me-un'?'UN':'';} });
+    document.getElementById('me-val').value='';
+    loadHist('est');
+  }catch(e){document.getElementById('res-me').innerHTML=`<div class="ib red">❌ ${e.message}</div>`;}
+}
+
+async function lancarVendaManual(){
+  const d={
+    filial_id:document.getElementById('mv-fil').value||null,
+    codigo_produto:document.getElementById('mv-cod').value.trim(),
+    quantidade:document.getElementById('mv-qtd').value,
+    data_venda:document.getElementById('mv-dt').value,
+    numero_nf:document.getElementById('mv-nf').value.trim()||null,
+  };
+  if(!d.filial_id||!d.codigo_produto||!d.quantidade||!d.data_venda)
+    return showToast('Preencha todos os campos obrigatórios','warn');
+  try{
+    await api('/api/vendas/manual','POST',d);
+    document.getElementById('res-mv').innerHTML='<div class="ib grn">✅ Venda lançada! VMD recalculada.</div>';
+    showToast('Venda lançada!');
+    ['mv-cod','mv-qtd','mv-nf'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    loadHist('vnd');
+  }catch(e){document.getElementById('res-mv').innerHTML=`<div class="ib red">❌ ${e.message}</div>`;}
+}
+
+async function loadHist(tipo){
+  const el=document.getElementById(`hist-${tipo}`); if(!el)return;
+  const apiTipo=tipo==='est'?'estoque':'vendas';
+  try{
+    const data=await api(`/api/imports-log?tipo=${apiTipo}&limit=15`);
+    if(!data.length){el.innerHTML='<div class="card"><div class="ct">Histórico de Importações</div><div class="es" style="padding:16px"><p>Nenhuma importação registrada.</p></div></div>';return;}
+    el.innerHTML=`<div class="card"><div class="ct">📋 Histórico de Importações</div><div class="tw"><table>
+      <thead><tr><th>Data/Hora</th><th>Usuário</th><th>Filial</th><th>Inseridos</th><th>Atualizados</th><th>Erros</th></tr></thead>
+      <tbody>${data.map(r=>`<tr>
+        <td style="font-size:11px">${fmtDt(r.criado_em)}</td>
+        <td>${r.user_name||'-'}</td><td>${r.filial_nome||'-'}</td>
+        <td>${r.inseridos}</td><td>${r.atualizados}</td>
+        <td ${r.erros>0?'style="color:var(--dn);font-weight:700"':''}>${r.erros}</td>
+      </tr>`).join('')}</tbody>
+    </table></div></div>`;
+  }catch{el.innerHTML='';}
+}
+
+// ══ FILIAIS ═════════════════════════════════════════════════════════════════════
+async function renderFiliais(){
+  let data; try{data=await api('/api/filiais');}catch{document.getElementById('content').innerHTML='<div class="ib red">Erro.</div>';return;}
+  const rows=data.map(f=>`<tr>
+    <td>${f.id}</td><td><strong>${f.nome}</strong></td><td><code>${f.codigo}</code></td>
+    <td><span class="badge b${f.ativa?'ok':'se'}">${f.ativa?'Ativa':'Inativa'}</span></td>
+    ${S.perfil==='admin'?`<td><button class="btn bo bsm" onclick='editFilial(${JSON.stringify(f)})'>✏️ Editar</button></td>`:'<td></td>'}
+  </tr>`).join('');
+  document.getElementById('content').innerHTML=`
+  <div class="ph"><h2>🏢 Filiais</h2>${S.perfil==='admin'?'<button class="btn bp" onclick="novaFilial()">+ Nova Filial</button>':''}</div>
+  <div class="card"><div class="tw"><table>
+    <thead><tr><th>#</th><th>Nome</th><th>Código</th><th>Status</th><th>Ação</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted)">Nenhuma filial.</td></tr>'}</tbody>
+  </table></div></div>`;
+}
+
+function novaFilial(){
+  openModal('Nova Filial',
+    `<div class="fg"><label>Nome</label><input id="fn" class="fc" placeholder="Ex: Filial Centro"></div>
+     <div class="fg"><label>Código</label><input id="fc2" class="fc" placeholder="Ex: CTR" style="text-transform:uppercase" maxlength="10"></div>`,
+    `<button class="btn bg" onclick="closeModal()">Cancelar</button><button class="btn bp" onclick="salvarFilial()">Salvar</button>`);
+}
+async function salvarFilial(){
+  const nome=document.getElementById('fn').value.trim(); const codigo=document.getElementById('fc2').value.trim().toUpperCase();
+  if(!nome||!codigo)return showToast('Preencha todos os campos','warn');
+  try{await api('/api/filiais','POST',{nome,codigo});showToast('Filial criada!');closeModal();await loadFiliais();renderFiliais();}
+  catch{showToast('Erro','error');}
+}
+function editFilial(f){
+  openModal('Editar Filial',
+    `<div class="fg"><label>Nome</label><input id="efn" class="fc" value="${f.nome}"></div>
+     <div class="fg"><label>Código</label><input id="efc" class="fc" value="${f.codigo}" style="text-transform:uppercase"></div>
+     <div class="fg"><label>Status</label><select id="efa" class="fc"><option value="1" ${f.ativa?'selected':''}>Ativa</option><option value="0" ${!f.ativa?'selected':''}>Inativa</option></select></div>`,
+    `<button class="btn bg" onclick="closeModal()">Cancelar</button><button class="btn bp" onclick="atualizarFilial(${f.id})">Salvar</button>`);
+}
+async function atualizarFilial(id){
+  try{
+    await api(`/api/filiais/${id}`,'PUT',{nome:document.getElementById('efn').value.trim(),codigo:document.getElementById('efc').value.trim().toUpperCase(),ativa:parseInt(document.getElementById('efa').value)});
+    showToast('Filial atualizada!');closeModal();await loadFiliais();renderFiliais();
+  }catch{showToast('Erro','error');}
+}
+
+// ══ RELATÓRIOS ══════════════════════════════════════════════════════════════════
+async function rodarEngineRelat(){
+  const btn=event.target; btn.disabled=true; btn.textContent='⏳ Rodando...';
+  try{
+    const r=await api('/api/alertas/rodar','POST',{filial_id:S.relFil||null});
+    showToast(`Engine executada — ${r.gerados} alerta(s) gerado(s)`);
+    await loadBadgeAlertas();
+    renderRelat();
+  }catch{showToast('Erro ao rodar engine','error');}
+  finally{btn.disabled=false;btn.textContent='⚙️ Rodar Engine';}
+}
+
+async function renderRelat(){
+  let data=[],err='';
+  try{
+    data=S.relTipo==='alertas'
+      ?await api(`/api/relatorios/alertas?filial_id=${S.relFil}&nivel=${S.relNiv}&data_ini=${S.relIni}&data_fim=${S.relFim}&resolvido=${S.relRes}&motivo=${S.relMotivo||''}`)
+      :await api(`/api/relatorios/estoque?filial_id=${S.relFil}&nivel=${S.relNiv}`);
+  }catch{err='Erro ao carregar.';}
+  const tabAl=`<table><thead><tr><th>Filial</th><th>Código</th><th>Produto</th><th>Nível</th><th>Cobertura</th><th>Validade</th><th>Mensagem</th><th>Gerado em</th><th>Ação Tomada</th></tr></thead><tbody>${data.map(r=>`<tr><td>${r.filial_nome||'-'}</td><td><code>${r.codigo_produto}</code></td><td>${r.produto_nome||'-'}</td><td><span class="badge b${r.nivel==='critico'?'c':r.nivel==='atencao'?'w':'ok'}">${badgeLbl(r.nivel)}</span></td><td>${r.cobertura_dias!=null?r.cobertura_dias+' dias':'—'}</td><td>${r.validade||'—'}</td><td style="font-size:11px">${r.mensagem||'—'}</td><td style="font-size:11px;color:var(--muted)">${fmtDt(r.criado_em)}</td><td style="font-size:10px">${r.resolvido?(r.motivo_baixa==='descarte'?'🗑 Descarte':r.motivo_baixa==='devolucao'?'↩ Devolução':'✔ Vendido'):'—'}</td></tr>`).join('')}</tbody></table>`;
+  const tabEst=`<table><thead><tr><th>Código</th><th>Descrição</th><th>Filial</th><th>Estoque</th><th>VMD</th><th>Cobertura</th><th>Validade</th><th>Alerta</th></tr></thead><tbody>${data.map(r=>`<tr><td><code>${r.codigo_produto}</code></td><td>${r.descricao}</td><td>${r.filial_nome||'-'}</td><td>${fmtN(r.estoque_atual)} ${r.unidade_medida||''}</td><td>${r.venda_media_diaria?fmtN(r.venda_media_diaria):'—'}</td><td>${r.cobertura_dias!=null?r.cobertura_dias+' dias':'—'}</td><td>${r.validade||'—'}</td><td><span class="badge b${r.nivel_alerta==='critico'?'c':r.nivel_alerta==='atencao'?'w':'ok'}">${badgeLbl(r.nivel_alerta)}</span></td></tr>`).join('')}</tbody></table>`;
+  document.getElementById('content').innerHTML=`
+  <div class="ph"><h2>📋 Relatórios</h2><div style="display:flex;gap:8px"><button class="btn bp bsm" onclick="rodarEngineRelat()">⚙️ Rodar Engine</button><a href="/api/relatorios/export-csv/${S.relTipo}?filial_id=${S.relFil}&nivel=${S.relNiv}&data_ini=${S.relIni}&data_fim=${S.relFim}&resolvido=${S.relRes}" class="btn bo">⬇️ Exportar CSV</a></div></div>
+  <div class="fbar">
+    <div class="fg"><label>Relatório</label><select class="fc" onchange="S.relTipo=this.value;renderRelat()">
+      <option value="alertas" ${S.relTipo==='alertas'?'selected':''}>🔔 Alertas</option>
+      <option value="estoque" ${S.relTipo==='estoque'?'selected':''}>📦 Estoque</option>
+    </select></div>
+    <div class="fg"><label>Filial</label><select class="fc" onchange="S.relFil=this.value;renderRelat()">${filOpts(S.relFil)}</select></div>
+    <div class="fg"><label>Nível</label><select class="fc" onchange="S.relNiv=this.value;renderRelat()">${nivOpts(S.relNiv)}</select></div>
+    ${S.relTipo==='alertas'?`
+    <div class="fg"><label>De</label><input type="date" class="fc" value="${S.relIni}" onchange="S.relIni=this.value;renderRelat()"></div>
+    <div class="fg"><label>Até</label><input type="date" class="fc" value="${S.relFim}" onchange="S.relFim=this.value;renderRelat()"></div>
+    <div class="fg"><label>Status</label><select class="fc" onchange="S.relRes=this.value;renderRelat()">
+      <option value="" ${S.relRes===''?'selected':''}>Todos</option>
+      <option value="0" ${S.relRes==='0'?'selected':''}>Ativos</option>
+      <option value="1" ${S.relRes==='1'?'selected':''}>Resolvidos</option>
+    </select></div>`:''}
+    <div class="fg"><label>Ação Tomada</label>
+      <select class="fc" onchange="S.relMotivo=this.value;renderRelat()">
+        <option value="" ${S.relMotivo===''?'selected':''}>Todas</option>
+        <option value="vendido"   ${S.relMotivo==='vendido'  ?'selected':''}>✔ Vendido</option>
+        <option value="descarte"  ${S.relMotivo==='descarte' ?'selected':''}>🗑 Descarte</option>
+        <option value="devolucao" ${S.relMotivo==='devolucao'?'selected':''}>↩ Devolução</option>
+      </select>
+    </div>
+    <div class="fg" style="flex:0"><label>&nbsp;</label><button class="btn bg" onclick="S.relTipo='alertas';S.relFil='';S.relNiv='';S.relIni='';S.relFim='';S.relRes='';S.relMotivo='';renderRelat()">Limpar</button></div>
+  </div>
+  <div class="card">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${data.length} registro(s)</div>
+    ${err?`<div class="ib red">${err}</div>`:data.length?`<div class="tw">${S.relTipo==='alertas'?tabAl:tabEst}</div>`:'<div class="es"><div class="ei">📋</div><p>Nenhum registro encontrado.</p></div>'}
+  </div>`;
+}
+
+// ══ USUÁRIOS ═══════════════════════════════════════════════════════════════════
+async function renderUsers(){
+  if(S.perfil!=='admin'){document.getElementById('content').innerHTML='<div class="ib red">Acesso restrito.</div>';return;}
+  let data; try{data=await api('/api/usuarios');}catch{document.getElementById('content').innerHTML='<div class="ib red">Erro.</div>';return;}
+  const{users=[],pending=[]}=data;
+  const pendHtml=pending.length?`<div class="card" style="border:2px solid var(--wn)">
+    <div class="ct" style="color:var(--wn)">🔔 Solicitações Pendentes (${pending.length})</div>
+    ${pending.map(p=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--brd)">
+      <div><strong>${p.nome}</strong><br><span style="font-size:12px;color:var(--muted)">${p.email} — ${fmtDt(p.criado_em)}</span></div>
+      <div style="display:flex;gap:7px">
+        <button class="btn bs bsm" onclick="aprovarPend(${p.id},'${p.nome}','${p.email}')">✅ Aprovar</button>
+        <button class="btn bd bsm" onclick="rejeitarPend(${p.id})">❌ Rejeitar</button>
+      </div></div>`).join('')}
+  </div>`:'';
+  const rows=users.map(u=>`<tr>
+    <td>${u.id}</td><td><strong>${u.nome}</strong></td>
+    <td style="font-size:12px">${u.email}</td>
+    <td><span class="badge b${u.perfil}">${u.perfil}</span></td>
+    <td>${u.filial_nome||'—'}</td>
+    <td><span class="badge b${u.ativo?'ok':'se'}">${u.ativo?'Ativo':'Inativo'}</span></td>
+    <td>${u.must_change_password?'<span style="font-size:11px;color:var(--wn)">⚠️ Pendente</span>':'<span style="font-size:11px;color:var(--muted)">OK</span>'}</td>
+    <td style="display:flex;gap:4px">
+      <button class="btn bo bsm" onclick='editUser(${JSON.stringify(u).replace(/'/g,"&#39;")})'>✏️</button>
+      <button class="btn bg bsm" onclick="resetSenha(${u.id})">🔑</button>
+      <button class="btn bd bsm" onclick="excluirUser(${u.id})">🗑</button>
+    </td>
+  </tr>`).join('');
+  document.getElementById('content').innerHTML=`
+  <div class="ph"><h2>👥 Gestão de Usuários</h2><button class="btn bp" onclick="novoUser()">+ Novo Usuário</button></div>
+  ${pendHtml}
+  <div class="card"><div class="tw"><table>
+    <thead><tr><th>#</th><th>Nome</th><th>Email</th><th>Perfil</th><th>Filial</th><th>Status</th><th>Senha</th><th>Ações</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted)">Nenhum usuário.</td></tr>'}</tbody>
+  </table></div></div>`;
+}
+
+function novoUser(){
+  openModal('Novo Usuário',
+    `<div class="frow"><div class="fg"><label>Nome</label><input id="nu-n" class="fc"></div><div class="fg"><label>Email</label><input id="nu-e" class="fc" type="email"></div></div>
+     <div class="frow">
+       <div class="fg"><label>Perfil</label><select id="nu-p" class="fc"><option value="viewer">Viewer</option><option value="auditor">Auditor</option><option value="admin">Admin</option></select></div>
+       <div class="fg"><label>Filial</label><select id="nu-f" class="fc">${filOpts('',false)}</select></div>
+     </div>
+     <div class="ib yel">Senha padrão: <strong>1234</strong>. Troca obrigatória no 1º acesso.</div>`,
+    `<button class="btn bg" onclick="closeModal()">Cancelar</button><button class="btn bp" onclick="salvarUser()">Criar</button>`);
+}
+async function salvarUser(){
+  const d={nome:document.getElementById('nu-n').value.trim(),email:document.getElementById('nu-e').value.trim(),perfil:document.getElementById('nu-p').value,filial_id:document.getElementById('nu-f').value||null};
+  if(!d.nome||!d.email)return showToast('Preencha nome e email','warn');
+  try{await api('/api/usuarios','POST',d);showToast('Usuário criado!');closeModal();await loadBadgePend();renderUsers();}
+  catch{showToast('Erro','error');}
+}
+function editUser(u){
+  openModal('Editar Usuário',
+    `<div class="frow"><div class="fg"><label>Nome</label><input id="eu-n" class="fc" value="${u.nome}"></div><div class="fg"><label>Email</label><input id="eu-e" class="fc" type="email" value="${u.email}"></div></div>
+     <div class="frow">
+       <div class="fg"><label>Perfil</label><select id="eu-p" class="fc"><option value="viewer" ${u.perfil==='viewer'?'selected':''}>Viewer</option><option value="auditor" ${u.perfil==='auditor'?'selected':''}>Auditor</option><option value="admin" ${u.perfil==='admin'?'selected':''}>Admin</option></select></div>
+       <div class="fg"><label>Filial</label><select id="eu-f" class="fc">${filOpts(u.filial_id||'',false)}</select></div>
+     </div>
+     <div class="fg"><label>Status</label><select id="eu-a" class="fc"><option value="1" ${u.ativo?'selected':''}>Ativo</option><option value="0" ${!u.ativo?'selected':''}>Inativo</option></select></div>`,
+    `<button class="btn bg" onclick="closeModal()">Cancelar</button><button class="btn bp" onclick="atualizarUser(${u.id})">Salvar</button>`);
+}
+async function atualizarUser(id){
+  try{
+    await api(`/api/usuarios/${id}`,'PUT',{nome:document.getElementById('eu-n').value.trim(),email:document.getElementById('eu-e').value.trim(),perfil:document.getElementById('eu-p').value,filial_id:document.getElementById('eu-f').value||null,ativo:parseInt(document.getElementById('eu-a').value)});
+    showToast('Atualizado!');closeModal();renderUsers();
+  }catch{showToast('Erro','error');}
+}
+async function resetSenha(id){if(!confirm('Resetar senha para 1234?'))return;try{await api(`/api/usuarios/${id}/reset-senha`,'POST');showToast('Senha resetada para 1234!');renderUsers();}catch{showToast('Erro','error');}}
+async function excluirUser(id){if(!confirm('Desativar este usuário?'))return;try{await api(`/api/usuarios/${id}`,'DELETE');showToast('Desativado.');renderUsers();}catch{showToast('Erro','error');}}
+function aprovarPend(id,nome,email){
+  openModal(`Aprovar: ${nome}`,
+    `<p style="font-size:13px;margin-bottom:14px">Email: <strong>${email}</strong></p>
+     <div class="frow"><div class="fg"><label>Perfil</label><select id="ap-p" class="fc"><option value="viewer">Viewer</option><option value="auditor">Auditor</option><option value="admin">Admin</option></select></div>
+     <div class="fg"><label>Filial</label><select id="ap-f" class="fc">${filOpts('',false)}</select></div></div>
+     <div class="ib yel">Senha padrão <strong>1234</strong>. Troca obrigatória no 1º acesso.</div>`,
+    `<button class="btn bg" onclick="closeModal()">Cancelar</button><button class="btn bs" onclick="confirmarAprov(${id})">✅ Aprovar</button>`);
+}
+async function confirmarAprov(id){
+  try{await api(`/api/pending-users/${id}/aprovar`,'POST',{perfil:document.getElementById('ap-p').value,filial_id:document.getElementById('ap-f').value||null});showToast('Aprovado!');closeModal();await loadBadgePend();renderUsers();}
+  catch{showToast('Erro','error');}
+}
+async function rejeitarPend(id){if(!confirm('Rejeitar esta solicitação?'))return;try{await api(`/api/pending-users/${id}/rejeitar`,'POST');showToast('Rejeitado.','warn');await loadBadgePend();renderUsers();}catch{showToast('Erro','error');}}
+
+// ══ AUDITORIA ══════════════════════════════════════════════════════════════════
+async function renderAudit(){
+  let data; try{data=await api(`/api/audit-log?action=${S.audAct}&data_ini=${S.audIni}&data_fim=${S.audFim}&limit=200`);}
+  catch{document.getElementById('content').innerHTML='<div class="ib red">Acesso restrito.</div>';return;}
+  const acoes=[...new Set(data.map(r=>r.action))].sort();
+  const rows=data.map(r=>`<tr>
+    <td style="font-size:11px;white-space:nowrap">${fmtDt(r.criado_em)}</td>
+    <td>${r.user_name||'-'}</td><td><code style="font-size:11px">${r.action}</code></td>
+    <td style="font-size:12px;max-width:280px;word-break:break-word">${r.detail||'—'}</td>
+    <td style="font-size:11px;color:var(--muted)">${r.ip||'—'}</td>
+  </tr>`).join('');
+  document.getElementById('content').innerHTML=`
+  <div class="ph"><h2>🔍 Auditoria</h2></div>
+  <div class="fbar">
+    <div class="fg"><label>Ação</label><select class="fc" onchange="S.audAct=this.value;renderAudit()">
+      <option value="">Todas</option>${acoes.map(a=>`<option value="${a}" ${a===S.audAct?'selected':''}>${a}</option>`).join('')}
+    </select></div>
+    <div class="fg"><label>De</label><input type="date" class="fc" value="${S.audIni}" onchange="S.audIni=this.value;renderAudit()"></div>
+    <div class="fg"><label>Até</label><input type="date" class="fc" value="${S.audFim}" onchange="S.audFim=this.value;renderAudit()"></div>
+    <div class="fg" style="flex:0"><label>&nbsp;</label><button class="btn bg" onclick="S.audAct='';S.audIni='';S.audFim='';renderAudit()">Limpar</button></div>
+  </div>
+  <div class="card">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${data.length} registro(s)</div>
+    ${data.length?`<div class="tw"><table><thead><tr><th>Data/Hora</th><th>Usuário</th><th>Ação</th><th>Detalhe</th><th>IP</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<div class="es"><div class="ei">🔍</div><p>Nenhum registro.</p></div>'}
+  </div>`;
+}
+
+// ══ CONFIGURAÇÕES ═══════════════════════════════════════════════════════════════
+async function renderConfig(){
+  if(S.perfil!=='admin'){document.getElementById('content').innerHTML='<div class="ib red">Acesso restrito.</div>';return;}
+  let cfg; try{cfg=await api('/api/settings');}catch{document.getElementById('content').innerHTML='<div class="ib red">Erro.</div>';return;}
+  document.getElementById('content').innerHTML=`
+  <div class="ph"><h2>⚙️ Configurações</h2></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+
+    <!-- Identidade -->
+    <div class="card">
+      <div class="ct">🎨 Identidade Visual</div>
+
+      <div class="ib blue" style="font-size:12px;margin-bottom:16px">
+        <strong>Linha 1 do sidebar</strong> → Título do Sistema &nbsp;|&nbsp; <strong>Linha 2 do sidebar</strong> → Nome da Empresa<br>
+        O <strong>Slogan</strong> aparece apenas na tela de login.
+      </div>
+
+      <div class="fg">
+        <label>Título do Sistema (linha 1 do menu)</label>
+        <input id="cfg-nome_sistema" class="fc" placeholder="Ex: SCV - Sistema de Controle de Validade" value="${cfg.nome_sistema||''}">
+      </div>
+      <div class="fg">
+        <label>Nome da Empresa (linha 2 do menu)</label>
+        <input id="cfg-nome_empresa" class="fc" placeholder="Ex: RBM LOGISTICS" value="${cfg.nome_empresa||''}">
+      </div>
+      <div class="fg">
+        <label>Slogan (aparece apenas na tela de login)</label>
+        <input id="cfg-slogan_login" class="fc" placeholder="Ex: Controle de validade com precisão" value="${cfg.slogan_login||''}">
+      </div>
+      <div class="fg">
+        <label>Logo (PNG, JPG, SVG)</label>
+        <div style="display:flex;gap:10px;align-items:center">
+          ${cfg.logo_base64?`<img src="${cfg.logo_base64}" style="height:48px;border-radius:8px;border:1px solid var(--brd)">`:
+            '<div style="width:48px;height:48px;border-radius:8px;background:var(--bg);border:1px solid var(--brd);display:flex;align-items:center;justify-content:center;font-size:22px">📦</div>'}
+          <input type="file" id="logo-file" accept=".png,.jpg,.jpeg,.gif,.svg,.webp" style="display:none" onchange="uploadLogo(this)">
+          <button class="btn bo bsm" onclick="document.getElementById('logo-file').click()">📷 Alterar Logo</button>
+          ${cfg.logo_base64?'<button class="btn bd bsm" onclick="removerLogo()">🗑 Remover</button>':''}
+        </div>
+        <div id="logo-status" style="margin-top:8px"></div>
+      </div>
+      <button class="btn bp" onclick="salvarConfig(['nome_sistema','nome_empresa','slogan_login'])">💾 Salvar Identidade</button>
+    </div>
+
+    <!-- Alertas -->
+    <div class="card">
+      <div class="ct">🔔 Parâmetros de Alerta</div>
+      <div class="fg"><label>Modo de Alerta</label>
+        <select id="cfg-modo_alerta" class="fc">
+          <option value="both" ${cfg.modo_alerta==='both'?'selected':''}>Cobertura + Validade</option>
+          <option value="cobertura" ${cfg.modo_alerta==='cobertura'?'selected':''}>Somente Cobertura</option>
+          <option value="validade" ${cfg.modo_alerta==='validade'?'selected':''}>Somente Validade</option>
+        </select>
+      </div>
+      <div class="frow">
+        <div class="fg"><label>Folga Crítica (dias restantes na validade após vender tudo ≤)</label><input id="cfg-dias_critico" class="fc" type="number" min="1" value="${cfg.dias_critico||15}"></div>
+        <div class="fg"><label>Folga Atenção (dias restantes na validade após vender tudo ≤)</label><input id="cfg-dias_atencao" class="fc" type="number" min="1" value="${cfg.dias_atencao||30}"></div>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 8px;text-transform:uppercase;letter-spacing:.5px">⏱ Parâmetros de Validade (quando sem VMD)</div>
+      <div class="frow">
+        <div class="fg">
+          <label>Dias Crítico por Validade (≤)</label>
+          <input id="cfg-val_dias_critico" class="fc" type="number" min="1" value="${cfg.val_dias_critico||30}">
+          <small style="font-size:10px;color:var(--muted)">Vence em ≤ N dias → 🔴 Crítico</small>
+        </div>
+        <div class="fg">
+          <label>Dias Atenção por Validade (≤)</label>
+          <input id="cfg-val_dias_atencao" class="fc" type="number" min="1" value="${cfg.val_dias_atencao||90}">
+          <small style="font-size:10px;color:var(--muted)">Vence em ≤ N dias → 🟡 Atenção</small>
+        </div>
+      </div>
+      <button class="btn bp" onclick="salvarConfig(['modo_alerta','dias_critico','dias_atencao','val_dias_critico','val_dias_atencao'])">💾 Salvar Parâmetros</button>
+    </div>
+  </div>`;
+}
+
+async function salvarConfig(keys){
+  const d={};
+  keys.forEach(k=>{const el=document.getElementById(`cfg-${k}`);if(el)d[k]=el.value;});
+  try{
+    await api('/api/settings','POST',d);
+    showToast('Configurações salvas!');
+    // Atualiza sidebar imediatamente
+    await loadSettings();
+    renderConfig();
+  }catch{showToast('Erro ao salvar','error');}
+}
+
+async function uploadLogo(input){
+  const f=input.files[0]; if(!f)return;
+  const st=document.getElementById('logo-status');
+  st.innerHTML='<span style="color:var(--muted);font-size:12px">⏳ Enviando...</span>';
+  const fd=new FormData(); fd.append('logo',f);
+  try{
+    const r=await fetch('/api/settings/logo',{method:'POST',body:fd});
+    const d=await r.json();
+    if(d.error){st.innerHTML=`<span style="color:var(--dn);font-size:12px">❌ ${d.error}</span>`;return;}
+    showToast('Logo atualizado!');
+    await loadSettings(); renderConfig();
+  }catch{st.innerHTML='<span style="color:var(--dn);font-size:12px">❌ Erro ao enviar.</span>';}
+}
+
+async function removerLogo(){
+  if(!confirm('Remover o logo?'))return;
+  try{
+    await api('/api/settings','POST',{logo_base64:''});
+    showToast('Logo removido.','warn');
+    await loadSettings(); renderConfig();
+  }catch{showToast('Erro','error');}
+}
+</script>
+</body>
+</html>

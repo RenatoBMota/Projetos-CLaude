@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+{% block title %}Monitor SLA{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Início</a></li>
+<li class="breadcrumb-item active">SLA</li>
+{% endblock %}
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div>
+    <h1><i class="fa-solid fa-clock me-2 text-warning"></i>Monitor de SLA</h1>
+    <p class="subtitle">Acompanhamento de prazos em tempo real</p>
+  </div>
+  <a href="{{ url_for('sla.politicas') }}" class="btn btn-outline-primary">
+    <i class="fa-solid fa-gear me-1"></i>Políticas SLA
+  </a>
+</div>
+
+<!-- Filtros SLA -->
+<div class="form-card mb-4">
+  <form method="GET" class="row g-2 align-items-end">
+    <div class="col-md-2">
+      <label class="form-label">Status</label>
+      <select name="status" class="form-select form-select-sm">
+        <option value="atrasados" {% if filtro_status == 'atrasados' %}selected{% endif %}>Somente Atrasados</option>
+        <option value="todos" {% if filtro_status == 'todos' %}selected{% endif %}>Todos Ativos</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Canal</label>
+      <select name="canal" class="form-select form-select-sm">
+        <option value="">Todos</option>
+        {% for o in opcoes_canal %}
+        <option value="{{ o.valor }}" {% if filtro_canal == o.valor %}selected{% endif %}>{{ o.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Fornecedor</label>
+      <select name="fornecedor_id" class="form-select form-select-sm">
+        <option value="">Todos</option>
+        {% for f in fornecedores %}
+        <option value="{{ f.id }}" {% if filtro_forn == f.id %}selected{% endif %}>{{ f.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Comprador</label>
+      <input type="text" name="comprador" class="form-control form-control-sm"
+             placeholder="Nome..." value="{{ filtro_comprador }}">
+    </div>
+    <div class="col-md-1">
+      <label class="form-label">De</label>
+      <input type="date" name="data_ini" class="form-control form-control-sm"
+             value="{{ filtro_data_ini }}">
+    </div>
+    <div class="col-md-1">
+      <label class="form-label">Até</label>
+      <input type="date" name="data_fim" class="form-control form-control-sm"
+             value="{{ filtro_data_fim }}">
+    </div>
+    <div class="col-md-1 d-flex gap-1">
+      <button type="submit" class="btn btn-sm btn-primary-custom flex-grow-1">
+        <i class="fa-solid fa-search"></i>
+      </button>
+      <a href="{{ url_for('sla.index') }}" class="btn btn-sm btn-outline-secondary">
+        <i class="fa-solid fa-xmark"></i>
+      </a>
+    </div>
+  </form>
+</div>
+
+<!-- KPIs SLA -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#f0fdf4;color:#16a34a;">
+        <i class="fa-solid fa-shield-check"></i>
+      </div>
+      <div class="kpi-value text-success">{{ total_ok }}</div>
+      <div class="kpi-label">Dentro do Prazo</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#fef2f2;color:#dc2626;">
+        <i class="fa-solid fa-clock"></i>
+      </div>
+      <div class="kpi-value text-danger">{{ total_atraso }}</div>
+      <div class="kpi-label">Em Atraso</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#fff7ed;color:#f59e0b;">
+        <i class="fa-solid fa-rotate-left"></i>
+      </div>
+      <div class="kpi-value">{{ total_ativos }}</div>
+      <div class="kpi-label">RMAs Ativos</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#eff6ff;color:#2563eb;">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <div class="kpi-value">{{ total_violados }}</div>
+      <div class="kpi-label">Violações Históricas</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- RMAs em atraso -->
+  <div class="col-md-8">
+    <div class="table-card">
+      <div class="table-header">
+        <i class="fa-solid fa-triangle-exclamation text-danger"></i>
+        <span class="fw-bold text-danger">RMAs com SLA Vencido</span>
+        <span class="badge bg-danger ms-1">{{ rmas_atrasados|length }}</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Número</th>
+              <th>Estado</th>
+              <th>Fornecedor</th>
+              <th>Prazo Resolução</th>
+              <th>Dias Atraso</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rmas_atrasados %}
+            <tr style="background:#fef2f2;">
+              <td>
+                <a href="{{ url_for('rma.detalhe', rma_id=r.id) }}"
+                   class="fw-bold text-decoration-none text-danger">{{ r.numero }}</a>
+              </td>
+              <td><span class="badge bg-{{ r.estado_badge }} badge-estado">{{ r.estado_label }}</span></td>
+              <td>{{ r.fornecedor.nome if r.fornecedor else '—' }}</td>
+              <td>
+                {% if r.prazo_sla and r.prazo_sla.prazo_resolucao %}
+                <span class="text-danger fw-bold">{{ r.prazo_sla.prazo_resolucao|data }}</span>
+                {% else %}—{% endif %}
+              </td>
+              <td>
+                {% if r.prazo_sla and r.prazo_sla.prazo_resolucao %}
+                {% set diff = (agora - r.prazo_sla.prazo_resolucao).days %}
+                <span class="badge bg-danger">+{{ diff }}d</span>
+                {% else %}—{% endif %}
+              </td>
+              <td>
+                <a href="{{ url_for('rma.detalhe', rma_id=r.id) }}"
+                   class="btn btn-sm btn-outline-danger">
+                  <i class="fa-solid fa-eye"></i>
+                </a>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="6" class="text-center py-4">
+                <i class="fa-solid fa-check-circle fa-2x mb-2 d-block text-success"></i>
+                <span class="text-success fw-bold">Nenhum RMA em atraso!</span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ranking fornecedores -->
+  <div class="col-md-4">
+    <div class="table-card h-100">
+      <div class="table-header">
+        <i class="fa-solid fa-ranking-star text-warning"></i>
+        <span class="fw-bold">Ranking por Atraso</span>
+      </div>
+      <div class="p-3">
+        {% for nome, total, atrasados in por_fornecedor %}
+        {% set pct = (atrasados / total * 100)|round(0)|int if total else 0 %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between mb-1">
+            <small class="fw-bold text-truncate" style="max-width:150px;">{{ nome }}</small>
+            <small class="{% if pct > 50 %}text-danger{% elif pct > 25 %}text-warning{% else %}text-success{% endif %} fw-bold">
+              {{ atrasados }}/{{ total }}
+            </small>
+          </div>
+          <div class="sla-bar">
+            <div class="sla-bar-fill {% if pct > 50 %}bg-danger{% elif pct > 25 %}bg-warning{% else %}bg-success{% endif %}"
+                 style="width:{{ pct }}%;"></div>
+          </div>
+        </div>
+        {% else %}
+        <p class="text-muted small text-center">Sem dados.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
