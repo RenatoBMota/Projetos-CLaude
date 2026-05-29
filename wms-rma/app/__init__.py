@@ -65,8 +65,8 @@ def create_app():
     def check_blueprint_access():
         from flask import request as req, abort
         from flask_login import current_user as u
-        bp_name = req.blueprints.get(list(req.blueprints.keys())[-1]).name \
-                  if req.blueprints else ''
+        # request.blueprints é uma lista de strings em Flask
+        bp_name = req.blueprints[-1] if req.blueprints else ''
         if bp_name == 'auth' or not bp_name:
             return
         if not u.is_authenticated:
