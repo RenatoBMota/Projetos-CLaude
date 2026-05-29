@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta
+from decimal import Decimal
 from app.extensions import db
 from app.models import (
     Configuracao, Usuario, Roles, Fornecedor, Produto,
-    Armazem, Zona, Posicao, PoliticaSLA, RMA, EstadoRMA,
-    HistoricoRMA, PrazoSLA, TipoZona
+    Armazem, Zona, Modulo, Rua, Numero, Apartamento,
+    PoliticaSLA, RMA, EstadoRMA, HistoricoRMA, PrazoSLA, TipoZona
 )
 import random
 
@@ -107,13 +108,38 @@ def seed_banco():
 
     db.session.flush()
 
-    # ── Posições ─────────────────────────────────────────────────────────────
-    posicoes = []
-    for z in zonas:
-        for i in range(1, 11):
-            p = Posicao(zona_id=z.id, codigo=f'{z.codigo}-{i:02d}', peso_maximo_kg=50.0)
-            db.session.add(p)
-            posicoes.append(p)
+    # ── Hierarquia: Módulo → Rua → Número → Apartamento ──────────────────────
+    # Formato de endereço: {mod}-{rua}-{num}-{apt}  ex: 01-A-01-01
+    apartamentos = []
+    for z_idx, z in enumerate(zonas):
+        for mod_num in range(1, 3):           # 2 módulos por zona
+            mod_cod = f'{z_idx + 1:02d}{mod_num:02d}'  # e.g. '0101', '0102'
+            mod = Modulo(zona_id=z.id, codigo=mod_cod,
+                         nome=f'Módulo {mod_num} — {z.nome}')
+            db.session.add(mod)
+            db.session.flush()
+            for rua_cod in ('A', 'B'):        # 2 ruas por módulo
+                rua = Rua(modulo_id=mod.id, codigo=rua_cod)
+                db.session.add(rua)
+                db.session.flush()
+                for num_idx in range(1, 4):   # 3 números por rua
+                    num_cod = f'{num_idx:02d}'
+                    num = Numero(rua_id=rua.id, codigo=num_cod)
+                    db.session.add(num)
+                    db.session.flush()
+                    for apt_idx in range(1, 4):  # 3 apartamentos por número
+                        apt_cod = f'{apt_idx:02d}'
+                        endereco = f'{mod_cod}-{rua_cod}-{num_cod}-{apt_cod}'
+                        apt = Apartamento(
+                            numero_id=num.id,
+                            codigo=apt_cod,
+                            endereco=endereco,
+                            peso_maximo_kg=50.0,
+                        )
+                        db.session.add(apt)
+                        apartamentos.append(apt)
+
+    db.session.flush()
 
     db.session.flush()
 

@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+{% block title %}RMAs{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Início</a></li>
+<li class="breadcrumb-item active">RMA</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div>
+    <h1><i class="fa-solid fa-rotate-left me-2 text-primary"></i>Gestão de RMA</h1>
+    <p class="subtitle">{{ rmas.total }} registro(s) encontrado(s)</p>
+  </div>
+  <a href="{{ url_for('rma.novo') }}" class="btn btn-primary-custom">
+    <i class="fa-solid fa-plus me-1"></i> Novo RMA
+  </a>
+</div>
+
+<!-- ── Filtros ─────────────────────────────────────────────────────────────── -->
+<div class="form-card mb-4">
+  <form method="GET" class="row g-2 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label">Busca</label>
+      <input type="text" name="busca" class="form-control"
+             placeholder="Número, cliente, NF..." value="{{ filtro_busca }}">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Estado</label>
+      <select name="estado" class="form-select">
+        <option value="">Todos</option>
+        {% for cod, (label, badge) in estados %}
+        <option value="{{ cod }}" {% if filtro_estado == cod %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Canal</label>
+      <select name="canal" class="form-select">
+        <option value="">Todos</option>
+        <option value="LOJA"     {% if filtro_canal == 'LOJA' %}selected{% endif %}>Loja</option>
+        <option value="ECOMMERCE"{% if filtro_canal == 'ECOMMERCE' %}selected{% endif %}>E-commerce</option>
+        <option value="B2B"      {% if filtro_canal == 'B2B' %}selected{% endif %}>B2B</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Fornecedor</label>
+      <select name="fornecedor_id" class="form-select">
+        <option value="">Todos</option>
+        {% for f in fornecedores %}
+        <option value="{{ f.id }}" {% if filtro_forn == f.id %}selected{% endif %}>{{ f.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">SLA</label>
+      <select name="atrasados" class="form-select">
+        <option value="">Todos</option>
+        <option value="1" {% if filtro_atrasados %}selected{% endif %}>Apenas atrasados</option>
+      </select>
+    </div>
+    <div class="col-md-1">
+      <button type="submit" class="btn btn-primary-custom w-100">
+        <i class="fa-solid fa-magnifying-glass"></i>
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- ── Tabela ──────────────────────────────────────────────────────────────── -->
+<div class="table-card">
+  <div class="table-header">
+    <i class="fa-solid fa-list text-muted"></i>
+    <span class="fw-bold">Lista de RMAs</span>
+    {% if filtro_busca or filtro_estado or filtro_canal or filtro_forn or filtro_atrasados %}
+    <a href="{{ url_for('rma.index') }}" class="btn btn-sm btn-outline-secondary ms-2">
+      <i class="fa-solid fa-xmark me-1"></i>Limpar filtros
+    </a>
+    {% endif %}
+    <div class="ms-auto">
+      <a href="{{ url_for('relatorios.exportar_excel') }}{% if request.query_string %}?{{ request.query_string.decode() }}{% endif %}"
+         class="btn btn-sm btn-outline-success me-1">
+        <i class="fa-solid fa-file-excel me-1"></i>Excel
+      </a>
+      <a href="{{ url_for('relatorios.exportar_pdf') }}{% if request.query_string %}?{{ request.query_string.decode() }}{% endif %}"
+         class="btn btn-sm btn-outline-danger">
+        <i class="fa-solid fa-file-pdf me-1"></i>PDF
+      </a>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Número</th>
+          <th>Estado</th>
+          <th>Canal</th>
+          <th>Cliente</th>
+          <th>Produto</th>
+          <th>Fornecedor</th>
+          <th>Qtd</th>
+          <th>SLA</th>
+          <th>Dias</th>
+          <th>Recebido</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rmas.items %}
+        <tr {% if r.em_atraso %}style="background:#fef2f2"{% endif %}>
+          <td>
+            <a href="{{ url_for('rma.detalhe', rma_id=r.id) }}"
+               class="fw-bold text-decoration-none text-primary">{{ r.numero }}</a>
+          </td>
+          <td>
+            <span class="badge bg-{{ r.estado_badge }} badge-estado">{{ r.estado_label }}</span>
+          </td>
+          <td>
+            <span class="badge bg-light text-secondary border">{{ r.canal or '—' }}</span>
+          </td>
+          <td class="text-truncate" style="max-width:140px;">{{ r.cliente_nome or '—' }}</td>
+          <td class="text-truncate" style="max-width:160px;">
+            {% if r.produto %}{{ r.produto.descricao }}{% else %}—{% endif %}
+          </td>
+          <td class="text-truncate" style="max-width:120px;">
+            {% if r.fornecedor %}{{ r.fornecedor.nome }}{% else %}—{% endif %}
+          </td>
+          <td class="text-center">{{ r.quantidade }}</td>
+          <td>
+            {% if r.em_atraso %}
+            <span class="badge bg-danger"><i class="fa-solid fa-clock me-1"></i>Atrasado</span>
+            {% elif r.estado in ['FINALIZADO','CANCELADO'] %}
+            <span class="badge bg-secondary">Encerrado</span>
+            {% else %}
+            <span class="badge bg-success-subtle text-success border">OK</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            <span class="{% if r.dias_em_aberto > 15 %}text-danger fw-bold{% elif r.dias_em_aberto > 7 %}text-warning{% else %}text-muted{% endif %}">
+              {{ r.dias_em_aberto }}d
+            </span>
+          </td>
+          <td class="text-muted small">{{ r.recebido_em | data }}</td>
+          <td>
+            <a href="{{ url_for('rma.detalhe', rma_id=r.id) }}"
+               class="btn btn-sm btn-outline-primary">
+              <i class="fa-solid fa-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="11" class="text-center py-5 text-muted">
+            <i class="fa-solid fa-inbox fa-2x mb-2 d-block"></i>
+            Nenhum RMA encontrado com os filtros aplicados.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Paginação -->
+  {% if rmas.pages > 1 %}
+  <div class="d-flex justify-content-between align-items-center p-3 border-top">
+    <small class="text-muted">
+      Página {{ rmas.page }} de {{ rmas.pages }} ({{ rmas.total }} registros)
+    </small>
+    <nav>
+      <ul class="pagination pagination-sm mb-0">
+        {% if rmas.has_prev %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ rmas.prev_num }}&busca={{ filtro_busca }}&estado={{ filtro_estado }}&canal={{ filtro_canal }}">Anterior</a>
+        </li>
+        {% endif %}
+        {% for p in rmas.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+          {% if p %}
+          <li class="page-item {% if p == rmas.page %}active{% endif %}">
+            <a class="page-link" href="?page={{ p }}&busca={{ filtro_busca }}&estado={{ filtro_estado }}&canal={{ filtro_canal }}">{{ p }}</a>
+          </li>
+          {% else %}
+          <li class="page-item disabled"><span class="page-link">…</span></li>
+          {% endif %}
+        {% endfor %}
+        {% if rmas.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ rmas.next_num }}&busca={{ filtro_busca }}&estado={{ filtro_estado }}&canal={{ filtro_canal }}">Próxima</a>
+        </li>
+        {% endif %}
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

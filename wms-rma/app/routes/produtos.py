@@ -59,6 +59,8 @@ def novo():
                 categoria=request.form.get('categoria'),
                 fornecedor_id=request.form.get('fornecedor_id', type=int) or None,
                 peso_kg=request.form.get('peso_kg', type=float),
+                valor_unitario=request.form.get('valor_unitario', type=float),
+                observacoes=request.form.get('observacoes'),
             )
             db.session.add(p)
             db.session.commit()
@@ -74,12 +76,14 @@ def novo():
 def editar(prod_id):
     p = Produto.query.get_or_404(prod_id)
     if request.method == 'POST':
-        p.descricao    = request.form.get('descricao')
-        p.ean          = request.form.get('ean')
-        p.marca        = request.form.get('marca')
-        p.categoria    = request.form.get('categoria')
-        p.fornecedor_id= request.form.get('fornecedor_id', type=int) or None
-        p.peso_kg      = request.form.get('peso_kg', type=float)
+        p.descricao      = request.form.get('descricao')
+        p.ean            = request.form.get('ean')
+        p.marca          = request.form.get('marca')
+        p.categoria      = request.form.get('categoria')
+        p.fornecedor_id  = request.form.get('fornecedor_id', type=int) or None
+        p.peso_kg        = request.form.get('peso_kg', type=float)
+        p.valor_unitario = request.form.get('valor_unitario', type=float)
+        p.observacoes    = request.form.get('observacoes')
         db.session.commit()
         flash('Produto atualizado!', 'success')
         return redirect(url_for('produtos.index'))

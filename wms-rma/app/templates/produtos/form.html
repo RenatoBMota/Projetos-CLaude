@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Novo Produto' if not produto else 'Editar — ' + produto.codigo }}{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('produtos.index') }}">Produtos</a></li>
+<li class="breadcrumb-item active">{{ 'Novo' if not produto else 'Editar' }}</li>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>
+    <i class="fa-solid fa-{{ 'box-open' if not produto else 'pen-to-square' }} me-2 text-primary"></i>
+    {{ 'Novo Produto' if not produto else 'Editar: ' + produto.codigo }}
+  </h1>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-md-9">
+    <form method="POST" action="{{ url_for('produtos.novo') if not produto else url_for('produtos.editar', prod_id=produto.id) }}">
+      <div class="form-card">
+        <div class="row g-3">
+
+          <div class="col-md-4">
+            <label class="form-label">Código *</label>
+            <input type="text" name="codigo" class="form-control text-uppercase" required
+                   value="{{ produto.codigo if produto else '' }}"
+                   {% if produto %}readonly{% endif %}
+                   placeholder="EX: PROD-001">
+            {% if not produto %}
+            <div class="form-text">Código único e imutável após o cadastro.</div>
+            {% endif %}
+          </div>
+
+          <div class="col-md-8">
+            <label class="form-label">Descrição *</label>
+            <input type="text" name="descricao" class="form-control" required
+                   value="{{ produto.descricao if produto else '' }}"
+                   placeholder="Nome completo do produto">
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">EAN / Código de Barras</label>
+            <input type="text" name="ean" class="form-control font-monospace"
+                   value="{{ produto.ean if produto else '' }}"
+                   placeholder="0000000000000">
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Marca</label>
+            <input type="text" name="marca" class="form-control"
+                   value="{{ produto.marca if produto else '' }}"
+                   placeholder="Ex: Samsung, LG...">
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Categoria</label>
+            <input type="text" name="categoria" class="form-control"
+                   value="{{ produto.categoria if produto else '' }}"
+                   placeholder="Ex: Eletrodomésticos"
+                   list="listCategorias">
+            <datalist id="listCategorias">
+              <option value="Eletrodomésticos">
+              <option value="Eletrônicos">
+              <option value="Informática">
+              <option value="Ferramentas">
+              <option value="Móveis">
+              <option value="Iluminação">
+              <option value="Hidráulica">
+              <option value="Material Elétrico">
+            </datalist>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Fornecedor Principal</label>
+            <select name="fornecedor_id" class="form-select">
+              <option value="">— Sem fornecedor —</option>
+              {% for f in fornecedores %}
+              <option value="{{ f.id }}"
+                {% if produto and produto.fornecedor_id == f.id %}selected{% endif %}>
+                {{ f.nome }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label">Peso (kg)</label>
+            <div class="input-group">
+              <input type="number" name="peso_kg" class="form-control"
+                     value="{{ produto.peso_kg if produto else '' }}"
+                     step="0.001" min="0" placeholder="0.000">
+              <span class="input-group-text">kg</span>
+            </div>
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label">Valor Unitário</label>
+            <div class="input-group">
+              <span class="input-group-text">R$</span>
+              <input type="number" name="valor_unitario" class="form-control"
+                     value="{{ produto.valor_unitario if produto else '' }}"
+                     step="0.01" min="0" placeholder="0,00">
+            </div>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Observações</label>
+            <textarea name="observacoes" class="form-control" rows="2"
+                      placeholder="Informações adicionais sobre o produto...">{{ produto.observacoes if produto else '' }}</textarea>
+          </div>
+
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+          <button type="submit" class="btn btn-primary-custom">
+            <i class="fa-solid fa-save me-1"></i>Salvar Produto
+          </button>
+          <a href="{{ url_for('produtos.index') }}" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-xmark me-1"></i>Cancelar
+          </a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

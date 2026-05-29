@@ -1,0 +1,266 @@
+{% extends 'base.html' %}
+{% block title %}Relatórios{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Início</a></li>
+<li class="breadcrumb-item active">Relatórios</li>
+{% endblock %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="fa-solid fa-chart-bar me-2 text-primary"></i>Relatórios</h1>
+  <p class="subtitle">Filtros avançados com exportação em Excel e PDF</p>
+</div>
+
+<!-- Navegação de relatórios -->
+<ul class="nav nav-pills mb-4">
+  <li class="nav-item">
+    <a class="nav-link active" href="{{ url_for('relatorios.index') }}">
+      <i class="fa-solid fa-list me-1"></i>Listagem Geral
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="{{ url_for('relatorios.aging') }}">
+      <i class="fa-solid fa-hourglass me-1"></i>Aging
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="{{ url_for('relatorios.por_fornecedor') }}">
+      <i class="fa-solid fa-building me-1"></i>Por Fornecedor
+    </a>
+  </li>
+</ul>
+
+<!-- Filtros -->
+<div class="form-card mb-4">
+  <h6 class="fw-bold mb-3">
+    <i class="fa-solid fa-filter me-2 text-primary"></i>Filtros
+  </h6>
+  <form method="GET" class="row g-3 align-items-end">
+    <div class="col-md-2">
+      <label class="form-label">Data Inicial</label>
+      <input type="date" name="data_ini" class="form-control"
+             value="{{ filtros.get('data_ini','') }}">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Data Final</label>
+      <input type="date" name="data_fim" class="form-control"
+             value="{{ filtros.get('data_fim','') }}">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Estado</label>
+      <select name="estado" class="form-select">
+        <option value="">Todos</option>
+        {% for cod, (label, badge) in estados %}
+        <option value="{{ cod }}" {% if filtros.get('estado') == cod %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Canal</label>
+      <select name="canal" class="form-select">
+        <option value="">Todos</option>
+        <option value="LOJA"      {% if filtros.get('canal') == 'LOJA' %}selected{% endif %}>Loja</option>
+        <option value="ECOMMERCE" {% if filtros.get('canal') == 'ECOMMERCE' %}selected{% endif %}>E-commerce</option>
+        <option value="B2B"       {% if filtros.get('canal') == 'B2B' %}selected{% endif %}>B2B</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Fornecedor</label>
+      <select name="fornecedor_id" class="form-select">
+        <option value="">Todos</option>
+        {% for f in fornecedores %}
+        <option value="{{ f.id }}" {% if filtros.get('fornecedor_id')|string == f.id|string %}selected{% endif %}>
+          {{ f.nome }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2 d-flex gap-2">
+      <button type="submit" class="btn btn-primary-custom flex-grow-1">
+        <i class="fa-solid fa-search me-1"></i>Filtrar
+      </button>
+      <a href="{{ url_for('relatorios.index') }}" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-xmark"></i>
+      </a>
+    </div>
+  </form>
+</div>
+
+{% if filtros %}
+<!-- Resumo dos resultados -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#eff6ff;color:#2563eb;">
+        <i class="fa-solid fa-hashtag"></i>
+      </div>
+      <div class="kpi-value">{{ total }}</div>
+      <div class="kpi-label">Total de RMAs</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#f0fdf4;color:#16a34a;">
+        <i class="fa-solid fa-circle-check"></i>
+      </div>
+      <div class="kpi-value text-success">{{ finalizados }}</div>
+      <div class="kpi-label">Finalizados</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#fef2f2;color:#dc2626;">
+        <i class="fa-solid fa-clock"></i>
+      </div>
+      <div class="kpi-value text-danger">{{ atrasados }}</div>
+      <div class="kpi-label">Em Atraso</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#fff7ed;color:#f59e0b;">
+        <i class="fa-solid fa-dollar-sign"></i>
+      </div>
+      <div class="kpi-value" style="font-size:1.2rem;">{{ valor_total|moeda }}</div>
+      <div class="kpi-label">Valor Total</div>
+    </div>
+  </div>
+</div>
+
+<!-- Gráficos -->
+{% if por_estado or por_forn %}
+<div class="row g-3 mb-4">
+  {% if por_estado %}
+  <div class="col-md-5">
+    <div class="table-card p-3">
+      <h6 class="fw-bold mb-3">Por Estado</h6>
+      <canvas id="chartEstado" height="180"></canvas>
+    </div>
+  </div>
+  {% endif %}
+  {% if por_forn %}
+  <div class="col-md-7">
+    <div class="table-card p-3">
+      <h6 class="fw-bold mb-3">Por Fornecedor</h6>
+      <canvas id="chartForn" height="120"></canvas>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- Tabela e botões de exportação -->
+<div class="table-card">
+  <div class="table-header">
+    <span class="fw-bold">{{ total }} registro(s)</span>
+    <div class="ms-auto d-flex gap-2">
+      <a href="{{ url_for('relatorios.exportar_excel') }}?{{ request.query_string.decode() }}"
+         class="btn btn-success btn-sm">
+        <i class="fa-solid fa-file-excel me-1"></i>Exportar Excel
+      </a>
+      <a href="{{ url_for('relatorios.exportar_pdf') }}?{{ request.query_string.decode() }}"
+         class="btn btn-danger btn-sm">
+        <i class="fa-solid fa-file-pdf me-1"></i>Exportar PDF
+      </a>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Número</th>
+          <th>Estado</th>
+          <th>Canal</th>
+          <th>Cliente</th>
+          <th>Produto</th>
+          <th>Fornecedor</th>
+          <th>Valor</th>
+          <th>SLA</th>
+          <th>Dias</th>
+          <th>Recebido</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rmas[:100] %}
+        <tr {% if r.em_atraso %}style="background:#fef2f2"{% endif %}>
+          <td>
+            <a href="{{ url_for('rma.detalhe', rma_id=r.id) }}"
+               class="text-decoration-none fw-bold text-primary">{{ r.numero }}</a>
+          </td>
+          <td><span class="badge bg-{{ r.estado_badge }} badge-estado">{{ r.estado_label }}</span></td>
+          <td><span class="badge bg-light text-dark border">{{ r.canal or '—' }}</span></td>
+          <td class="text-truncate" style="max-width:130px;">{{ r.cliente_nome or '—' }}</td>
+          <td class="text-truncate" style="max-width:150px;">{{ r.produto.descricao if r.produto else '—' }}</td>
+          <td class="text-truncate" style="max-width:120px;">{{ r.fornecedor.nome if r.fornecedor else '—' }}</td>
+          <td>{{ r.valor_produto|moeda }}</td>
+          <td>
+            {% if r.em_atraso %}
+            <span class="badge bg-danger">Atrasado</span>
+            {% elif r.estado in ['FINALIZADO','CANCELADO'] %}
+            <span class="badge bg-secondary">Enc.</span>
+            {% else %}
+            <span class="badge bg-success-subtle text-success border">OK</span>
+            {% endif %}
+          </td>
+          <td class="text-center">{{ r.dias_em_aberto }}d</td>
+          <td class="text-muted small">{{ r.recebido_em|data }}</td>
+        </tr>
+        {% endfor %}
+        {% if rmas|length > 100 %}
+        <tr>
+          <td colspan="10" class="text-center text-muted py-2 small">
+            Exibindo 100 de {{ total }} registros. Exporte para ver todos.
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="form-card text-center py-5">
+  <i class="fa-solid fa-filter fa-3x mb-3 text-muted"></i>
+  <p class="text-muted">Aplique os filtros acima para gerar o relatório.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if filtros and (por_estado or por_forn) %}
+<script>
+{% if por_estado %}
+const estadoCores = {
+  'Aberto':'#6b7280','Ag. Triagem':'#f59e0b','Em Análise':'#3b82f6',
+  'Ag. Destinação':'#8b5cf6','Ag. Coleta':'#f97316',
+  'Coletado':'#10b981','Finalizado':'#16a34a','Cancelado':'#ef4444','Sucata':'#374151'
+};
+new Chart(document.getElementById('chartEstado'), {
+  type: 'doughnut',
+  data: {
+    labels: {{ por_estado.keys()|list|tojson }},
+    datasets: [{ data: {{ por_estado.values()|list|tojson }},
+      backgroundColor: {{ por_estado.keys()|list|tojson }}.map(k => estadoCores[k]||'#999'),
+      borderWidth: 2, borderColor: '#fff' }]
+  },
+  options: { cutout:'65%', plugins:{ legend:{ position:'bottom', labels:{ font:{ size:11 } } } } }
+});
+{% endif %}
+
+{% if por_forn %}
+new Chart(document.getElementById('chartForn'), {
+  type: 'bar',
+  data: {
+    labels: {{ por_forn.keys()|list|tojson }}.map(k => k.length>15?k.substring(0,14)+'…':k),
+    datasets: [{
+      label: 'RMAs', data: {{ por_forn.values()|list|tojson }},
+      backgroundColor:'rgba(37,99,235,.7)', borderRadius:6
+    }]
+  },
+  options: { indexAxis:'y', plugins:{ legend:{ display:false } }, scales:{ x:{ beginAtZero:true } } }
+});
+{% endif %}
+</script>
+{% endif %}
+{% endblock %}

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from app.extensions import db
 from app.models import (
     RMA, EstadoRMA, HistoricoRMA, Produto, Fornecedor,
-    Posicao, PoliticaSLA, PrazoSLA, Documento
+    Apartamento, PoliticaSLA, PrazoSLA, Documento
 )
 from app.utils import gerar_numero_rma, salvar_arquivo, allowed_file
 import os
@@ -126,20 +126,19 @@ def novo():
 @login_required
 def detalhe(rma_id):
     rma = RMA.query.get_or_404(rma_id)
-    posicoes = Posicao.query.filter_by(ocupada=False).limit(20).all()
-    return render_template('rma/detail.html', rma=rma, posicoes=posicoes)
+    apartamentos = Apartamento.query.filter_by(ocupado=False).limit(50).all()
+    return render_template('rma/detail.html', rma=rma, apartamentos=apartamentos)
 
 
 @bp.route('/<int:rma_id>/transitar', methods=['POST'])
 @login_required
 def transitar(rma_id):
     rma = RMA.query.get_or_404(rma_id)
-    novo_estado  = request.form.get('novo_estado')
-    observacao   = request.form.get('observacao', '')
-    laudo        = request.form.get('laudo_tecnico')
-    disposicao   = request.form.get('disposicao')
-    categoria    = request.form.get('categoria_defeito')
-    posicao_id   = request.form.get('posicao_id', type=int)
+    novo_estado = request.form.get('novo_estado')
+    observacao  = request.form.get('observacao', '')
+    laudo       = request.form.get('laudo_tecnico')
+    disposicao  = request.form.get('disposicao')
+    categoria   = request.form.get('categoria_defeito')
 
     if not rma.pode_transitar(novo_estado):
         flash('Transição de estado não permitida.', 'danger')
@@ -154,16 +153,17 @@ def transitar(rma_id):
         rma.disposicao = disposicao
     if categoria:
         rma.categoria_defeito = categoria
-    if posicao_id:
-        pos_antiga = rma.posicao_id
-        if pos_antiga:
-            p_old = Posicao.query.get(pos_antiga)
-            if p_old:
-                p_old.ocupada = False
-        rma.posicao_id = posicao_id
-        nova_pos = Posicao.query.get(posicao_id)
-        if nova_pos:
-            nova_pos.ocupada = True
+    apt_id = request.form.get('apartamento_id', type=int)
+    if apt_id:
+        apt_antigo = rma.apartamento_id
+        if apt_antigo:
+            a_old = Apartamento.query.get(apt_antigo)
+            if a_old:
+                a_old.ocupado = False
+        rma.apartamento_id = apt_id
+        novo_apt = Apartamento.query.get(apt_id)
+        if novo_apt:
+            novo_apt.ocupado = True
     if novo_estado in (EstadoRMA.FINALIZADO, EstadoRMA.CANCELADO):
         rma.finalizado_em = datetime.utcnow()
     if novo_estado in (EstadoRMA.EM_ANALISE, EstadoRMA.AGUARDANDO_DEST):

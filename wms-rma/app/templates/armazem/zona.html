@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}{{ zona.nome }}{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('armazem.index') }}">Armazém</a></li>
+<li class="breadcrumb-item active">{{ zona.nome }}</li>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="fa-solid fa-layer-group me-2 text-primary"></i>{{ zona.nome }}</h1>
+  <p class="subtitle">{{ zona.tipo_label }} · {{ zona.total_apartamentos }} apartamentos · {{ zona.ocupacao_pct }}% ocupado</p>
+</div>
+
+{% for modulo in modulos %}
+<div class="form-card mb-3">
+  <h6 class="fw-bold mb-3 pb-2 border-bottom">
+    <i class="fa-solid fa-cube me-2 text-primary"></i>
+    Módulo {{ modulo.codigo }} {{ '— ' + modulo.nome if modulo.nome else '' }}
+  </h6>
+
+  {% for rua in modulo.ruas.all() %}
+  <div class="mb-3">
+    <div class="text-muted small fw-bold mb-2">
+      <i class="fa-solid fa-road me-1"></i>Rua {{ rua.codigo }}
+    </div>
+    {% for num in rua.numeros.all() %}
+    <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+      <span class="badge bg-light text-dark border" style="min-width:60px;">Nº {{ num.codigo }}</span>
+      {% for apt in num.apartamentos.all() %}
+      <span class="badge {% if apt.ocupado %}bg-danger{% else %}bg-success{% endif %}"
+            title="Endereço: {{ apt.endereco }}{% if apt.ocupado %} (Ocupado){% endif %}"
+            style="cursor:default;">
+        {{ apt.endereco }}
+      </span>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="text-muted small">Nenhuma rua cadastrada.</p>
+  {% endfor %}
+</div>
+{% else %}
+<div class="form-card text-center py-5">
+  <i class="fa-solid fa-inbox fa-3x mb-3 text-muted"></i>
+  <p class="text-muted">Nenhum módulo cadastrado nesta zona.</p>
+  <p class="text-muted small">Use o botão "Gerar Endereços" na tela de Armazém para criar a estrutura.</p>
+  <a href="{{ url_for('armazem.index') }}" class="btn btn-outline-primary">
+    <i class="fa-solid fa-arrow-left me-1"></i>Voltar ao Armazém
+  </a>
+</div>
+{% endfor %}
+
+<div class="mt-2">
+  <a href="{{ url_for('armazem.index') }}" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i>Voltar
+  </a>
+</div>
+{% endblock %}

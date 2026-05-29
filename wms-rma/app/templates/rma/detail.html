@@ -1,0 +1,371 @@
+{% extends 'base.html' %}
+{% block title %}{{ rma.numero }}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('rma.index') }}">RMA</a></li>
+<li class="breadcrumb-item active">{{ rma.numero }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div>
+    <h1 class="d-flex align-items-center gap-2">
+      {{ rma.numero }}
+      <span class="badge bg-{{ rma.estado_badge }} fs-6">{{ rma.estado_label }}</span>
+      {% if rma.em_atraso %}
+      <span class="badge bg-danger fs-6"><i class="fa-solid fa-clock me-1"></i>SLA ATRASADO</span>
+      {% endif %}
+    </h1>
+    <p class="subtitle">
+      Recebido em {{ rma.recebido_em|datahora }} &nbsp;|&nbsp;
+      {{ rma.dias_em_aberto }} dia(s) em aberto
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('rma.index') }}" class="btn btn-outline-secondary">
+      <i class="fa-solid fa-arrow-left me-1"></i>Voltar
+    </a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Coluna principal -->
+  <div class="col-md-8">
+
+    <!-- Dados principais -->
+    <div class="form-card mb-3">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div class="text-muted small fw-bold text-uppercase">Canal</div>
+          <div>{{ rma.canal or '—' }}</div>
+        </div>
+        <div class="col-md-4">
+          <div class="text-muted small fw-bold text-uppercase">Loja Origem</div>
+          <div>{{ rma.loja_origem or '—' }}</div>
+        </div>
+        <div class="col-md-4">
+          <div class="text-muted small fw-bold text-uppercase">NF Original</div>
+          <div>{{ rma.nf_original or '—' }}</div>
+        </div>
+        <div class="col-md-6">
+          <div class="text-muted small fw-bold text-uppercase">Cliente</div>
+          <div>{{ rma.cliente_nome or '—' }}</div>
+        </div>
+        <div class="col-md-6">
+          <div class="text-muted small fw-bold text-uppercase">CPF/CNPJ</div>
+          <div>{{ rma.cliente_documento or '—' }}</div>
+        </div>
+        <div class="col-md-6">
+          <div class="text-muted small fw-bold text-uppercase">Produto</div>
+          <div>{{ rma.produto.descricao if rma.produto else '—' }}</div>
+          <small class="text-muted">{{ rma.produto.codigo if rma.produto else '' }}</small>
+        </div>
+        <div class="col-md-3">
+          <div class="text-muted small fw-bold text-uppercase">Fornecedor</div>
+          <div>{{ rma.fornecedor.nome if rma.fornecedor else '—' }}</div>
+        </div>
+        <div class="col-md-3">
+          <div class="text-muted small fw-bold text-uppercase">Quantidade</div>
+          <div>{{ rma.quantidade }}</div>
+        </div>
+        <div class="col-md-4">
+          <div class="text-muted small fw-bold text-uppercase">Nº de Série</div>
+          <div>{{ rma.numero_serie or '—' }}</div>
+        </div>
+        <div class="col-md-4">
+          <div class="text-muted small fw-bold text-uppercase">Valor Produto</div>
+          <div>{{ rma.valor_produto|moeda }}</div>
+        </div>
+        <div class="col-md-4">
+          <div class="text-muted small fw-bold text-uppercase">Valor Crédito</div>
+          <div>{{ rma.valor_credito|moeda }}</div>
+        </div>
+        <div class="col-md-6">
+          <div class="text-muted small fw-bold text-uppercase">Motivo</div>
+          <div>{{ rma.motivo_devolucao or '—' }}</div>
+        </div>
+        <div class="col-md-6">
+          <div class="text-muted small fw-bold text-uppercase">Categoria Defeito</div>
+          <div>{{ rma.categoria_defeito or '—' }}</div>
+        </div>
+        <div class="col-12">
+          <div class="text-muted small fw-bold text-uppercase">Descrição do Defeito</div>
+          <div>{{ rma.descricao_defeito or '—' }}</div>
+        </div>
+        {% if rma.laudo_tecnico %}
+        <div class="col-12">
+          <div class="text-muted small fw-bold text-uppercase">Laudo Técnico</div>
+          <div class="bg-light rounded p-2">{{ rma.laudo_tecnico }}</div>
+        </div>
+        {% endif %}
+        {% if rma.disposicao %}
+        <div class="col-md-6">
+          <div class="text-muted small fw-bold text-uppercase">Destinação</div>
+          <span class="badge bg-primary">{{ rma.disposicao }}</span>
+        </div>
+        {% endif %}
+        {% if rma.apt_ref %}
+        <div class="col-md-6">
+          <div class="text-muted small fw-bold text-uppercase">Endereço no Armazém</div>
+          <span class="badge bg-dark fs-6">
+            <i class="fa-solid fa-location-dot me-1"></i>{{ rma.apt_ref.endereco }}
+          </span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Transições disponíveis -->
+    {% set transicoes = rma.proximas_transicoes() %}
+    {% if transicoes %}
+    <div class="form-card mb-3">
+      <h6 class="fw-bold mb-3 pb-2 border-bottom">
+        <i class="fa-solid fa-arrows-rotate me-2 text-primary"></i>Ações Disponíveis
+      </h6>
+      {% for trigger, dest, label, cor in transicoes %}
+      <button type="button" class="btn btn-{{ cor }} me-2 mb-2"
+              data-bs-toggle="modal" data-bs-target="#modalTransicao"
+              data-dest="{{ dest }}" data-label="{{ label }}" data-cor="{{ cor }}">
+        <i class="fa-solid fa-{% if cor == 'success' %}check{% elif cor == 'danger' %}xmark{% elif cor == 'info' %}search{% else %}arrow-right{% endif %} me-1"></i>
+        {{ label }}
+      </button>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Upload de documentos -->
+    <div class="form-card mb-3">
+      <h6 class="fw-bold mb-3 pb-2 border-bottom">
+        <i class="fa-solid fa-paperclip me-2 text-primary"></i>Documentos e Evidências
+      </h6>
+      <form method="POST" action="{{ url_for('rma.upload_doc', rma_id=rma.id) }}"
+            enctype="multipart/form-data" class="row g-2 mb-3">
+        <div class="col-md-4">
+          <select name="tipo" class="form-select form-select-sm">
+            <option value="FOTO_AVARIA">Foto de Avaria</option>
+            <option value="LAUDO">Laudo Técnico</option>
+            <option value="NF">Nota Fiscal</option>
+            <option value="OUTRO">Outro</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <input type="file" name="arquivo" class="form-control form-control-sm" required>
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-sm btn-primary-custom w-100">
+            <i class="fa-solid fa-upload"></i>
+          </button>
+        </div>
+      </form>
+
+      {% if rma.documentos %}
+      <div class="list-group list-group-flush">
+        {% for doc in rma.documentos %}
+        <div class="list-group-item d-flex align-items-center gap-2 px-0">
+          <i class="fa-solid fa-{% if 'foto' in doc.tipo.lower() or 'foto' in doc.nome.lower() %}image{% elif 'pdf' in doc.nome.lower() %}file-pdf text-danger{% else %}file{% endif %} text-muted"></i>
+          <div>
+            <div class="small fw-bold">{{ doc.nome }}</div>
+            <div class="text-muted" style="font-size:.7rem;">
+              {{ doc.tipo }} · {{ doc.criado_em|datahora }}
+              {% if doc.usuario %}· {{ doc.usuario.nome }}{% endif %}
+            </div>
+          </div>
+          <a href="{{ url_for('static', filename=doc.caminho) }}"
+             target="_blank" class="btn btn-sm btn-outline-secondary ms-auto">
+            <i class="fa-solid fa-eye"></i>
+          </a>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-muted small mb-0">Nenhum documento anexado.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Coluna lateral -->
+  <div class="col-md-4">
+    <!-- SLA -->
+    {% if rma.prazo_sla %}
+    <div class="form-card mb-3">
+      <h6 class="fw-bold mb-3 pb-2 border-bottom">
+        <i class="fa-solid fa-clock me-2 text-warning"></i>SLA
+      </h6>
+      {% set prazo = rma.prazo_sla %}
+      <div class="mb-2">
+        <div class="d-flex justify-content-between mb-1">
+          <small>Triagem</small>
+          <small class="text-muted">{{ prazo.prazo_triagem|data if prazo.prazo_triagem else '—' }}</small>
+        </div>
+        <div class="mb-2">
+          <div class="d-flex justify-content-between mb-1">
+            <small>Resolução</small>
+            <small class="{% if prazo.em_atraso %}text-danger fw-bold{% else %}text-muted{% endif %}">
+              {{ prazo.prazo_resolucao|data if prazo.prazo_resolucao else '—' }}
+            </small>
+          </div>
+        </div>
+        <div>
+          <div class="d-flex justify-content-between mb-1">
+            <small>Coleta</small>
+            <small class="text-muted">{{ prazo.prazo_coleta|data if prazo.prazo_coleta else '—' }}</small>
+          </div>
+        </div>
+      </div>
+      {% if prazo.em_atraso %}
+      <div class="alert alert-danger py-2 mb-0 small">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>SLA violado!
+      </div>
+      {% elif prazo.politica %}
+      <div class="alert alert-success py-2 mb-0 small">
+        <i class="fa-solid fa-shield-check me-1"></i>Dentro do prazo
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Responsáveis -->
+    <div class="form-card mb-3">
+      <h6 class="fw-bold mb-3 pb-2 border-bottom">
+        <i class="fa-solid fa-users me-2 text-primary"></i>Responsáveis
+      </h6>
+      <div class="mb-2">
+        <div class="text-muted small">Operador</div>
+        <div>{{ rma.operador.nome if rma.operador else '—' }}</div>
+      </div>
+      <div>
+        <div class="text-muted small">Técnico</div>
+        <div>{{ rma.tecnico.nome if rma.tecnico else '—' }}</div>
+      </div>
+    </div>
+
+    <!-- Histórico -->
+    <div class="form-card">
+      <h6 class="fw-bold mb-3 pb-2 border-bottom">
+        <i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>Histórico
+      </h6>
+      <div class="timeline">
+        {% for h in rma.historico|reverse %}
+        <div class="timeline-item">
+          <div class="timeline-date">{{ h.criado_em|datahora }}</div>
+          <div class="timeline-body">
+            {% if h.estado_anterior %}
+            <span class="badge bg-secondary badge-estado">{{ h.estado_anterior_label }}</span>
+            <i class="fa-solid fa-arrow-right mx-1 text-muted" style="font-size:.7rem;"></i>
+            {% endif %}
+            <span class="badge bg-primary badge-estado">{{ h.estado_novo_label }}</span>
+            {% if h.observacao %}
+            <div class="text-muted small mt-1">{{ h.observacao }}</div>
+            {% endif %}
+            {% if h.usuario %}
+            <div class="text-muted" style="font-size:.7rem;">por {{ h.usuario.nome }}</div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal de Transição ──────────────────────────────────────────────────── -->
+<div class="modal fade" id="modalTransicao" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('rma.transitar', rma_id=rma.id) }}">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalTransicaoTitulo">Confirmar Ação</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="novo_estado" id="inputNovoEstado">
+
+          <!-- Campos adicionais por estado -->
+          <div id="camposTriagem" class="d-none">
+            <div class="mb-3">
+              <label class="form-label">Laudo Técnico</label>
+              <textarea name="laudo_tecnico" class="form-control" rows="3"
+                        placeholder="Descreva o resultado da análise..."></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Categoria do Defeito</label>
+              <select name="categoria_defeito" class="form-select">
+                <option value="">Selecione...</option>
+                <option value="DEFEITO_FABRICACAO">Defeito de Fabricação</option>
+                <option value="AVARIA_TRANSPORTE">Avaria no Transporte</option>
+                <option value="USO_INCORRETO">Uso Incorreto</option>
+                <option value="DESGASTE_PREMATURO">Desgaste Prematuro</option>
+                <option value="COMPONENTE_FALTANDO">Componente Faltando</option>
+                <option value="OUTRO">Outro</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="camposDestinacao" class="d-none">
+            <div class="mb-3">
+              <label class="form-label">Destinação</label>
+              <select name="disposicao" class="form-select">
+                <option value="">Selecione...</option>
+                <option value="DEVOLUCAO_FORNECEDOR">Devolução ao Fornecedor</option>
+                <option value="REPARO">Reparo</option>
+                <option value="SUBSTITUICAO">Substituição</option>
+                <option value="CREDITO">Crédito ao Cliente</option>
+                <option value="SUCATA">Sucata</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Endereço no Armazém</label>
+              <select name="apartamento_id" class="form-select">
+                <option value="">Nenhum (selecione se aplicável)</option>
+                {% for a in apartamentos %}
+                <option value="{{ a.id }}">{{ a.endereco }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Observação</label>
+            <textarea name="observacao" class="form-control" rows="2"
+                      placeholder="Observações sobre esta ação..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn" id="btnConfirmarTransicao">Confirmar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const modalEl = document.getElementById('modalTransicao');
+modalEl.addEventListener('show.bs.modal', function(e) {
+  const btn = e.relatedTarget;
+  const dest  = btn.dataset.dest;
+  const label = btn.dataset.label;
+  const cor   = btn.dataset.cor;
+
+  document.getElementById('modalTransicaoTitulo').textContent = label;
+  document.getElementById('inputNovoEstado').value = dest;
+
+  const btnConf = document.getElementById('btnConfirmarTransicao');
+  btnConf.className = `btn btn-${cor}`;
+  btnConf.textContent = label;
+
+  // Mostrar campos extras conforme destino
+  document.getElementById('camposTriagem').classList.add('d-none');
+  document.getElementById('camposDestinacao').classList.add('d-none');
+
+  if (dest === 'AGUARDANDO_DESTINACAO') {
+    document.getElementById('camposTriagem').classList.remove('d-none');
+  }
+  if (dest === 'AGUARDANDO_COLETA') {
+    document.getElementById('camposDestinacao').classList.remove('d-none');
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+{% block title %}Usuários{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Início</a></li>
+<li class="breadcrumb-item active">Usuários</li>
+{% endblock %}
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div>
+    <h1><i class="fa-solid fa-users me-2 text-primary"></i>Gerenciamento de Usuários</h1>
+    <p class="subtitle">{{ usuarios|length }} usuário(s) encontrado(s)</p>
+  </div>
+  <a href="{{ url_for('usuarios.novo') }}" class="btn btn-primary-custom">
+    <i class="fa-solid fa-user-plus me-1"></i>Novo Usuário
+  </a>
+</div>
+
+<!-- Filtros -->
+<div class="form-card mb-4">
+  <form method="GET" class="row g-2 align-items-end">
+    <div class="col-md-4">
+      <label class="form-label">Busca</label>
+      <input type="text" name="busca" class="form-control"
+             placeholder="Nome, e-mail ou matrícula..." value="{{ filtro_busca }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Perfil</label>
+      <select name="role" class="form-select">
+        <option value="">Todos os Perfis</option>
+        {% for cod, label in roles.items() %}
+        <option value="{{ cod }}" {% if filtro_role == cod %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Status</label>
+      <select name="ativo" class="form-select">
+        <option value="">Todos</option>
+        <option value="1" {% if filtro_ativo == '1' %}selected{% endif %}>Ativos</option>
+        <option value="0" {% if filtro_ativo == '0' %}selected{% endif %}>Inativos</option>
+      </select>
+    </div>
+    <div class="col-md-3 d-flex gap-2">
+      <button type="submit" class="btn btn-primary-custom flex-grow-1">
+        <i class="fa-solid fa-search me-1"></i>Filtrar
+      </button>
+      <a href="{{ url_for('usuarios.index') }}" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-xmark"></i>
+      </a>
+    </div>
+  </form>
+</div>
+
+<div class="table-card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Usuário</th>
+          <th>E-mail</th>
+          <th>Matrícula</th>
+          <th>Departamento</th>
+          <th>Perfil</th>
+          <th>Último Login</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in usuarios %}
+        <tr>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div style="width:36px;height:36px;border-radius:50%;background:{{ '#2563eb' if u.is_admin() else '#64748b' }};
+                          color:#fff;display:flex;align-items:center;justify-content:center;
+                          font-weight:700;font-size:.85rem;flex-shrink:0;">
+                {{ u.nome[0].upper() }}
+              </div>
+              <div>
+                <div class="fw-bold">{{ u.nome }}</div>
+              </div>
+            </div>
+          </td>
+          <td>{{ u.email }}</td>
+          <td class="text-muted">{{ u.matricula or '—' }}</td>
+          <td class="text-muted">{{ u.departamento or '—' }}</td>
+          <td>
+            <span class="badge bg-{% if u.role == 'admin' %}danger{% elif u.role == 'supervisor' %}warning text-dark{% elif u.role == 'tecnico' %}info text-dark{% else %}secondary{% endif %}">
+              {{ u.role_label }}
+            </span>
+          </td>
+          <td class="text-muted small">{{ u.ultimo_login|datahora if u.ultimo_login else 'Nunca' }}</td>
+          <td>
+            {% if u.ativo %}
+            <span class="badge bg-success">Ativo</span>
+            {% else %}
+            <span class="badge bg-secondary">Inativo</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="{{ url_for('usuarios.editar', user_id=u.id) }}"
+                 class="btn btn-sm btn-outline-primary" title="Editar">
+                <i class="fa-solid fa-pen"></i>
+              </a>
+              {% if current_user.is_admin() and u.id != current_user.id %}
+              <form method="POST" action="{{ url_for('usuarios.toggle_ativo', user_id=u.id) }}">
+                <button type="submit"
+                        class="btn btn-sm btn-outline-{{ 'warning' if u.ativo else 'success' }}"
+                        title="{{ 'Desativar' if u.ativo else 'Ativar' }}"
+                        onclick="return confirm('{{ 'Desativar' if u.ativo else 'Ativar' }} o usuário {{ u.nome }}?')">
+                  <i class="fa-solid fa-{{ 'user-slash' if u.ativo else 'user-check' }}"></i>
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-center py-5 text-muted">
+            <i class="fa-solid fa-users-slash fa-2x mb-2 d-block"></i>
+            Nenhum usuário encontrado.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

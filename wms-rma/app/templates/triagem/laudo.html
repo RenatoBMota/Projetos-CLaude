@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% block title %}Laudo — {{ rma.numero }}{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('triagem.index') }}">Triagem</a></li>
+<li class="breadcrumb-item active">Laudo {{ rma.numero }}</li>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="fa-solid fa-clipboard-check me-2 text-primary"></i>Laudo Técnico — {{ rma.numero }}</h1>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-7">
+    <form method="POST" action="{{ url_for('triagem.laudo', rma_id=rma.id) }}">
+      <div class="form-card mb-3">
+        <h6 class="fw-bold mb-3 pb-2 border-bottom">Informações do Item</h6>
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <div class="text-muted small">Produto</div>
+            <strong>{{ rma.produto.descricao if rma.produto else '—' }}</strong>
+          </div>
+          <div class="col-md-3">
+            <div class="text-muted small">Nº Série</div>
+            <strong>{{ rma.numero_serie or '—' }}</strong>
+          </div>
+          <div class="col-md-3">
+            <div class="text-muted small">Quantidade</div>
+            <strong>{{ rma.quantidade }}</strong>
+          </div>
+        </div>
+        <div class="bg-light rounded p-2 small">
+          <strong>Defeito relatado:</strong> {{ rma.descricao_defeito or '—' }}
+        </div>
+      </div>
+
+      <div class="form-card">
+        <h6 class="fw-bold mb-3 pb-2 border-bottom">Laudo do Técnico</h6>
+        <div class="mb-3">
+          <label class="form-label">Categoria do Defeito *</label>
+          <select name="categoria_defeito" class="form-select" required>
+            <option value="">Selecione...</option>
+            <option value="DEFEITO_FABRICACAO">Defeito de Fabricação</option>
+            <option value="AVARIA_TRANSPORTE">Avaria no Transporte</option>
+            <option value="USO_INCORRETO">Uso Incorreto pelo Cliente</option>
+            <option value="DESGASTE_PREMATURO">Desgaste Prematuro</option>
+            <option value="COMPONENTE_FALTANDO">Componente Faltando</option>
+            <option value="SEM_DEFEITO">Sem Defeito Identificado</option>
+            <option value="OUTRO">Outro</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Laudo Técnico Detalhado *</label>
+          <textarea name="laudo_tecnico" class="form-control" rows="5" required
+                    placeholder="Descreva detalhadamente o resultado da análise técnica...">{{ rma.laudo_tecnico or '' }}</textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Destinação Recomendada *</label>
+          <select name="disposicao" class="form-select" required>
+            <option value="">Selecione...</option>
+            <option value="DEVOLUCAO_FORNECEDOR">Devolução ao Fornecedor</option>
+            <option value="REPARO">Reparo</option>
+            <option value="SUBSTITUICAO">Substituição</option>
+            <option value="CREDITO">Crédito ao Cliente</option>
+            <option value="SUCATA">Sucata / Descarte</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Observações</label>
+          <textarea name="observacao" class="form-control" rows="2"
+                    placeholder="Observações adicionais..."></textarea>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary-custom">
+            <i class="fa-solid fa-check me-1"></i>Concluir Triagem
+          </button>
+          <a href="{{ url_for('triagem.index') }}" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="col-md-5">
+    <div class="form-card">
+      <h6 class="fw-bold mb-3 pb-2 border-bottom">Histórico</h6>
+      <div class="timeline">
+        {% for h in rma.historico|reverse %}
+        <div class="timeline-item">
+          <div class="timeline-date">{{ h.criado_em|datahora }}</div>
+          <div class="timeline-body">
+            <span class="badge bg-primary badge-estado">{{ h.estado_novo_label }}</span>
+            {% if h.observacao %}<div class="small text-muted mt-1">{{ h.observacao }}</div>{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

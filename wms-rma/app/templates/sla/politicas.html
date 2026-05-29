@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+{% block title %}Políticas SLA{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('sla.index') }}">SLA</a></li>
+<li class="breadcrumb-item active">Políticas</li>
+{% endblock %}
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between">
+  <div>
+    <h1><i class="fa-solid fa-gear me-2 text-primary"></i>Políticas de SLA</h1>
+    <p class="subtitle">Configure os prazos por canal de atendimento</p>
+  </div>
+  <button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#modalNovaPol">
+    <i class="fa-solid fa-plus me-1"></i>Nova Política
+  </button>
+</div>
+
+<div class="table-card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Canal</th>
+          <th>Categoria</th>
+          <th>Triagem (dias)</th>
+          <th>Resolução (dias)</th>
+          <th>Coleta (dias)</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in politicas %}
+        <tr>
+          <td class="fw-bold">{{ p.nome }}</td>
+          <td><span class="badge bg-light text-dark border">{{ p.canal or 'TODOS' }}</span></td>
+          <td>{{ p.categoria or '—' }}</td>
+          <td class="text-center">
+            <span class="badge bg-warning text-dark">{{ p.prazo_triagem_dias }}d</span>
+          </td>
+          <td class="text-center">
+            <span class="badge bg-danger">{{ p.prazo_resolucao_dias }}d</span>
+          </td>
+          <td class="text-center">
+            <span class="badge bg-info text-dark">{{ p.prazo_coleta_dias }}d</span>
+          </td>
+          <td>
+            {% if p.ativa %}
+            <span class="badge bg-success">Ativa</span>
+            {% else %}
+            <span class="badge bg-secondary">Inativa</span>
+            {% endif %}
+          </td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary me-1"
+                    data-bs-toggle="modal" data-bs-target="#modalEditarPol"
+                    data-id="{{ p.id }}"
+                    data-nome="{{ p.nome }}"
+                    data-canal="{{ p.canal }}"
+                    data-categoria="{{ p.categoria or '' }}"
+                    data-triagem="{{ p.prazo_triagem_dias }}"
+                    data-resolucao="{{ p.prazo_resolucao_dias }}"
+                    data-coleta="{{ p.prazo_coleta_dias }}"
+                    data-ativa="{{ '1' if p.ativa else '0' }}">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <form method="POST" action="{{ url_for('sla.toggle_politica', pol_id=p.id) }}"
+                  style="display:inline;">
+              <button type="submit" class="btn btn-sm btn-outline-{{ 'warning' if p.ativa else 'success' }}"
+                      title="{{ 'Desativar' if p.ativa else 'Ativar' }}">
+                <i class="fa-solid fa-{{ 'toggle-off' if p.ativa else 'toggle-on' }}"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-center py-4 text-muted">
+            Nenhuma política cadastrada.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Nova Política -->
+<div class="modal fade" id="modalNovaPol" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('sla.nova_politica') }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Nova Política SLA</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          {% include '_form_politica.html' ignore missing %}
+          <div class="mb-3">
+            <label class="form-label">Nome *</label>
+            <input type="text" name="nome" class="form-control" required placeholder="Ex: SLA Padrão Loja">
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label">Canal</label>
+              <select name="canal" class="form-select">
+                <option value="TODOS">Todos</option>
+                <option value="LOJA">Loja</option>
+                <option value="ECOMMERCE">E-commerce</option>
+                <option value="B2B">B2B</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label">Categoria</label>
+              <input type="text" name="categoria" class="form-control" placeholder="Opcional">
+            </div>
+            <div class="col-4">
+              <label class="form-label">Triagem (dias)</label>
+              <input type="number" name="prazo_triagem_dias" class="form-control" value="5" min="1">
+            </div>
+            <div class="col-4">
+              <label class="form-label">Resolução (dias)</label>
+              <input type="number" name="prazo_resolucao_dias" class="form-control" value="15" min="1">
+            </div>
+            <div class="col-4">
+              <label class="form-label">Coleta (dias)</label>
+              <input type="number" name="prazo_coleta_dias" class="form-control" value="7" min="1">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary-custom">Criar Política</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Política -->
+<div class="modal fade" id="modalEditarPol" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" id="formEditar">
+        <div class="modal-header">
+          <h5 class="modal-title">Editar Política SLA</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Nome *</label>
+            <input type="text" name="nome" id="editNome" class="form-control" required>
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label">Canal</label>
+              <select name="canal" id="editCanal" class="form-select">
+                <option value="TODOS">Todos</option>
+                <option value="LOJA">Loja</option>
+                <option value="ECOMMERCE">E-commerce</option>
+                <option value="B2B">B2B</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label">Categoria</label>
+              <input type="text" name="categoria" id="editCategoria" class="form-control">
+            </div>
+            <div class="col-4">
+              <label class="form-label">Triagem (dias)</label>
+              <input type="number" name="prazo_triagem_dias" id="editTriagem" class="form-control" min="1">
+            </div>
+            <div class="col-4">
+              <label class="form-label">Resolução (dias)</label>
+              <input type="number" name="prazo_resolucao_dias" id="editResolucao" class="form-control" min="1">
+            </div>
+            <div class="col-4">
+              <label class="form-label">Coleta (dias)</label>
+              <input type="number" name="prazo_coleta_dias" id="editColeta" class="form-control" min="1">
+            </div>
+            <div class="col-12">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="ativa" id="editAtiva">
+                <label class="form-check-label" for="editAtiva">Política ativa</label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary-custom">Salvar Alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('modalEditarPol').addEventListener('show.bs.modal', function(e) {
+  const btn = e.relatedTarget;
+  const id = btn.dataset.id;
+  document.getElementById('formEditar').action = `/sla/politicas/${id}/editar`;
+  document.getElementById('editNome').value     = btn.dataset.nome;
+  document.getElementById('editCanal').value    = btn.dataset.canal;
+  document.getElementById('editCategoria').value= btn.dataset.categoria;
+  document.getElementById('editTriagem').value  = btn.dataset.triagem;
+  document.getElementById('editResolucao').value= btn.dataset.resolucao;
+  document.getElementById('editColeta').value   = btn.dataset.coleta;
+  document.getElementById('editAtiva').checked  = btn.dataset.ativa === '1';
+});
+</script>
+{% endblock %}

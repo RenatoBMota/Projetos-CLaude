@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}RMA por Fornecedor{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('relatorios.index') }}">Relatórios</a></li>
+<li class="breadcrumb-item active">Por Fornecedor</li>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="fa-solid fa-building me-2 text-primary"></i>Performance por Fornecedor</h1>
+</div>
+<ul class="nav nav-pills mb-4">
+  <li class="nav-item"><a class="nav-link" href="{{ url_for('relatorios.index') }}">Listagem Geral</a></li>
+  <li class="nav-item"><a class="nav-link" href="{{ url_for('relatorios.aging') }}">Aging</a></li>
+  <li class="nav-item"><a class="nav-link active" href="{{ url_for('relatorios.por_fornecedor') }}">Por Fornecedor</a></li>
+</ul>
+
+<div class="table-card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Fornecedor</th>
+          <th>Total RMAs</th>
+          <th>Finalizados</th>
+          <th>Cancelados</th>
+          <th>Em Aberto</th>
+          <th>Média Dias</th>
+          <th>Taxa Resolução</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for nome, total, finalizados, cancelados, media_dias in dados %}
+        {% set abertos = total - (finalizados or 0) - (cancelados or 0) %}
+        {% set taxa = ((finalizados or 0) / total * 100)|round(1) if total else 0 %}
+        <tr>
+          <td class="text-muted">{{ loop.index }}</td>
+          <td class="fw-bold">{{ nome }}</td>
+          <td class="text-center"><span class="badge bg-primary">{{ total }}</span></td>
+          <td class="text-center"><span class="badge bg-success">{{ finalizados or 0 }}</span></td>
+          <td class="text-center"><span class="badge bg-secondary">{{ cancelados or 0 }}</span></td>
+          <td class="text-center"><span class="badge bg-warning text-dark">{{ abertos }}</span></td>
+          <td class="text-center">{{ (media_dias or 0)|round(1) }}d</td>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="sla-bar flex-grow-1" style="height:8px;">
+                <div class="sla-bar-fill {% if taxa > 70 %}bg-success{% elif taxa > 40 %}bg-warning{% else %}bg-danger{% endif %}"
+                     style="width:{{ taxa }}%;height:8px;"></div>
+              </div>
+              <small class="fw-bold {% if taxa > 70 %}text-success{% elif taxa > 40 %}text-warning{% else %}text-danger{% endif %}">
+                {{ taxa }}%
+              </small>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="text-center text-muted py-4">Sem dados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

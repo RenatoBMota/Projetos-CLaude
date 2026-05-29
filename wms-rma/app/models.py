@@ -160,10 +160,12 @@ class Produto(db.Model):
     marca        = db.Column(db.String(100))
     categoria    = db.Column(db.String(100))
     fornecedor_id= db.Column(db.Integer, db.ForeignKey('fornecedores.id'))
-    peso_kg      = db.Column(db.Float)
-    ativo        = db.Column(db.Boolean, default=True)
-    criado_em    = db.Column(db.DateTime, default=datetime.utcnow)
-    rmas         = db.relationship('RMA', backref='produto', lazy='dynamic')
+    peso_kg        = db.Column(db.Float)
+    valor_unitario = db.Column(db.Float)
+    observacoes    = db.Column(db.Text)
+    ativo          = db.Column(db.Boolean, default=True)
+    criado_em      = db.Column(db.DateTime, default=datetime.utcnow)
+    rmas           = db.relationship('RMA', backref='produto', lazy='dynamic')
 
 
 class Armazem(db.Model):
@@ -177,6 +179,7 @@ class Armazem(db.Model):
 
 
 class Zona(db.Model):
+    """Agrupamento lógico (ANALISE, DEFEITUOSOS, etc.) dentro do armazém."""
     __tablename__ = 'zonas'
     id            = db.Column(db.Integer, primary_key=True)
     armazem_id    = db.Column(db.Integer, db.ForeignKey('armazens.id'), nullable=False)
@@ -185,29 +188,84 @@ class Zona(db.Model):
     tipo          = db.Column(db.String(50))
     capacidade_max= db.Column(db.Integer)
     ativa         = db.Column(db.Boolean, default=True)
-    posicoes      = db.relationship('Posicao', backref='zona', lazy='dynamic')
+    modulos       = db.relationship('Modulo', backref='zona', lazy='dynamic')
 
     @property
     def tipo_label(self):
         return TipoZona.LABELS.get(self.tipo, self.tipo or '')
 
     @property
+    def total_apartamentos(self):
+        total = 0
+        for m in self.modulos:
+            for r in m.ruas:
+                for n in r.numeros:
+                    total += n.apartamentos.count()
+        return total
+
+    @property
+    def apartamentos_ocupados(self):
+        ocupados = 0
+        for m in self.modulos:
+            for r in m.ruas:
+                for n in r.numeros:
+                    ocupados += n.apartamentos.filter_by(ocupado=True).count()
+        return ocupados
+
+    @property
     def ocupacao_pct(self):
-        total = self.posicoes.count()
-        if not total:
-            return 0
-        ocupadas = self.posicoes.filter_by(ocupada=True).count()
-        return round(ocupadas / total * 100)
+        total = self.total_apartamentos
+        return round(self.apartamentos_ocupados / total * 100) if total else 0
 
 
-class Posicao(db.Model):
-    __tablename__ = 'posicoes'
+class Modulo(db.Model):
+    """Módulo físico dentro de uma zona (ex: 01, 02)."""
+    __tablename__ = 'modulos'
+    id        = db.Column(db.Integer, primary_key=True)
+    zona_id   = db.Column(db.Integer, db.ForeignKey('zonas.id'), nullable=False)
+    codigo    = db.Column(db.String(20), nullable=False)   # '01', '02'
+    nome      = db.Column(db.String(100))
+    ativo     = db.Column(db.Boolean, default=True)
+    ruas      = db.relationship('Rua', backref='modulo', lazy='dynamic')
+
+
+class Rua(db.Model):
+    """Rua/corredor dentro de um módulo (ex: A, B, C)."""
+    __tablename__ = 'ruas'
+    id        = db.Column(db.Integer, primary_key=True)
+    modulo_id = db.Column(db.Integer, db.ForeignKey('modulos.id'), nullable=False)
+    codigo    = db.Column(db.String(20), nullable=False)   # 'A', 'B'
+    nome      = db.Column(db.String(100))
+    ativa     = db.Column(db.Boolean, default=True)
+    numeros   = db.relationship('Numero', backref='rua', lazy='dynamic')
+
+
+class Numero(db.Model):
+    """Número de rack dentro de uma rua (ex: 01, 02)."""
+    __tablename__ = 'numeros'
+    id       = db.Column(db.Integer, primary_key=True)
+    rua_id   = db.Column(db.Integer, db.ForeignKey('ruas.id'), nullable=False)
+    codigo   = db.Column(db.String(20), nullable=False)    # '01', '02'
+    ativo    = db.Column(db.Boolean, default=True)
+    apartamentos = db.relationship('Apartamento', backref='numero', lazy='dynamic')
+
+
+class Apartamento(db.Model):
+    """Posição física final: Módulo-Rua-Número-Apartamento (ex: 01-A-01-01)."""
+    __tablename__ = 'apartamentos'
     id             = db.Column(db.Integer, primary_key=True)
-    zona_id        = db.Column(db.Integer, db.ForeignKey('zonas.id'), nullable=False)
-    codigo         = db.Column(db.String(50), unique=True, nullable=False)
-    ocupada        = db.Column(db.Boolean, default=False)
+    numero_id      = db.Column(db.Integer, db.ForeignKey('numeros.id'), nullable=False)
+    codigo         = db.Column(db.String(20), nullable=False)   # '01', '02'
+    endereco       = db.Column(db.String(50), unique=True)      # '01-A-01-01'
+    ocupado        = db.Column(db.Boolean, default=False)
     peso_maximo_kg = db.Column(db.Float)
-    rmas           = db.relationship('RMA', backref='posicao', lazy='dynamic')
+    rmas           = db.relationship('RMA', backref='apartamento', lazy='dynamic')
+
+    def gerar_endereco(self):
+        n  = self.numero
+        ru = n.rua
+        m  = ru.modulo
+        return f'{m.codigo}-{ru.codigo}-{n.codigo}-{self.codigo}'
 
 
 class RMA(db.Model):
@@ -235,9 +293,9 @@ class RMA(db.Model):
     categoria_defeito = db.Column(db.String(100))
 
     # Laudo / Destinação
-    laudo_tecnico     = db.Column(db.Text)
-    disposicao        = db.Column(db.String(50))
-    posicao_id        = db.Column(db.Integer, db.ForeignKey('posicoes.id'))
+    laudo_tecnico      = db.Column(db.Text)
+    disposicao         = db.Column(db.String(50))
+    apartamento_id     = db.Column(db.Integer, db.ForeignKey('apartamentos.id'))
 
     # Financeiro
     valor_produto     = db.Column(db.Numeric(10, 2))
@@ -248,6 +306,8 @@ class RMA(db.Model):
     tecnico_id        = db.Column(db.Integer, db.ForeignKey('usuarios.id'))
     operador          = db.relationship('Usuario', foreign_keys=[operador_id])
     tecnico           = db.relationship('Usuario', foreign_keys=[tecnico_id])
+    apt_ref           = db.relationship('Apartamento', foreign_keys=[apartamento_id],
+                                         overlaps='apartamento,rmas')
 
     # SLA
     prazo_sla_id      = db.Column(db.Integer, db.ForeignKey('prazos_sla.id'), nullable=True)

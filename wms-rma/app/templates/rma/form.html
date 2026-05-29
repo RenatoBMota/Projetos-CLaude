@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Novo RMA' if not rma else 'Editar RMA' }}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('rma.index') }}">RMA</a></li>
+<li class="breadcrumb-item active">{{ 'Novo' if not rma else 'Editar' }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="fa-solid fa-plus-circle me-2 text-primary"></i>Abertura de Chamado RMA</h1>
+  <p class="subtitle">Preencha os dados do produto devolvido</p>
+</div>
+
+<form method="POST" action="{{ url_for('rma.novo') if not rma else '#' }}">
+  <div class="row g-3">
+
+    <!-- Coluna esquerda -->
+    <div class="col-md-8">
+
+      <!-- Dados do canal / cliente -->
+      <div class="form-card mb-3">
+        <h6 class="fw-bold mb-3 pb-2 border-bottom">
+          <i class="fa-solid fa-store me-2 text-primary"></i>Canal e Cliente
+        </h6>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Canal *</label>
+            <select name="canal" class="form-select" required>
+              <option value="LOJA">Loja Física</option>
+              <option value="ECOMMERCE">E-commerce</option>
+              <option value="B2B">B2B / Corporativo</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Loja de Origem</label>
+            <input type="text" name="loja_origem" class="form-control" placeholder="Loja 01">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">NF Original</label>
+            <input type="text" name="nf_original" class="form-control" placeholder="NF-12345">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Nome do Cliente</label>
+            <input type="text" name="cliente_nome" class="form-control" placeholder="Nome completo">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">CPF / CNPJ</label>
+            <input type="text" name="cliente_documento" class="form-control" placeholder="000.000.000-00">
+          </div>
+        </div>
+      </div>
+
+      <!-- Dados do produto -->
+      <div class="form-card mb-3">
+        <h6 class="fw-bold mb-3 pb-2 border-bottom">
+          <i class="fa-solid fa-box-open me-2 text-primary"></i>Produto
+        </h6>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Fornecedor</label>
+            <select name="fornecedor_id" class="form-select" id="selectFornecedor">
+              <option value="">Selecione...</option>
+              {% for f in fornecedores %}
+              <option value="{{ f.id }}">{{ f.nome }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Produto *</label>
+            <select name="produto_id" class="form-select" id="selectProduto" required>
+              <option value="">Selecione...</option>
+              {% for p in produtos %}
+              <option value="{{ p.id }}" data-forn="{{ p.fornecedor_id }}">
+                {{ p.codigo }} — {{ p.descricao }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Quantidade *</label>
+            <input type="number" name="quantidade" class="form-control" value="1" min="1" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Número de Série</label>
+            <input type="text" name="numero_serie" class="form-control" placeholder="SN00000000">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Valor do Produto (R$)</label>
+            <input type="number" name="valor_produto" class="form-control"
+                   step="0.01" min="0" placeholder="0,00">
+          </div>
+        </div>
+      </div>
+
+      <!-- Defeito -->
+      <div class="form-card">
+        <h6 class="fw-bold mb-3 pb-2 border-bottom">
+          <i class="fa-solid fa-bug me-2 text-danger"></i>Descrição do Defeito
+        </h6>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Motivo da Devolução *</label>
+            <select name="motivo_devolucao" class="form-select" required>
+              <option value="">Selecione...</option>
+              <option>Defeito de fabricação</option>
+              <option>Produto chegou danificado</option>
+              <option>Não funciona</option>
+              <option>Peça quebrada</option>
+              <option>Produto diferente do pedido</option>
+              <option>Avaria no transporte</option>
+              <option>Produto incompleto</option>
+              <option>Outro</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Categoria do Defeito</label>
+            <select name="categoria_defeito" class="form-select">
+              <option value="">Selecione (opcional)...</option>
+              <option value="DEFEITO_FABRICACAO">Defeito de Fabricação</option>
+              <option value="AVARIA_TRANSPORTE">Avaria no Transporte</option>
+              <option value="USO_INCORRETO">Uso Incorreto</option>
+              <option value="DESGASTE_PREMATURO">Desgaste Prematuro</option>
+              <option value="COMPONENTE_FALTANDO">Componente Faltando</option>
+              <option value="PRODUTO_ERRADO">Produto Errado</option>
+              <option value="OUTRO">Outro</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Descrição Detalhada *</label>
+            <textarea name="descricao_defeito" class="form-control" rows="4"
+                      placeholder="Descreva detalhadamente o defeito observado..." required></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Coluna direita -->
+    <div class="col-md-4">
+      <div class="form-card mb-3">
+        <h6 class="fw-bold mb-3 pb-2 border-bottom">
+          <i class="fa-solid fa-clock me-2 text-warning"></i>SLA
+        </h6>
+        <p class="text-muted small">
+          A política de SLA será aplicada automaticamente com base no canal selecionado.
+        </p>
+        <div class="bg-light rounded p-2 small">
+          <div class="d-flex justify-content-between"><span>Triagem:</span><strong>5 dias úteis</strong></div>
+          <div class="d-flex justify-content-between"><span>Resolução:</span><strong>15 dias úteis</strong></div>
+          <div class="d-flex justify-content-between"><span>Coleta:</span><strong>7 dias úteis</strong></div>
+        </div>
+      </div>
+
+      <div class="form-card mb-3">
+        <h6 class="fw-bold mb-3 pb-2 border-bottom">
+          <i class="fa-solid fa-circle-info me-2 text-info"></i>Informações
+        </h6>
+        <p class="text-muted small mb-0">
+          Ao salvar, o RMA será criado com estado <strong>Aberto</strong> e
+          aguardará ser recebido e encaminhado para triagem.
+        </p>
+      </div>
+
+      <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-primary-custom btn-lg">
+          <i class="fa-solid fa-save me-2"></i>Salvar RMA
+        </button>
+        <a href="{{ url_for('rma.index') }}" class="btn btn-outline-secondary">
+          <i class="fa-solid fa-xmark me-1"></i>Cancelar
+        </a>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Filtrar produtos por fornecedor
+document.getElementById('selectFornecedor').addEventListener('change', function() {
+  const fornId = this.value;
+  const sel = document.getElementById('selectProduto');
+  Array.from(sel.options).forEach(o => {
+    if (!o.value) return;
+    o.style.display = (!fornId || o.dataset.forn == fornId) ? '' : 'none';
+  });
+});
+
+// Quando produto é selecionado, busca fornecedor via API
+document.getElementById('selectProduto').addEventListener('change', function() {
+  if (!this.value) return;
+  fetch(`/rma/api/produto/${this.value}`)
+    .then(r => r.json())
+    .then(d => {
+      if (d.fornecedor_id) {
+        document.getElementById('selectFornecedor').value = d.fornecedor_id;
+      }
+    });
+});
+</script>
+{% endblock %}
