@@ -1,0 +1,235 @@
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask_login import login_required, current_user
+from datetime import datetime, timedelta
+from app.extensions import db
+from app.models import (
+    RMA, EstadoRMA, HistoricoRMA, Produto, Fornecedor,
+    Posicao, PoliticaSLA, PrazoSLA, Documento
+)
+from app.utils import gerar_numero_rma, salvar_arquivo, allowed_file
+import os
+
+bp = Blueprint('rma', __name__, url_prefix='/rma')
+
+
+@bp.route('/')
+@login_required
+def index():
+    # Filtros
+    estado   = request.args.get('estado', '')
+    canal    = request.args.get('canal', '')
+    busca    = request.args.get('busca', '')
+    forn_id  = request.args.get('fornecedor_id', type=int)
+    atrasados= request.args.get('atrasados', '')
+    page     = request.args.get('page', 1, type=int)
+
+    q = RMA.query
+
+    if estado:
+        q = q.filter_by(estado=estado)
+    if canal:
+        q = q.filter_by(canal=canal)
+    if busca:
+        q = q.filter(
+            db.or_(
+                RMA.numero.ilike(f'%{busca}%'),
+                RMA.cliente_nome.ilike(f'%{busca}%'),
+                RMA.nf_original.ilike(f'%{busca}%'),
+            )
+        )
+    if forn_id:
+        q = q.filter_by(fornecedor_id=forn_id)
+    if atrasados:
+        from app.models import PrazoSLA
+        q = q.join(PrazoSLA, RMA.prazo_sla_id == PrazoSLA.id)\
+             .filter(PrazoSLA.em_atraso == True)\
+             .filter(RMA.estado.notin_([EstadoRMA.FINALIZADO, EstadoRMA.CANCELADO]))
+
+    rmas = q.order_by(RMA.criado_em.desc()).paginate(page=page, per_page=20, error_out=False)
+    fornecedores = Fornecedor.query.filter_by(ativo=True).order_by(Fornecedor.nome).all()
+    estados = list(EstadoRMA.LABELS.items())
+
+    return render_template('rma/index.html',
+        rmas=rmas,
+        fornecedores=fornecedores,
+        estados=estados,
+        filtro_estado=estado,
+        filtro_canal=canal,
+        filtro_busca=busca,
+        filtro_forn=forn_id,
+        filtro_atrasados=atrasados,
+    )
+
+
+@bp.route('/novo', methods=['GET', 'POST'])
+@login_required
+def novo():
+    if request.method == 'POST':
+        # Cria prazo SLA
+        canal = request.form.get('canal', 'LOJA')
+        pol = PoliticaSLA.query.filter_by(canal=canal, ativa=True).first() or \
+              PoliticaSLA.query.filter_by(ativa=True).first()
+
+        prazo = None
+        if pol:
+            agora = datetime.utcnow()
+            prazo = PrazoSLA(
+                politica_id=pol.id,
+                prazo_triagem=agora + timedelta(days=pol.prazo_triagem_dias),
+                prazo_resolucao=agora + timedelta(days=pol.prazo_resolucao_dias),
+                prazo_coleta=agora + timedelta(days=pol.prazo_coleta_dias),
+            )
+            db.session.add(prazo)
+            db.session.flush()
+
+        rma = RMA(
+            numero=gerar_numero_rma(),
+            estado=EstadoRMA.ABERTO,
+            canal=canal,
+            cliente_nome=request.form.get('cliente_nome'),
+            cliente_documento=request.form.get('cliente_documento'),
+            loja_origem=request.form.get('loja_origem'),
+            produto_id=request.form.get('produto_id', type=int) or None,
+            fornecedor_id=request.form.get('fornecedor_id', type=int) or None,
+            quantidade=request.form.get('quantidade', 1, type=int),
+            numero_serie=request.form.get('numero_serie'),
+            nf_original=request.form.get('nf_original'),
+            motivo_devolucao=request.form.get('motivo_devolucao'),
+            descricao_defeito=request.form.get('descricao_defeito'),
+            valor_produto=request.form.get('valor_produto') or None,
+            operador_id=current_user.id,
+            prazo_sla_id=prazo.id if prazo else None,
+        )
+        db.session.add(rma)
+        db.session.flush()
+
+        if prazo:
+            prazo.rma_id = rma.id
+
+        db.session.add(HistoricoRMA(
+            rma_id=rma.id,
+            estado_anterior=None,
+            estado_novo=EstadoRMA.ABERTO,
+            observacao='RMA aberto',
+            usuario_id=current_user.id,
+        ))
+        db.session.commit()
+        flash(f'RMA {rma.numero} criado com sucesso!', 'success')
+        return redirect(url_for('rma.detalhe', rma_id=rma.id))
+
+    produtos     = Produto.query.filter_by(ativo=True).order_by(Produto.descricao).all()
+    fornecedores = Fornecedor.query.filter_by(ativo=True).order_by(Fornecedor.nome).all()
+    return render_template('rma/form.html', rma=None, produtos=produtos, fornecedores=fornecedores)
+
+
+@bp.route('/<int:rma_id>')
+@login_required
+def detalhe(rma_id):
+    rma = RMA.query.get_or_404(rma_id)
+    posicoes = Posicao.query.filter_by(ocupada=False).limit(20).all()
+    return render_template('rma/detail.html', rma=rma, posicoes=posicoes)
+
+
+@bp.route('/<int:rma_id>/transitar', methods=['POST'])
+@login_required
+def transitar(rma_id):
+    rma = RMA.query.get_or_404(rma_id)
+    novo_estado  = request.form.get('novo_estado')
+    observacao   = request.form.get('observacao', '')
+    laudo        = request.form.get('laudo_tecnico')
+    disposicao   = request.form.get('disposicao')
+    categoria    = request.form.get('categoria_defeito')
+    posicao_id   = request.form.get('posicao_id', type=int)
+
+    if not rma.pode_transitar(novo_estado):
+        flash('Transição de estado não permitida.', 'danger')
+        return redirect(url_for('rma.detalhe', rma_id=rma.id))
+
+    estado_anterior = rma.estado
+
+    # Atualiza campos opcionais
+    if laudo:
+        rma.laudo_tecnico = laudo
+    if disposicao:
+        rma.disposicao = disposicao
+    if categoria:
+        rma.categoria_defeito = categoria
+    if posicao_id:
+        pos_antiga = rma.posicao_id
+        if pos_antiga:
+            p_old = Posicao.query.get(pos_antiga)
+            if p_old:
+                p_old.ocupada = False
+        rma.posicao_id = posicao_id
+        nova_pos = Posicao.query.get(posicao_id)
+        if nova_pos:
+            nova_pos.ocupada = True
+    if novo_estado in (EstadoRMA.FINALIZADO, EstadoRMA.CANCELADO):
+        rma.finalizado_em = datetime.utcnow()
+    if novo_estado in (EstadoRMA.EM_ANALISE, EstadoRMA.AGUARDANDO_DEST):
+        if not rma.tecnico_id:
+            rma.tecnico_id = current_user.id
+
+    rma.estado = novo_estado
+
+    db.session.add(HistoricoRMA(
+        rma_id=rma.id,
+        estado_anterior=estado_anterior,
+        estado_novo=novo_estado,
+        observacao=observacao,
+        usuario_id=current_user.id,
+    ))
+
+    # Atualiza SLA
+    if rma.prazo_sla:
+        rma.prazo_sla.atualizar_status()
+
+    db.session.commit()
+    flash(f'RMA atualizado para: {EstadoRMA.LABELS.get(novo_estado, (novo_estado,""))[0]}', 'success')
+    return redirect(url_for('rma.detalhe', rma_id=rma.id))
+
+
+@bp.route('/<int:rma_id>/upload', methods=['POST'])
+@login_required
+def upload_doc(rma_id):
+    rma = RMA.query.get_or_404(rma_id)
+    arquivo = request.files.get('arquivo')
+    tipo    = request.form.get('tipo', 'OUTRO')
+
+    if not arquivo or not arquivo.filename:
+        flash('Nenhum arquivo selecionado.', 'warning')
+        return redirect(url_for('rma.detalhe', rma_id=rma_id))
+
+    if not allowed_file(arquivo.filename):
+        flash('Tipo de arquivo não permitido.', 'danger')
+        return redirect(url_for('rma.detalhe', rma_id=rma_id))
+
+    from flask import current_app
+    pasta = os.path.join(current_app.config['UPLOAD_FOLDER'], f'rma_{rma_id}')
+    nome  = salvar_arquivo(arquivo, pasta, prefixo=f'rma{rma_id}_')
+
+    doc = Documento(
+        rma_id=rma_id,
+        nome=arquivo.filename,
+        tipo=tipo,
+        caminho=f'uploads/rma_{rma_id}/{nome}',
+        tamanho=os.path.getsize(os.path.join(pasta, nome)),
+        usuario_id=current_user.id,
+    )
+    db.session.add(doc)
+    db.session.commit()
+    flash('Documento anexado com sucesso!', 'success')
+    return redirect(url_for('rma.detalhe', rma_id=rma_id))
+
+
+@bp.route('/api/produto/<int:prod_id>')
+@login_required
+def api_produto(prod_id):
+    p = Produto.query.get_or_404(prod_id)
+    return jsonify({
+        'id': p.id,
+        'descricao': p.descricao,
+        'codigo': p.codigo,
+        'fornecedor_id': p.fornecedor_id,
+        'fornecedor_nome': p.fornecedor.nome if p.fornecedor else '',
+    })
