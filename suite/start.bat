@@ -23,14 +23,10 @@ if not exist ".venv\Scripts\python.exe" (
     if errorlevel 1 ( echo ERRO ao criar venv & pause & exit /b 1 )
 )
 
-:: Instala dependencias do hub
+:: Instala dependencias do hub (pywin32 tem wheel para Python 3.14)
 echo [2/3] Verificando dependencias...
-.venv\Scripts\pip install -q "flask" "pystray" "pillow>=11.1.0" 2>nul
-if errorlevel 1 (
-    echo Tentando instalacao sem -q...
-    .venv\Scripts\pip install "flask" "pystray" "pillow>=11.1.0"
-    if errorlevel 1 ( echo ERRO ao instalar dependencias & pause & exit /b 1 )
-)
+.venv\Scripts\pip install -q flask pywin32
+if errorlevel 1 ( echo ERRO ao instalar dependencias & pause & exit /b 1 )
 
 :: WMS-RMA - recria venv se Pillow falhou antes (arquivo sentinela)
 echo [3/4] Configurando WMS-RMA...
