@@ -15,6 +15,25 @@
   </a>
 </div>
 
+<!-- Filtro Comprador -->
+<div class="form-card mb-4">
+  <form method="GET" class="row g-2 align-items-end">
+    <div class="col-md-4">
+      <label class="form-label"><i class="fa-solid fa-filter me-1 text-primary"></i>Filtrar por Comprador</label>
+      <input type="text" name="comprador" class="form-control"
+             placeholder="Nome do comprador..." value="{{ filtro_comprador }}">
+    </div>
+    <div class="col-md-2 d-flex gap-2">
+      <button type="submit" class="btn btn-primary-custom flex-grow-1">
+        <i class="fa-solid fa-search"></i>
+      </button>
+      <a href="{{ url_for('sla.index') }}" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-xmark"></i>
+      </a>
+    </div>
+  </form>
+</div>
+
 <!-- KPIs SLA -->
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3">
