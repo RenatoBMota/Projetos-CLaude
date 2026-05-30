@@ -1,0 +1,325 @@
+{
+  "name": "LinkedIn Post Automation - Claude AI",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "linkedin-post",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook",
+      "name": "Webhook - Receber Tema",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "linkedin-post-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign-tema",
+              "name": "tema",
+              "value": "={{ $json.body.theme ?? $json.body.tema }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-idioma",
+              "name": "idioma",
+              "value": "={{ $json.body.language ?? $json.body.idioma ?? 'português do Brasil' }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-tom",
+              "name": "tom",
+              "value": "={{ $json.body.tone ?? $json.body.tom ?? 'profissional e inspirador' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-preparar",
+      "name": "Preparar Dados",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  \"model\": \"claude-sonnet-4-6\",\n  \"max_tokens\": 1024,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": `Crie um post profissional para o LinkedIn sobre o seguinte tema: ${$json.tema}\\n\\nRequisitos:\\n- Tom: ${$json.tom}\\n- Idioma: ${$json.idioma}\\n- Entre 150 e 300 palavras\\n- Comece com uma frase de impacto\\n- Use emojis estrategicamente (máximo 5)\\n- Parágrafos curtos para leitura mobile\\n- Inclua insight ou reflexão valiosa\\n- Termine com call-to-action (pergunta ou convite para comentar)\\n- Adicione 3 a 5 hashtags relevantes na última linha\\n\\nRetorne APENAS o texto do post, sem explicações adicionais.`\n    }\n  ]\n}) }}",
+        "options": {}
+      },
+      "id": "node-claude",
+      "name": "Gerar Post com Claude",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ANTHROPIC_CREDENTIAL_ID",
+          "name": "Anthropic API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\n\nif (!response.content || !response.content[0] || !response.content[0].text) {\n  throw new Error('Resposta inválida da API Claude: ' + JSON.stringify(response));\n}\n\nconst postText = response.content[0].text.trim();\n\nif (postText.length < 50) {\n  throw new Error('Post muito curto: ' + postText.length + ' caracteres');\n}\n\nif (postText.length > 3000) {\n  throw new Error('Post excede limite do LinkedIn (3000 chars): ' + postText.length);\n}\n\nreturn [{\n  json: {\n    postText,\n    charCount: postText.length,\n    generatedAt: new Date().toISOString(),\n    tema: $('Preparar Dados').item.json.tema\n  }\n}];"
+      },
+      "id": "node-extrair",
+      "name": "Extrair e Validar Post",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.linkedin.com/v2/userinfo",
+        "authentication": "oAuth2Api",
+        "options": {}
+      },
+      "id": "node-profile",
+      "name": "Buscar Perfil LinkedIn",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1080, 300],
+      "credentials": {
+        "oAuth2Api": {
+          "id": "LINKEDIN_OAUTH2_CREDENTIAL_ID",
+          "name": "LinkedIn OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign-author",
+              "name": "authorUrn",
+              "value": "=urn:li:person:{{ $json.sub }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-post",
+              "name": "postText",
+              "value": "={{ $('Extrair e Validar Post').item.json.postText }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-payload",
+      "name": "Montar Payload LinkedIn",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1300, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linkedin.com/v2/ugcPosts",
+        "authentication": "oAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Restli-Protocol-Version",
+              "value": "2.0.0"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  \"author\": $json.authorUrn,\n  \"lifecycleState\": \"PUBLISHED\",\n  \"specificContent\": {\n    \"com.linkedin.ugc.ShareContent\": {\n      \"shareCommentary\": {\n        \"text\": $json.postText\n      },\n      \"shareMediaCategory\": \"NONE\"\n    }\n  },\n  \"visibility\": {\n    \"com.linkedin.ugc.MemberNetworkVisibility\": \"PUBLIC\"\n  }\n}) }}",
+        "options": {}
+      },
+      "id": "node-linkedin",
+      "name": "Publicar no LinkedIn",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1520, 300],
+      "credentials": {
+        "oAuth2Api": {
+          "id": "LINKEDIN_OAUTH2_CREDENTIAL_ID",
+          "name": "LinkedIn OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: true,\n  message: 'Post publicado com sucesso no LinkedIn!',\n  linkedinPostId: $json.id,\n  postText: $('Extrair e Validar Post').item.json.postText,\n  charCount: $('Extrair e Validar Post').item.json.charCount,\n  tema: $('Extrair e Validar Post').item.json.tema,\n  publishedAt: $('Extrair e Validar Post').item.json.generatedAt\n}) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "node-success",
+      "name": "Resposta de Sucesso",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1740, 180]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: false,\n  message: 'Erro ao processar o post',\n  error: $json.message || 'Erro desconhecido'\n}) }}",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "id": "node-error-response",
+      "name": "Resposta de Erro",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1740, 440]
+    },
+    {
+      "parameters": {},
+      "id": "node-error-trigger",
+      "name": "Capturar Erro",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [1520, 540]
+    }
+  ],
+  "connections": {
+    "Webhook - Receber Tema": {
+      "main": [
+        [
+          {
+            "node": "Preparar Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Dados": {
+      "main": [
+        [
+          {
+            "node": "Gerar Post com Claude",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerar Post com Claude": {
+      "main": [
+        [
+          {
+            "node": "Extrair e Validar Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair e Validar Post": {
+      "main": [
+        [
+          {
+            "node": "Buscar Perfil LinkedIn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Perfil LinkedIn": {
+      "main": [
+        [
+          {
+            "node": "Montar Payload LinkedIn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar Payload LinkedIn": {
+      "main": [
+        [
+          {
+            "node": "Publicar no LinkedIn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publicar no LinkedIn": {
+      "main": [
+        [
+          {
+            "node": "Resposta de Sucesso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capturar Erro": {
+      "main": [
+        [
+          {
+            "node": "Resposta de Erro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "id": "tag-linkedin",
+      "name": "linkedin"
+    },
+    {
+      "id": "tag-claude",
+      "name": "claude-ai"
+    },
+    {
+      "id": "tag-automation",
+      "name": "automation"
+    }
+  ],
+  "versionId": "1"
+}
