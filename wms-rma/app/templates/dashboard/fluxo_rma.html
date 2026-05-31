@@ -1,0 +1,651 @@
+{% extends 'base.html' %}
+{% block title %}Fluxo do Processo RMA{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Início</a></li>
+<li class="breadcrumb-item active">Fluxo RMA</li>
+{% endblock %}
+
+{% block head %}
+<style>
+/* ── Fluxo visual ─────────────────────────────────────────────── */
+.flow-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  position: relative;
+}
+
+/* Nó de estado */
+.flow-node {
+  width: 220px;
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  text-align: center;
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 4px 16px rgba(0,0,0,.10);
+  cursor: default;
+  transition: transform .18s, box-shadow .18s;
+}
+.flow-node:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.15); }
+.flow-node .node-icon { font-size: 1.6rem; margin-bottom: .4rem; }
+.flow-node .node-label { font-weight: 700; font-size: .95rem; }
+.flow-node .node-desc  { font-size: .72rem; opacity: .85; margin-top: .2rem; }
+.flow-node .node-actor { margin-top: .5rem; }
+
+/* Seta vertical */
+.flow-arrow {
+  width: 2px;
+  background: #cbd5e1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.flow-arrow::after {
+  content: '';
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 10px solid #94a3b8;
+  position: absolute;
+  bottom: -10px;
+}
+.flow-arrow .arrow-label {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: .15rem .7rem;
+  font-size: .7rem;
+  font-weight: 600;
+  color: #475569;
+  white-space: nowrap;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 12px;
+}
+
+/* Ramo lateral (sucata / cancelado) */
+.flow-branch-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  justify-content: center;
+  position: relative;
+}
+.branch-line-h {
+  height: 2px;
+  background: #cbd5e1;
+  width: 60px;
+  flex-shrink: 0;
+}
+.branch-line-v {
+  width: 2px;
+  background: #cbd5e1;
+  height: 40px;
+  position: absolute;
+  left: calc(50% + 170px);
+}
+.branch-arrow-down {
+  width: 2px;
+  height: 30px;
+  background: #cbd5e1;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.branch-arrow-down::after {
+  content: '';
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid #94a3b8;
+  position: absolute;
+  bottom: -8px;
+}
+
+/* Cores dos nós */
+.node-inicio     { background: linear-gradient(135deg, #1d4ed8, #2563eb); color:#fff; }
+.node-triagem    { background: linear-gradient(135deg, #0284c7, #0ea5e9); color:#fff; }
+.node-analise    { background: linear-gradient(135deg, #7c3aed, #8b5cf6); color:#fff; }
+.node-dest       { background: linear-gradient(135deg, #d97706, #f59e0b); color:#fff; }
+.node-coleta     { background: linear-gradient(135deg, #ca8a04, #eab308); color:#fff; }
+.node-coletado   { background: linear-gradient(135deg, #059669, #10b981); color:#fff; }
+.node-finalizado { background: linear-gradient(135deg, #15803d, #22c55e); color:#fff; }
+.node-sucata     { background: linear-gradient(135deg, #374151, #4b5563); color:#fff; }
+.node-cancelado  { background: linear-gradient(135deg, #b91c1c, #ef4444); color:#fff; }
+
+/* ── Cards de detalhes ────────────────────────────────────────── */
+.step-card {
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  transition: transform .15s;
+}
+.step-card:hover { transform: translateY(-2px); }
+.step-card .step-num {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: .85rem; flex-shrink: 0;
+}
+.actor-badge {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .2rem .6rem; border-radius: 20px;
+  font-size: .72rem; font-weight: 600;
+  border: 1px solid currentColor; margin: .15rem;
+}
+.checklist li { font-size: .82rem; margin-bottom: .2rem; }
+.checklist li i { width: 16px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div>
+    <h1><i class="fa-solid fa-diagram-project me-2 text-primary"></i>Fluxo do Processo RMA</h1>
+    <p class="subtitle">Da abertura à finalização — estados, responsáveis e ações em cada etapa</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('rma.novo') }}" class="btn btn-primary-custom">
+      <i class="fa-solid fa-plus me-1"></i>Novo RMA
+    </a>
+    <a href="{{ url_for('rma.index') }}" class="btn btn-outline-secondary">
+      <i class="fa-solid fa-list me-1"></i>Ver RMAs
+    </a>
+  </div>
+</div>
+
+<!-- ══════════════════ DIAGRAMA ══════════════════ -->
+<div class="row g-4 mb-4">
+  <div class="col-lg-5">
+    <div class="form-card h-100">
+      <h6 class="fw-bold mb-4 text-center text-muted text-uppercase" style="letter-spacing:.08em;font-size:.75rem;">
+        <i class="fa-solid fa-route me-1"></i>Fluxo de Estados
+      </h6>
+      <div class="flow-wrap">
+
+        <!-- 1. ABERTO -->
+        <div class="flow-node node-inicio">
+          <div class="node-icon">📋</div>
+          <div class="node-label">Aberto</div>
+          <div class="node-desc">RMA cadastrado no sistema</div>
+          <div class="node-actor mt-2">
+            <span class="badge bg-white text-primary" style="font-size:.65rem;">Operador / Atendimento</span>
+          </div>
+        </div>
+
+        <!-- seta -->
+        <div style="height:40px;display:flex;flex-direction:column;align-items:center;position:relative;">
+          <div style="width:2px;flex:1;background:#cbd5e1;"></div>
+          <div style="border-left:7px solid transparent;border-right:7px solid transparent;border-top:10px solid #94a3b8;"></div>
+          <span style="position:absolute;top:50%;transform:translateY(-50%);left:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:20px;padding:.15rem .7rem;font-size:.68rem;font-weight:600;color:#475569;white-space:nowrap;">
+            Receber RMA
+          </span>
+        </div>
+
+        <!-- 2. AGUARDANDO TRIAGEM -->
+        <div class="flow-node node-triagem">
+          <div class="node-icon">⏳</div>
+          <div class="node-label">Ag. Triagem</div>
+          <div class="node-desc">Produto recebido fisicamente</div>
+          <div class="node-actor mt-2">
+            <span class="badge bg-white text-info" style="font-size:.65rem;">Técnico / Operador</span>
+          </div>
+        </div>
+
+        <div style="height:40px;display:flex;flex-direction:column;align-items:center;position:relative;">
+          <div style="width:2px;flex:1;background:#cbd5e1;"></div>
+          <div style="border-left:7px solid transparent;border-right:7px solid transparent;border-top:10px solid #94a3b8;"></div>
+          <span style="position:absolute;top:50%;transform:translateY(-50%);left:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:20px;padding:.15rem .7rem;font-size:.68rem;font-weight:600;color:#475569;white-space:nowrap;">
+            Iniciar Triagem
+          </span>
+        </div>
+
+        <!-- 3. EM ANÁLISE -->
+        <div class="flow-node node-analise">
+          <div class="node-icon">🔍</div>
+          <div class="node-label">Em Análise</div>
+          <div class="node-desc">Técnico analisa o defeito</div>
+          <div class="node-actor mt-2">
+            <span class="badge bg-white text-purple" style="font-size:.65rem;color:#7c3aed!important;">Técnico</span>
+          </div>
+        </div>
+
+        <div style="height:40px;display:flex;flex-direction:column;align-items:center;position:relative;">
+          <div style="width:2px;flex:1;background:#cbd5e1;"></div>
+          <div style="border-left:7px solid transparent;border-right:7px solid transparent;border-top:10px solid #94a3b8;"></div>
+          <span style="position:absolute;top:50%;transform:translateY(-50%);left:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:20px;padding:.15rem .7rem;font-size:.68rem;font-weight:600;color:#475569;white-space:nowrap;">
+            Concluir Laudo + Etiqueta QR
+          </span>
+        </div>
+
+        <!-- 4. AGUARDANDO DESTINAÇÃO -->
+        <div class="flow-node node-dest">
+          <div class="node-icon">📦</div>
+          <div class="node-label">Ag. Destinação</div>
+          <div class="node-desc">Definir o destino do produto</div>
+          <div class="node-actor mt-2">
+            <span class="badge bg-white text-warning" style="font-size:.65rem;color:#92400e!important;">Supervisor / Compras</span>
+          </div>
+        </div>
+
+        <!-- Bifurcação: Sucata ou Coleta -->
+        <div style="position:relative;width:280px;height:50px;display:flex;align-items:center;justify-content:center;">
+          <!-- linha principal vertical -->
+          <div style="position:absolute;left:50%;width:2px;height:50px;background:#cbd5e1;transform:translateX(-50%);"></div>
+          <!-- linha horizontal para sucata -->
+          <div style="position:absolute;top:0;right:0;height:2px;width:90px;background:#cbd5e1;"></div>
+          <!-- label central -->
+          <span style="position:absolute;top:8px;left:calc(50% + 12px);background:#f8fafc;border:1px solid #e2e8f0;border-radius:20px;padding:.12rem .6rem;font-size:.65rem;font-weight:600;color:#475569;white-space:nowrap;">
+            Solicitar Coleta
+          </span>
+          <span style="position:absolute;top:-10px;right:-4px;background:#fef3c7;border:1px solid #fcd34d;border-radius:20px;padding:.1rem .5rem;font-size:.62rem;font-weight:600;color:#92400e;white-space:nowrap;">
+            Sucatear →
+          </span>
+        </div>
+
+        <!-- 5. AGUARDANDO COLETA -->
+        <div class="flow-node node-coleta">
+          <div class="node-icon">🚚</div>
+          <div class="node-label">Ag. Coleta</div>
+          <div class="node-desc">Aguardando retirada do produto</div>
+          <div class="node-actor mt-2">
+            <span class="badge bg-white" style="font-size:.65rem;color:#92400e!important;">Operador / Fornecedor</span>
+          </div>
+        </div>
+
+        <div style="height:40px;display:flex;flex-direction:column;align-items:center;position:relative;">
+          <div style="width:2px;flex:1;background:#cbd5e1;"></div>
+          <div style="border-left:7px solid transparent;border-right:7px solid transparent;border-top:10px solid #94a3b8;"></div>
+          <span style="position:absolute;top:50%;transform:translateY(-50%);left:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:20px;padding:.15rem .7rem;font-size:.68rem;font-weight:600;color:#475569;white-space:nowrap;">
+            Confirmar Coleta
+          </span>
+        </div>
+
+        <!-- 6. COLETADO -->
+        <div class="flow-node node-coletado">
+          <div class="node-icon">✅</div>
+          <div class="node-label">Coletado</div>
+          <div class="node-desc">Produto retirado do armazém</div>
+          <div class="node-actor mt-2">
+            <span class="badge bg-white text-success" style="font-size:.65rem;">Operador</span>
+          </div>
+        </div>
+
+        <div style="height:40px;display:flex;flex-direction:column;align-items:center;position:relative;">
+          <div style="width:2px;flex:1;background:#cbd5e1;"></div>
+          <div style="border-left:7px solid transparent;border-right:7px solid transparent;border-top:10px solid #94a3b8;"></div>
+          <span style="position:absolute;top:50%;transform:translateY(-50%);left:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:20px;padding:.15rem .7rem;font-size:.68rem;font-weight:600;color:#475569;white-space:nowrap;">
+            Finalizar + Evidência obrigatória
+          </span>
+        </div>
+
+        <!-- 7. FINALIZADO -->
+        <div class="flow-node node-finalizado">
+          <div class="node-icon">🏁</div>
+          <div class="node-label">Finalizado</div>
+          <div class="node-desc">Processo encerrado com sucesso</div>
+          <div class="node-actor mt-2">
+            <span class="badge bg-white text-success" style="font-size:.65rem;">Sistema / Supervisor</span>
+          </div>
+        </div>
+
+      </div><!-- /flow-wrap -->
+
+      <!-- Nós fora do fluxo principal -->
+      <div class="d-flex justify-content-center gap-3 mt-4">
+        <div class="flow-node node-sucata" style="width:140px;padding:.75rem;">
+          <div class="node-icon" style="font-size:1.2rem;">🗑️</div>
+          <div class="node-label" style="font-size:.82rem;">Sucata</div>
+          <div class="node-desc">Produto descartado</div>
+        </div>
+        <div class="flow-node node-cancelado" style="width:140px;padding:.75rem;">
+          <div class="node-icon" style="font-size:1.2rem;">❌</div>
+          <div class="node-label" style="font-size:.82rem;">Cancelado</div>
+          <div class="node-desc">Processo encerrado</div>
+        </div>
+      </div>
+      <p class="text-center text-muted mt-2" style="font-size:.7rem;">
+        <i class="fa-solid fa-circle-info me-1"></i>
+        Cancelamento disponível em qualquer estado ativo
+      </p>
+
+    </div><!-- /form-card -->
+  </div>
+
+  <!-- ══════════════════ DETALHES POR ETAPA ══════════════════ -->
+  <div class="col-lg-7">
+    <div class="d-flex flex-column gap-3">
+
+      <!-- Etapa 1 -->
+      <div class="form-card step-card">
+        <div class="d-flex align-items-start gap-3">
+          <div class="step-num" style="background:#dbeafe;color:#1d4ed8;">1</div>
+          <div class="flex-grow-1">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <h6 class="mb-0 fw-bold">Abertura do RMA</h6>
+              <span class="badge bg-primary">Aberto</span>
+            </div>
+            <p class="text-muted small mb-2">O processo começa com o registro da solicitação de devolução ou troca.</p>
+            <div class="row g-2">
+              <div class="col-md-6">
+                <div class="text-muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Responsável</div>
+                <span class="actor-badge" style="color:#2563eb;border-color:#bfdbfe;">
+                  <i class="fa-solid fa-user"></i> Operador / Atendimento
+                </span>
+              </div>
+              <div class="col-md-6">
+                <div class="text-muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Acesso</div>
+                <a href="{{ url_for('rma.novo') }}" class="btn btn-sm btn-outline-primary py-0">
+                  <i class="fa-solid fa-external-link-alt me-1"></i>Abrir RMA
+                </a>
+              </div>
+            </div>
+            <ul class="checklist list-unstyled mt-2 mb-0">
+              <li><i class="fa-solid fa-check text-success"></i> Dados do cliente (nome, CPF/CNPJ)</li>
+              <li><i class="fa-solid fa-check text-success"></i> Produto e fornecedor</li>
+              <li><i class="fa-solid fa-check text-success"></i> Motivo da devolução</li>
+              <li><i class="fa-regular fa-square text-muted"></i> Nota fiscal (opcional)</li>
+              <li><i class="fa-regular fa-square text-muted"></i> Número de série (opcional)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Etapa 2 -->
+      <div class="form-card step-card">
+        <div class="d-flex align-items-start gap-3">
+          <div class="step-num" style="background:#e0f2fe;color:#0284c7;">2</div>
+          <div class="flex-grow-1">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <h6 class="mb-0 fw-bold">Recebimento Físico</h6>
+              <span class="badge bg-warning text-dark">Ag. Triagem</span>
+            </div>
+            <p class="text-muted small mb-2">O produto chega fisicamente ao armazém. O operador confirma o recebimento.</p>
+            <div class="row g-2">
+              <div class="col-md-6">
+                <div class="text-muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Responsável</div>
+                <span class="actor-badge" style="color:#0284c7;border-color:#bae6fd;">
+                  <i class="fa-solid fa-user"></i> Operador
+                </span>
+              </div>
+              <div class="col-md-6">
+                <div class="text-muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Acesso</div>
+                <a href="{{ url_for('rma.index') }}?estado=ABERTO" class="btn btn-sm btn-outline-info py-0">
+                  <i class="fa-solid fa-external-link-alt me-1"></i>RMAs Abertos
+                </a>
+              </div>
+            </div>
+            <ul class="checklist list-unstyled mt-2 mb-0">
+              <li><i class="fa-solid fa-check text-success"></i> Confirmar "Receber RMA" no sistema</li>
+              <li><i class="fa-solid fa-check text-success"></i> SLA começa a contar a partir deste momento</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Etapa 3 -->
+      <div class="form-card step-card">
+        <div class="d-flex align-items-start gap-3">
+          <div class="step-num" style="background:#ede9fe;color:#7c3aed;">3</div>
+          <div class="flex-grow-1">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <h6 class="mb-0 fw-bold">Triagem e Análise Técnica</h6>
+              <span class="badge bg-info">Em Análise</span>
+            </div>
+            <p class="text-muted small mb-2">Técnico examina o produto, registra o laudo e emite a etiqueta com QR code.</p>
+            <div class="row g-2">
+              <div class="col-md-6">
+                <div class="text-muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Responsável</div>
+                <span class="actor-badge" style="color:#7c3aed;border-color:#ddd6fe;">
+                  <i class="fa-solid fa-user-gear"></i> Técnico
+                </span>
+              </div>
+              <div class="col-md-6">
+                <div class="text-muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Acesso</div>
+                <a href="{{ url_for('triagem.index') }}" class="btn btn-sm btn-outline-secondary py-0">
+                  <i class="fa-solid fa-external-link-alt me-1"></i>Tela de Triagem
+                </a>
+              </div>
+            </div>
+            <ul class="checklist list-unstyled mt-2 mb-0">
+              <li><i class="fa-solid fa-check text-success"></i> Laudo técnico detalhado</li>
+              <li><i class="fa-solid fa-check text-success"></i> Categoria do defeito</li>
+              <li><i class="fa-solid fa-check text-success"></i> Endereço no armazém (atribuído automaticamente)</li>
+              <li><i class="fa-solid fa-check text-success"></i> Etiqueta impressa com QR code</li>
+              <li><i class="fa-solid fa-tag text-primary"></i> Destinação: Negociação com Fornecedor (automática)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Etapa 4 -->
+      <div class="form-card step-card">
+        <div class="d-flex align-items-start gap-3">
+          <div class="step-num" style="background:#fef3c7;color:#d97706;">4</div>
+          <div class="flex-grow-1">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <h6 class="mb-0 fw-bold">Definição de Destinação</h6>
+              <span class="badge bg-warning text-dark">Ag. Destinação</span>
+            </div>
+            <p class="text-muted small mb-2">Supervisor ou Compras decide o que fazer com o produto após análise.</p>
+            <div class="row g-2">
+              <div class="col-md-6">
+                <div class="text-muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Responsável</div>
+                <span class="actor-badge" style="color:#d97706;border-color:#fde68a;">
+                  <i class="fa-solid fa-user-tie"></i> Supervisor / Compras
+                </span>
+              </div>
+              <div class="col-md-6">
+                <div class="text-muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Alternativa</div>
+                <span class="badge bg-dark">Sucatear</span>
+                <span class="text-muted small ms-1">→ vai para Sucata</span>
+              </div>
+            </div>
+            <ul class="checklist list-unstyled mt-2 mb-0">
+              <li><i class="fa-solid fa-check text-success"></i> Confirmar destinação final</li>
+              <li><i class="fa-solid fa-check text-success"></i> Solicitar coleta junto ao fornecedor</li>
+              <li><i class="fa-regular fa-square text-muted"></i> Possível agrupamento em <strong>Lote de Devolução</strong></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Etapa 5 -->
+      <div class="form-card step-card">
+        <div class="d-flex align-items-start gap-3">
+          <div class="step-num" style="background:#fef9c3;color:#ca8a04;">5</div>
+          <div class="flex-grow-1">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <h6 class="mb-0 fw-bold">Coleta pelo Fornecedor</h6>
+              <span class="badge" style="background:#eab308;color:#fff;">Ag. Coleta</span>
+            </div>
+            <p class="text-muted small mb-2">Produto aguarda retirada. Fornecedor ou transportadora realiza a coleta.</p>
+            <div class="row g-2">
+              <div class="col-md-6">
+                <div class="text-muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Responsável</div>
+                <span class="actor-badge" style="color:#ca8a04;border-color:#fde68a;">
+                  <i class="fa-solid fa-truck"></i> Operador / Fornecedor
+                </span>
+              </div>
+              <div class="col-md-6">
+                <div class="text-muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Alternativa</div>
+                <a href="{{ url_for('lote.index') }}" class="btn btn-sm btn-outline-secondary py-0">
+                  <i class="fa-solid fa-boxes-stacked me-1"></i>Lotes
+                </a>
+              </div>
+            </div>
+            <ul class="checklist list-unstyled mt-2 mb-0">
+              <li><i class="fa-solid fa-check text-success"></i> Confirmar "Coleta Realizada" no sistema</li>
+              <li><i class="fa-regular fa-square text-muted"></i> Produto sai fisicamente do armazém</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Etapa 6 -->
+      <div class="form-card step-card" style="border: 2px solid #22c55e;">
+        <div class="d-flex align-items-start gap-3">
+          <div class="step-num" style="background:#dcfce7;color:#15803d;">6</div>
+          <div class="flex-grow-1">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <h6 class="mb-0 fw-bold">Finalização</h6>
+              <span class="badge bg-success">Finalizado</span>
+            </div>
+            <p class="text-muted small mb-2">Processo encerrado. Evidência documental obrigatória para fechar o RMA.</p>
+            <div class="row g-2">
+              <div class="col-md-6">
+                <div class="text-muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Responsável</div>
+                <span class="actor-badge" style="color:#15803d;border-color:#bbf7d0;">
+                  <i class="fa-solid fa-user-check"></i> Supervisor / Operador
+                </span>
+              </div>
+              <div class="col-md-6">
+                <div class="text-muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Via Lote</div>
+                <span class="text-muted small">Finalização em bloco via <a href="{{ url_for('lote.index') }}">Lotes de Devolução</a></span>
+              </div>
+            </div>
+            <ul class="checklist list-unstyled mt-2 mb-0">
+              <li><i class="fa-solid fa-file-circle-check text-danger"></i> <strong>Evidência obrigatória</strong> (NF, protocolo, foto)</li>
+              <li><i class="fa-regular fa-square text-muted"></i> Status de finalização (crédito, reparo, descarte…)</li>
+              <li><i class="fa-solid fa-check text-success"></i> SLA encerrado e archivado</li>
+              <li><i class="fa-solid fa-check text-success"></i> Histórico completo preservado</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /d-flex -->
+  </div><!-- /col -->
+</div><!-- /row -->
+
+<!-- ══════════════════ MÓDULOS AUXILIARES ══════════════════ -->
+<div class="row g-3 mb-4">
+  <div class="col-12">
+    <h6 class="fw-bold text-muted text-uppercase mb-3" style="font-size:.75rem;letter-spacing:.08em;">
+      <i class="fa-solid fa-puzzle-piece me-1"></i>Módulos que interagem com o processo
+    </h6>
+  </div>
+  <div class="col-md-3">
+    <div class="form-card text-center h-100">
+      <div class="mb-2" style="font-size:2rem;">📊</div>
+      <h6 class="fw-bold">Monitor de SLA</h6>
+      <p class="text-muted small mb-3">Acompanha os prazos de todos os RMAs ativos e exibe alertas de atraso.</p>
+      <a href="{{ url_for('sla.index') }}" class="btn btn-sm btn-outline-warning">Acessar</a>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="form-card text-center h-100">
+      <div class="mb-2" style="font-size:2rem;">📦</div>
+      <h6 class="fw-bold">Lotes de Devolução</h6>
+      <p class="text-muted small mb-3">Agrupe vários RMAs em um único lote para devolução em bloco ao fornecedor.</p>
+      <a href="{{ url_for('lote.index') }}" class="btn btn-sm btn-outline-primary">Acessar</a>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="form-card text-center h-100">
+      <div class="mb-2" style="font-size:2rem;">🏭</div>
+      <h6 class="fw-bold">Armazém</h6>
+      <p class="text-muted small mb-3">Endereços físicos atribuídos automaticamente após triagem, agrupando por fornecedor.</p>
+      <a href="{{ url_for('armazem.index') }}" class="btn btn-sm btn-outline-secondary">Acessar</a>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="form-card text-center h-100">
+      <div class="mb-2" style="font-size:2rem;">📋</div>
+      <h6 class="fw-bold">Inventário</h6>
+      <p class="text-muted small mb-3">Auditoria física do armazém: confira EAN e quantidades de cada endereço.</p>
+      <a href="{{ url_for('auditoria.index') }}" class="btn btn-sm btn-outline-secondary">Acessar</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ TABELA DE ESTADOS ══════════════════ -->
+<div class="table-card">
+  <div class="table-header">
+    <i class="fa-solid fa-table text-muted"></i>
+    <strong>Resumo de Estados e Transições</strong>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0" style="font-size:.83rem;">
+      <thead>
+        <tr>
+          <th>Estado</th>
+          <th>Descrição</th>
+          <th>Pode ir para</th>
+          <th>Quem age</th>
+          <th>Ação no sistema</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge bg-secondary">Aberto</span></td>
+          <td>RMA registrado, aguardando produto chegar</td>
+          <td><span class="badge bg-warning text-dark me-1">Ag. Triagem</span><span class="badge bg-danger">Cancelado</span></td>
+          <td>Operador</td>
+          <td class="text-muted small">Detalhe do RMA → "Receber RMA"</td>
+        </tr>
+        <tr>
+          <td><span class="badge bg-warning text-dark">Ag. Triagem</span></td>
+          <td>Produto recebido fisicamente no armazém</td>
+          <td><span class="badge bg-info me-1">Em Análise</span><span class="badge bg-danger">Cancelado</span></td>
+          <td>Técnico</td>
+          <td class="text-muted small">Triagem → selecionar RMA → "Iniciar Triagem"</td>
+        </tr>
+        <tr>
+          <td><span class="badge bg-info">Em Análise</span></td>
+          <td>Técnico examinando o produto</td>
+          <td><span class="badge bg-primary me-1">Ag. Destinação</span><span class="badge bg-danger">Cancelado</span></td>
+          <td>Técnico</td>
+          <td class="text-muted small">Triagem → preencher laudo → salvar → emite etiqueta</td>
+        </tr>
+        <tr>
+          <td><span class="badge bg-primary">Ag. Destinação</span></td>
+          <td>Aguardando decisão sobre o destino do produto</td>
+          <td><span class="badge bg-warning me-1">Ag. Coleta</span><span class="badge bg-dark me-1">Sucata</span><span class="badge bg-danger">Cancelado</span></td>
+          <td>Supervisor / Compras</td>
+          <td class="text-muted small">Detalhe RMA → "Solicitar Coleta" ou "Sucatear"</td>
+        </tr>
+        <tr>
+          <td><span class="badge" style="background:#eab308;">Ag. Coleta</span></td>
+          <td>Produto pronto para retirada</td>
+          <td><span class="badge bg-success me-1">Coletado</span><span class="badge bg-danger">Cancelado</span></td>
+          <td>Operador</td>
+          <td class="text-muted small">Detalhe RMA → "Confirmar Coleta"</td>
+        </tr>
+        <tr>
+          <td><span class="badge bg-success">Coletado</span></td>
+          <td>Produto saiu fisicamente do armazém</td>
+          <td><span class="badge bg-success">Finalizado</span></td>
+          <td>Supervisor</td>
+          <td class="text-muted small">Detalhe RMA → "Finalizar" (evidência obrigatória)</td>
+        </tr>
+        <tr>
+          <td><span class="badge bg-dark">Sucata</span></td>
+          <td>Produto destinado ao descarte</td>
+          <td><span class="badge bg-success">Finalizado</span></td>
+          <td>Operador</td>
+          <td class="text-muted small">Detalhe RMA → "Finalizar"</td>
+        </tr>
+        <tr style="background:#fef2f2;">
+          <td><span class="badge bg-success">Finalizado</span></td>
+          <td>Processo encerrado com sucesso</td>
+          <td class="text-muted">—</td>
+          <td class="text-muted">—</td>
+          <td class="text-muted small">Estado final</td>
+        </tr>
+        <tr style="background:#fef2f2;">
+          <td><span class="badge bg-danger">Cancelado</span></td>
+          <td>Processo encerrado sem conclusão</td>
+          <td class="text-muted">—</td>
+          <td class="text-muted">—</td>
+          <td class="text-muted small">Estado final</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

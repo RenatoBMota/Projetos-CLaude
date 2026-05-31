@@ -8,6 +8,12 @@ from app.models import RMA, EstadoRMA, PrazoSLA, Usuario, Fornecedor
 bp = Blueprint('dashboard', __name__)
 
 
+@bp.route('/fluxo-rma')
+@login_required
+def fluxo_rma():
+    return render_template('dashboard/fluxo_rma.html')
+
+
 @bp.route('/dashboard')
 @login_required
 def index():

@@ -211,6 +211,10 @@
        class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}">
       <i class="fa-solid fa-gauge-high"></i> Dashboard
     </a>
+    <a href="{{ url_for('dashboard.fluxo_rma') }}"
+       class="nav-link {% if request.endpoint == 'dashboard.fluxo_rma' %}active{% endif %}">
+      <i class="fa-solid fa-diagram-project"></i> Fluxo RMA
+    </a>
 
     <span class="nav-section mt-2">Operação</span>
     <a href="{{ url_for('rma.index') }}"
