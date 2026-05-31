@@ -15,6 +15,39 @@ def index():
     return render_template('armazem/index.html', armazens=armazens, TipoZona=TipoZona)
 
 
+@bp.route('/novo-armazem', methods=['POST'])
+@login_required
+def novo_armazem():
+    nome     = request.form.get('nome', '').strip() or 'Armazém Principal RMA'
+    codigo   = request.form.get('codigo', '').strip() or 'ARM-01'
+    endereco = request.form.get('endereco', '').strip()
+
+    if Armazem.query.filter_by(codigo=codigo).first():
+        flash(f'Já existe um armazém com o código "{codigo}".', 'warning')
+        return redirect(url_for('armazem.index'))
+
+    arm = Armazem(codigo=codigo, nome=nome, endereco=endereco)
+    db.session.add(arm)
+    db.session.flush()
+
+    zonas_padrao = [
+        ('Z-ANA', 'Zona de Análise',    TipoZona.ANALISE,     50),
+        ('Z-DEF', 'Zona Defeituosos',   TipoZona.DEFEITUOSOS, 100),
+        ('Z-SUC', 'Zona Sucata',        TipoZona.SUCATA,      80),
+        ('Z-QUA', 'Quarentena',         TipoZona.QUARENTENA,  30),
+        ('Z-EXP', 'Expedição',          TipoZona.EXPEDICAO,   60),
+        ('Z-BLQ', 'Bloqueados',         TipoZona.BLOQUEADOS,  20),
+    ]
+    for cod, znome, tipo, cap in zonas_padrao:
+        db.session.add(Zona(armazem_id=arm.id, codigo=cod, nome=znome,
+                            tipo=tipo, capacidade_max=cap))
+
+    db.session.commit()
+    flash(f'Armazém "{nome}" criado com 6 zonas padrão. '
+          f'Clique em cada zona para gerar os endereços.', 'success')
+    return redirect(url_for('armazem.index'))
+
+
 @bp.route('/zona/<int:zona_id>')
 @login_required
 def zona_detalhe(zona_id):

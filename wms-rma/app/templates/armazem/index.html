@@ -10,6 +10,54 @@
   <p class="subtitle">Hierarquia: Armazém → Zona → Módulo → Rua → Número → Apartamento</p>
 </div>
 
+{% if not armazens %}
+<div class="form-card text-center py-5">
+  <i class="fa-solid fa-warehouse fa-3x text-muted mb-3"></i>
+  <h5 class="text-muted">Nenhum armazém cadastrado</h5>
+  <p class="text-muted small mb-4">Crie o armazém para começar a gerenciar endereços e zonas.</p>
+  <button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#modalNovoArmazem">
+    <i class="fa-solid fa-plus me-1"></i>Criar Armazém
+  </button>
+</div>
+
+<!-- Modal Novo Armazém -->
+<div class="modal fade" id="modalNovoArmazem" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('armazem.novo_armazem') }}">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fa-solid fa-warehouse me-2"></i>Novo Armazém</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">Serão criadas automaticamente as 6 zonas padrão (Análise, Defeituosos, Sucata, Quarentena, Expedição, Bloqueados). Depois você gera os endereços em cada zona.</p>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Nome do Armazém</label>
+            <input type="text" name="nome" class="form-control" value="Armazém Principal RMA" required>
+          </div>
+          <div class="row g-3">
+            <div class="col-5">
+              <label class="form-label fw-bold">Código</label>
+              <input type="text" name="codigo" class="form-control" value="ARM-01" required maxlength="20">
+            </div>
+            <div class="col-7">
+              <label class="form-label fw-bold">Endereço / Localização</label>
+              <input type="text" name="endereco" class="form-control" placeholder="Ex: Rua Logística, 100">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary-custom">
+            <i class="fa-solid fa-check me-1"></i>Criar Armazém
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 {% for arm in armazens %}
 <div class="form-card mb-4">
   <div class="d-flex align-items-center gap-3 mb-3 pb-2 border-bottom">

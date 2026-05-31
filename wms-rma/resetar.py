@@ -36,7 +36,6 @@ def resetar():
             Usuario, Roles,
             RMA, HistoricoRMA, Documento, PrazoSLA, PoliticaSLA,
             Produto, Fornecedor, LoteDevolucao,
-            Armazem, Zona, Modulo, Rua, Numero, Apartamento,
             Inventario, ItemInventario, EmailAlerta,
         )
     except Exception as e:
@@ -47,7 +46,7 @@ def resetar():
     app = create_app()  # cria tabelas + roda seed (dados de exemplo)
 
     with app.app_context():
-        # 3. Apaga todos os dados na ordem correta (respeita FKs)
+        # 3. Apaga dados de negócio na ordem correta (respeita FKs)
         ItemInventario.query.delete()
         Inventario.query.delete()
         HistoricoRMA.query.delete()
@@ -58,17 +57,17 @@ def resetar():
         LoteDevolucao.query.delete()
         Produto.query.delete()
         Fornecedor.query.delete()
-        Apartamento.query.delete()
-        Numero.query.delete()
-        Rua.query.delete()
-        Modulo.query.delete()
-        Zona.query.delete()
-        Armazem.query.delete()
         EmailAlerta.query.delete()
-        # Remove todos os usuarios exceto o admin
+        # Remove todos os usuários exceto o admin
         Usuario.query.filter(Usuario.email != 'admin@wms.com').delete()
+        # Preserva a estrutura do armazém, apenas libera todos os endereços
+        from app.models import Apartamento
+        Apartamento.query.update({'ocupado': False})
         db.session.commit()
-        print("  [OK] Dados de exemplo removidos.")
+        print("  [OK] Dados removidos. Estrutura do armazem preservada.")
+        n_apts = Apartamento.query.count()
+        if n_apts:
+            print(f"  [OK] {n_apts} enderecos liberados (ocupado = False).")
 
         # 4. Garante que o admin existe e com a senha certa
         admin = Usuario.query.filter_by(email='admin@wms.com').first()
