@@ -1,20 +1,30 @@
 import os
 import sys
-import threading
-import webbrowser
 
 # Garante que o diretório do projeto está no path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from app import create_app
+def main():
+    try:
+        from app import create_app
+    except Exception as e:
+        print("\n[ERRO] Falha ao importar a aplicação:")
+        print(f"  {e}")
+        print("\nVerifique se todas as dependências estão instaladas:")
+        print("  python -m pip install -r requirements.txt")
+        input("\nPressione Enter para sair...")
+        sys.exit(1)
 
-def abrir_browser(port):
-    import time
-    time.sleep(1.5)
-    webbrowser.open(f'http://localhost:{port}')
+    try:
+        app = create_app()
+    except Exception as e:
+        print("\n[ERRO] Falha ao inicializar a aplicação:")
+        print(f"  {e}")
+        import traceback
+        traceback.print_exc()
+        input("\nPressione Enter para sair...")
+        sys.exit(1)
 
-if __name__ == '__main__':
-    app = create_app()
     port = int(os.environ.get('PORT', 5000))
 
     print("\n" + "="*60)
@@ -25,9 +35,20 @@ if __name__ == '__main__':
     print("  Pressione Ctrl+C para encerrar")
     print("="*60 + "\n")
 
-    if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
-        t = threading.Thread(target=abrir_browser, args=(port,))
-        t.daemon = True
-        t.start()
+    try:
+        app.run(host='0.0.0.0', port=port, debug=False)
+    except OSError as e:
+        if 'Address already in use' in str(e) or 'WinError 10048' in str(e):
+            print(f"\n[ERRO] A porta {port} já está em uso.")
+            print("  Encerre o outro processo ou defina outra porta:")
+            print(f"  set PORT=5001 && python run.py   (Windows)")
+            print(f"  PORT=5001 python run.py          (Linux/Mac)")
+        else:
+            print(f"\n[ERRO] Falha ao iniciar servidor: {e}")
+        input("\nPressione Enter para sair...")
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print("\n\nServidor encerrado.")
 
-    app.run(host='0.0.0.0', port=port, debug=False)
+if __name__ == '__main__':
+    main()
