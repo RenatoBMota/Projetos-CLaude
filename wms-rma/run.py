@@ -25,7 +25,7 @@ def main():
         input("\nPressione Enter para sair...")
         sys.exit(1)
 
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 4000))
 
     print("\n" + "="*60)
     print("  WMS RMA Enterprise - Sistema de Gestão de Logística Reversa")
@@ -41,8 +41,8 @@ def main():
         if 'Address already in use' in str(e) or 'WinError 10048' in str(e):
             print(f"\n[ERRO] A porta {port} já está em uso.")
             print("  Encerre o outro processo ou defina outra porta:")
-            print(f"  set PORT=5001 && python run.py   (Windows)")
-            print(f"  PORT=5001 python run.py          (Linux/Mac)")
+            print(f"  set PORT=4001 && python run.py   (Windows)")
+            print(f"  PORT=4001 python run.py          (Linux/Mac)")
         else:
             print(f"\n[ERRO] Falha ao iniciar servidor: {e}")
         input("\nPressione Enter para sair...")

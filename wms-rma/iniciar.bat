@@ -37,8 +37,9 @@ if errorlevel 1 (
 
 echo Dependencias OK.
 echo.
-echo Iniciando sistema...
+echo Iniciando sistema na porta 4000...
 echo.
+set PORT=4000
 
 python run.py
 
