@@ -1,0 +1,25 @@
+{
+  "name": "claude-code-agents",
+  "version": "3.1.0",
+  "description": "24 parallel audit agents + 6 workflow skills for Claude Code. Complete E2E development workflow for solo devs.",
+  "author": {
+    "name": "UndeadList",
+    "email": "hello@undeadlist.com",
+    "url": "https://undeadlist.com"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/undeadlist/claude-code-agents",
+  "homepage": "https://github.com/undeadlist/claude-code-agents#readme",
+  "keywords": [
+    "audit",
+    "security",
+    "code-quality",
+    "testing",
+    "browser-qa",
+    "deployment",
+    "workflows",
+    "solo-dev"
+  ],
+  "agents": "./agents/",
+  "skills": "./skills/"
+}

@@ -1,0 +1,20 @@
+model = "gpt-5.4"
+model_reasoning_effort = "xhigh"
+model_provider = "azure"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "live"
+personality = "pragmatic"
+model_auto_compact_token_limit = 400000
+
+[sandbox_workspace_write]
+network_access = true
+
+[analytics]
+enabled = false
+
+[model_providers.azure]
+name = "Azure OpenAI"
+base_url = "https://YOUR-AZURE-OPENAI.openai.azure.com/openai/v1"
+env_key = "AZURE_OPENAI_API_KEY"
+wire_api = "responses"

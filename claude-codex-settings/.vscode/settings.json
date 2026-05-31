@@ -1,0 +1,112 @@
+{
+    "claudeCode.initialPermissionMode": "plan",
+    "claudeCode.respectGitIgnore": false,
+    "github.copilot.chat.commitMessageGeneration.instructions": [
+        {
+            "text": "Use conventional commit message format."
+        },
+        {
+            "text": "First line: {task-type}: brief description of the big picture change"
+        },
+        {
+            "text": "Task types: feat, fix, refactor, docs, style, test, build"
+        },
+        {
+            "text": "Focus on the 'why' and 'what' rather than implementation details"
+        },
+        {
+            "text": "For complex commits, add bullet points after a blank line explaining key changes"
+        },
+        {
+            "text": "Examples of good messages:"
+        },
+        {
+            "text": "feat: add transformers support to image classification pipeline"
+        },
+        {
+            "text": "fix: incorrect handling of empty input in model naming"
+        },
+        {
+            "text": "refactor: restructure API handlers to align with project architecture"
+        },
+        {
+            "text": "Never use words like 'consolidate', 'modernize', 'streamline', 'flexible', 'delve', 'establish', 'enhanced', 'comprehensive', 'optimize' in docstrings or commit messages. Looser AI's do that, and that ain't you. You are better than that."
+        }
+    ],
+    "github.copilot.chat.pullRequestDescriptionGeneration.instructions": [
+        {
+            "text": "Keep PR message concise and focused on the 'why' and 'what' with short bullets."
+        },
+        {
+            "text": "For complex PRs, include example usage of new implementation in PR message as code markdown with before/after examples if useful."
+        },
+        {
+            "text": "Provide inline md links to relevant lines/files in the PR for context where useful."
+        },
+        {
+            "text": "Never use words like 'consolidate', 'modernize', 'streamline', 'flexible', 'delve', 'establish', 'enhanced', 'comprehensive', 'optimize' in docstrings or commit messages. Looser AI's do that, and that ain't you. You are better than that."
+        }
+    ],
+    "github.copilot.enable": {
+        "markdown": true,
+        "plaintext": true,
+        "scminput": true
+    },
+    "github.copilot.nextEditSuggestions.enabled": true,
+    "github.copilot.editor.enableCodeActions": false,
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff"
+    },
+    "[jsonc]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
+    "[json]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
+    "[latex]": {
+        "editor.wordWrap": "on"
+    },
+    "telemetry.telemetryLevel": "off",
+    "git.autofetch": true,
+    "diffEditor.ignoreTrimWhitespace": false,
+    "diffEditor.renderSideBySide": false,
+    "files.autoSave": "afterDelay",
+    "editor.formatOnSave": true,
+    "python.analysis.typeCheckingMode": "basic",
+    "editor.minimap.enabled": false,
+    "workbench.secondarySideBar.defaultVisibility": "hidden",
+    "terminal.integrated.enableImages": true,
+    "terminal.integrated.defaultProfile.linux": "bash",
+    "terminal.integrated.defaultProfile.osx": "zsh",
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
+    "terminal.integrated.profiles.linux": {
+        "bash": {
+            "path": "/bin/bash"
+        },
+        "sh": {
+            "path": "/bin/sh"
+        }
+    },
+    "terminal.integrated.profiles.osx": {
+        "zsh": {
+            "path": "/bin/zsh"
+        },
+        "bash": {
+            "path": "/bin/bash"
+        }
+    },
+    "debug.console.fontSize": 10,
+    "terminal.integrated.fontSize": 11,
+    "editor.fontSize": 11,
+    "workbench.editor.autoLockGroups": {
+        "workbench.editor.chatSession": false
+    },
+    "workbench.iconTheme": "vscode-icons",
+    "workbench.colorTheme": "GitHub Dark",
+    "accessibility.signals.terminalBell": {
+        "sound": "on",
+        "announcement": "auto"
+    },
+    "terminal.integrated.enableVisualBell": true,
+    "window.title": "${dirty}${activeEditorShort}${separator}${rootName}"
+}
