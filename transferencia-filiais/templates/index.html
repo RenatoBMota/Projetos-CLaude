@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}Upload de Arquivos{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-cloud-upload me-2"></i>Nova Análise de Transferência</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data" id="uploadForm">
+
+                    <!-- Parameters -->
+                    <div class="card mb-4 border-0 bg-light">
+                        <div class="card-body">
+                            <h6 class="fw-bold mb-3"><i class="bi bi-sliders me-2"></i>Parâmetros</h6>
+                            <div class="row g-3">
+                                <div class="col-sm-6">
+                                    <label class="form-label fw-semibold">Filial Origem</label>
+                                    <input type="text" name="filial_origem" class="form-control"
+                                           placeholder="Ex: MATRIZ" required
+                                           value="{{ request.form.get('filial_origem', '') }}">
+                                </div>
+                                <div class="col-sm-6">
+                                    <label class="form-label fw-semibold">Filial Destino</label>
+                                    <input type="text" name="filial_destino" class="form-control"
+                                           placeholder="Ex: FILIAL" required
+                                           value="{{ request.form.get('filial_destino', '') }}">
+                                </div>
+                                <div class="col-sm-4">
+                                    <label class="form-label fw-semibold">Período de Análise (dias)</label>
+                                    <input type="number" name="periodo_dias" class="form-control"
+                                           min="1" max="365" value="{{ request.form.get('periodo_dias', 30) }}" required>
+                                    <div class="form-text">Dias retroativos para calcular MDV</div>
+                                </div>
+                                <div class="col-sm-4">
+                                    <label class="form-label fw-semibold">Cobertura Mínima Origem (dias)</label>
+                                    <input type="number" name="dias_min_origem" class="form-control"
+                                           min="0" max="365" value="{{ request.form.get('dias_min_origem', 30) }}" required>
+                                    <div class="form-text">Proteção do estoque de origem</div>
+                                </div>
+                                <div class="col-sm-4">
+                                    <label class="form-label fw-semibold">Cobertura Desejada Destino (dias)</label>
+                                    <input type="number" name="dias_meta_destino" class="form-control"
+                                           min="0" max="365" value="{{ request.form.get('dias_meta_destino', 15) }}" required>
+                                    <div class="form-text">Meta de reposição no destino</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- File Uploads -->
+                    <h6 class="fw-bold mb-3"><i class="bi bi-files me-2"></i>Arquivos</h6>
+                    <div class="row g-3 mb-3">
+
+                        <div class="col-md-6">
+                            <div class="upload-zone" id="zone-vendas" onclick="document.getElementById('vendas').click()">
+                                <i class="bi bi-graph-up fs-3 text-primary"></i>
+                                <div class="mt-2 fw-semibold">Histórico de Vendas <span class="text-danger">*</span></div>
+                                <div class="text-muted small">Filial, Data Faturamento, Código Produto, Qtd Faturada</div>
+                                <div class="file-name mt-1 text-primary small" id="name-vendas"></div>
+                                <input type="file" id="vendas" name="vendas" accept=".csv,.xlsx,.xls" class="d-none" onchange="showFileName(this,'name-vendas','zone-vendas')">
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="upload-zone" id="zone-estoque" onclick="document.getElementById('estoque').click()">
+                                <i class="bi bi-boxes fs-3 text-primary"></i>
+                                <div class="mt-2 fw-semibold">Estoque Atual <span class="text-danger">*</span></div>
+                                <div class="text-muted small">Filial, Código Produto, Quantidade</div>
+                                <div class="file-name mt-1 text-primary small" id="name-estoque"></div>
+                                <input type="file" id="estoque" name="estoque" accept=".csv,.xlsx,.xls" class="d-none" onchange="showFileName(this,'name-estoque','zone-estoque')">
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="upload-zone" id="zone-compradores" onclick="document.getElementById('compradores').click()">
+                                <i class="bi bi-person-badge fs-3 text-primary"></i>
+                                <div class="mt-2 fw-semibold">Compradores <span class="text-danger">*</span></div>
+                                <div class="text-muted small">Código Produto, Fornecedor, Comprador</div>
+                                <div class="file-name mt-1 text-primary small" id="name-compradores"></div>
+                                <input type="file" id="compradores" name="compradores" accept=".csv,.xlsx,.xls" class="d-none" onchange="showFileName(this,'name-compradores','zone-compradores')">
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="upload-zone optional" id="zone-transito" onclick="document.getElementById('transito').click()">
+                                <i class="bi bi-truck fs-3 text-secondary"></i>
+                                <div class="mt-2 fw-semibold">Estoque em Trânsito <span class="text-muted">(opcional)</span></div>
+                                <div class="text-muted small">Código Produto, Quantidade Em Trânsito</div>
+                                <div class="file-name mt-1 text-primary small" id="name-transito"></div>
+                                <input type="file" id="transito" name="transito" accept=".csv,.xlsx,.xls" class="d-none" onchange="showFileName(this,'name-transito','zone-transito')">
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="upload-zone optional" id="zone-reservas" onclick="document.getElementById('reservas').click()">
+                                <i class="bi bi-bookmark-check fs-3 text-secondary"></i>
+                                <div class="mt-2 fw-semibold">Reservas/Pedidos <span class="text-muted">(opcional)</span></div>
+                                <div class="text-muted small">Código Produto, Quantidade Reservada</div>
+                                <div class="file-name mt-1 text-primary small" id="name-reservas"></div>
+                                <input type="file" id="reservas" name="reservas" accept=".csv,.xlsx,.xls" class="d-none" onchange="showFileName(this,'name-reservas','zone-reservas')">
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                            <i class="bi bi-play-fill me-2"></i>Processar e Gerar Sugestões
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Session history -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>Sessões Anteriores</h6>
+            </div>
+            <div class="card-body p-0">
+                {% if sessions %}
+                <div class="list-group list-group-flush">
+                    {% for s in sessions %}
+                    <a href="{{ url_for('resultado', session_id=s['id']) }}"
+                       class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="fw-semibold">{{ s['filial_origem'] }} → {{ s['filial_destino'] }}</div>
+                                <small class="text-muted">{{ s['created_at'][:16] }}</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-primary">{{ s['total_produtos'] }} produtos</span>
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                    Nenhuma sessão anterior
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card shadow-sm mt-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Legenda dos Status</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                    <span class="badge bg-success me-2">Transferência Completa</span>
+                    <small>Sugestão atende toda a necessidade</small>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <span class="badge bg-warning text-dark me-2">Transferência Parcial</span>
+                    <small>Sugestão parcial por falta de estoque</small>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <span class="badge bg-danger me-2">Origem Insuficiente</span>
+                    <small>Origem não pode enviar nada</small>
+                </div>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-secondary me-2">Sem Necessidade</span>
+                    <small>Destino já tem estoque suficiente</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}Aprovação — {{ comprador }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="mb-1"><i class="bi bi-person-check me-2"></i>Aprovação de Transferências</h4>
+        <div class="text-muted small">
+            Comprador: <strong>{{ comprador }}</strong>
+            &nbsp;|&nbsp; Sessão #{{ sess['id'] }}: {{ sess['filial_origem'] }} → {{ sess['filial_destino'] }}
+            &nbsp;|&nbsp; {{ sess['created_at'][:16] }}
+        </div>
+    </div>
+    <a href="{{ url_for('resultado', session_id=sess['id']) }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Voltar aos Resultados
+    </a>
+</div>
+
+<!-- Summary -->
+<div class="row g-2 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card border-0 bg-secondary text-white text-center py-2">
+            <div class="fs-3 fw-bold">{{ n_pendente }}</div>
+            <div class="small">Pendentes</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 bg-success text-white text-center py-2">
+            <div class="fs-3 fw-bold">{{ n_aprovado }}</div>
+            <div class="small">Aprovados</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 bg-danger text-white text-center py-2">
+            <div class="fs-3 fw-bold">{{ n_recusado }}</div>
+            <div class="small">Recusados</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 bg-warning text-dark text-center py-2">
+            <div class="fs-3 fw-bold">{{ n_alterado }}</div>
+            <div class="small">Alterados</div>
+        </div>
+    </div>
+</div>
+
+<form method="POST">
+    <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-list-check me-2"></i>{{ n_total }} produto(s) para avaliar</span>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save me-1"></i>Salvar Decisões
+            </button>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover table-bordered mb-0 aprovacao-table">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Código</th>
+                        <th>Produto</th>
+                        <th>Fornecedor</th>
+                        <th class="text-center">Cobertura Atual</th>
+                        <th class="text-end">Necessidade</th>
+                        <th class="text-end">Sugestão</th>
+                        <th class="text-center" style="min-width:320px">Decisão</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in rows %}
+                    {% set sid = r['id']|string %}
+                    <tr class="{% if r['status'] == 'Origem Insuficiente' %}table-danger{% endif %}">
+                        <td class="font-monospace">{{ r['codigo_produto'] }}</td>
+                        <td>
+                            {{ r['descricao_produto'] }}
+                            {% if r['status'] == 'Origem Insuficiente' %}
+                            <span class="badge bg-danger ms-1">Origem Insuf.</span>
+                            {% elif r['status'] == 'Transferência Parcial' %}
+                            <span class="badge bg-warning text-dark ms-1">Parcial</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted small">{{ r['nome_fornecedor'] }}</td>
+                        <td class="text-center fw-semibold {% if r['cobertura_destino_atual'] < 7 %}text-danger{% elif r['cobertura_destino_atual'] < 15 %}text-warning{% endif %}">
+                            {{ r['cobertura_destino_atual'] | br(1) }}d
+                        </td>
+                        <td class="text-end">{{ r['necessidade'] | br_int }}</td>
+                        <td class="text-end fw-bold">{{ r['sugestao'] | br_int }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <input type="radio" class="btn-check" name="decisao_{{ sid }}"
+                                           id="apr_{{ sid }}" value="aprovado"
+                                           {% if r['decisao'] == 'aprovado' %}checked{% endif %}
+                                           onchange="handleDecisao('{{ sid }}', 'aprovado')">
+                                    <label class="btn btn-outline-success" for="apr_{{ sid }}">
+                                        <i class="bi bi-check-lg"></i> Aprovar
+                                    </label>
+
+                                    <input type="radio" class="btn-check" name="decisao_{{ sid }}"
+                                           id="rec_{{ sid }}" value="recusado"
+                                           {% if r['decisao'] == 'recusado' %}checked{% endif %}
+                                           onchange="handleDecisao('{{ sid }}', 'recusado')">
+                                    <label class="btn btn-outline-danger" for="rec_{{ sid }}">
+                                        <i class="bi bi-x-lg"></i> Recusar
+                                    </label>
+
+                                    <input type="radio" class="btn-check" name="decisao_{{ sid }}"
+                                           id="alt_{{ sid }}" value="alterado"
+                                           {% if r['decisao'] == 'alterado' %}checked{% endif %}
+                                           onchange="handleDecisao('{{ sid }}', 'alterado')">
+                                    <label class="btn btn-outline-warning" for="alt_{{ sid }}">
+                                        <i class="bi bi-pencil"></i> Alterar
+                                    </label>
+                                </div>
+
+                                <div class="qty-input" id="qty_group_{{ sid }}"
+                                     style="display:{% if r['decisao'] == 'alterado' %}flex{% else %}none{% endif %}; align-items:center; gap:4px;">
+                                    <input type="number" name="quantidade_{{ sid }}" class="form-control form-control-sm"
+                                           style="width:90px"
+                                           step="1" min="1"
+                                           placeholder="Qtd"
+                                           value="{{ r['quantidade_aprovada']|int if r['decisao'] == 'alterado' and r['quantidade_aprovada'] else r['sugestao']|int }}">
+                                </div>
+
+                                {% if r['decisao'] %}
+                                <span class="decisao-badge">{{ r['decisao'] | decisao_badge | safe }}</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <span class="text-muted small">Sessão #{{ sess['id'] }} — {{ comprador }}</span>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save me-1"></i>Salvar Decisões
+            </button>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function handleDecisao(sid, decisao) {
+    const qtyGroup = document.getElementById('qty_group_' + sid);
+    if (decisao === 'alterado') {
+        qtyGroup.style.display = 'flex';
+        qtyGroup.querySelector('input').required = true;
+    } else {
+        qtyGroup.style.display = 'none';
+        qtyGroup.querySelector('input').required = false;
+    }
+}
+</script>
+{% endblock %}
