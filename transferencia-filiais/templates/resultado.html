@@ -9,7 +9,9 @@
         </h4>
         <div class="text-muted small">
             <strong>{{ sess['filial_origem'] }}</strong> → <strong>{{ sess['filial_destino'] }}</strong>
-            &nbsp;|&nbsp; Período: <strong>{{ sess['periodo_dias'] }} dias</strong> (detectado do arquivo)
+            &nbsp;|&nbsp; Período:
+            <strong>{{ sess['data_inicio'] or '?' }} a {{ sess['data_fim'] or '?' }}</strong>
+            ({{ sess['periodo_dias'] }} dias)
             &nbsp;|&nbsp; Cobertura destino: {{ sess['dias_meta_destino'] }}d
             &nbsp;|&nbsp; Proteção origem: {{ sess['dias_min_origem'] }}d
             &nbsp;|&nbsp; Nível de serviço: <strong>{{ sess['nivel_servico'] or 95 }}%</strong>

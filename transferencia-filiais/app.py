@@ -163,8 +163,11 @@ def index():
             flash(w, 'warning')
 
         periodo_dias = meta['period_days']
+        data_inicio  = meta['min_date']
+        data_fim     = meta['max_date']
         flash(
-            f'Período detectado automaticamente: {meta["min_date"]} a {meta["max_date"]} ({periodo_dias} dias).',
+            f'Período detectado: {data_inicio} a {data_fim} ({periodo_dias} dias). '
+            f'Verifique se as datas do arquivo correspondem ao esperado.',
             'info'
         )
 
@@ -172,7 +175,7 @@ def index():
         total_unidades = sum(r['sugestao'] for r in results if r['incluido'])
 
         session_id = create_session(
-            filial_origem, filial_destino, periodo_dias,
+            filial_origem, filial_destino, periodo_dias, data_inicio, data_fim,
             dias_min_origem, dias_meta_destino, nivel_servico,
             total_produtos, total_unidades
         )

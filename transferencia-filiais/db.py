@@ -21,6 +21,8 @@ def init_db():
             filial_origem TEXT,
             filial_destino TEXT,
             periodo_dias INTEGER,
+            data_inicio TEXT,
+            data_fim TEXT,
             dias_min_origem INTEGER,
             dias_meta_destino INTEGER,
             nivel_servico INTEGER DEFAULT 95,
@@ -71,6 +73,10 @@ def init_db():
     existing = {row[1] for row in c.execute("PRAGMA table_info(sessions)")}
     if 'nivel_servico' not in existing:
         c.execute("ALTER TABLE sessions ADD COLUMN nivel_servico INTEGER DEFAULT 95")
+    if 'data_inicio' not in existing:
+        c.execute("ALTER TABLE sessions ADD COLUMN data_inicio TEXT")
+    if 'data_fim' not in existing:
+        c.execute("ALTER TABLE sessions ADD COLUMN data_fim TEXT")
     existing_s = {row[1] for row in c.execute("PRAGMA table_info(sugestoes)")}
     for col, typ in [('sigma_destino', 'REAL'), ('cv_destino', 'REAL'), ('estoque_seguranca', 'REAL')]:
         if col not in existing_s:
@@ -99,16 +105,16 @@ def get_session(session_id):
     return row
 
 
-def create_session(filial_origem, filial_destino, periodo_dias, dias_min_origem,
-                   dias_meta_destino, nivel_servico, total_produtos, total_unidades):
+def create_session(filial_origem, filial_destino, periodo_dias, data_inicio, data_fim,
+                   dias_min_origem, dias_meta_destino, nivel_servico, total_produtos, total_unidades):
     conn = get_connection()
     c = conn.cursor()
     c.execute("""
-        INSERT INTO sessions (filial_origem, filial_destino, periodo_dias,
+        INSERT INTO sessions (filial_origem, filial_destino, periodo_dias, data_inicio, data_fim,
             dias_min_origem, dias_meta_destino, nivel_servico, total_produtos, total_unidades)
-        VALUES (?,?,?,?,?,?,?,?)
-    """, (filial_origem, filial_destino, periodo_dias, dias_min_origem,
-          dias_meta_destino, nivel_servico, total_produtos, total_unidades))
+        VALUES (?,?,?,?,?,?,?,?,?,?)
+    """, (filial_origem, filial_destino, periodo_dias, data_inicio, data_fim,
+          dias_min_origem, dias_meta_destino, nivel_servico, total_produtos, total_unidades))
     session_id = c.lastrowid
     conn.commit()
     conn.close()

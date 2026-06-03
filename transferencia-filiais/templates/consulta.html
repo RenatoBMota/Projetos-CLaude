@@ -9,7 +9,9 @@
         </h4>
         <div class="text-muted small">
             <strong>{{ sess['filial_origem'] }}</strong> → <strong>{{ sess['filial_destino'] }}</strong>
-            &nbsp;|&nbsp; Período: {{ sess['periodo_dias'] }} dias
+            &nbsp;|&nbsp; Período:
+            <strong>{{ sess['data_inicio'] or '?' }} a {{ sess['data_fim'] or '?' }}</strong>
+            ({{ sess['periodo_dias'] }} dias)
             &nbsp;|&nbsp; Cobertura destino: {{ sess['dias_meta_destino'] }}d
             &nbsp;|&nbsp; Proteção origem: {{ sess['dias_min_origem'] }}d
             &nbsp;|&nbsp; Nível de serviço: <strong>{{ sess['nivel_servico'] or 95 }}%</strong>
@@ -104,7 +106,7 @@
                 <tr>
                     <td class="text-muted pe-3 text-nowrap" style="width:220px;">MDV (Média Diária de Vendas)</td>
                     <td>
-                        = total_vendas / período<br>
+                        = total_vendas / período ({{ sess['data_inicio'] or '?' }} a {{ sess['data_fim'] or '?' }})<br>
                         = <strong>{{ total_vendas_d | br(1) }}</strong> un / <strong>{{ periodo }}</strong> dias
                         = <strong class="text-primary">{{ mdv_d | br(4) }} un/dia</strong>
                     </td>
