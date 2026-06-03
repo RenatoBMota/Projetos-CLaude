@@ -13,6 +13,7 @@ from openpyxl.utils import get_column_letter
 from db import init_db, get_sessions, get_session, create_session, insert_sugestoes
 from db import get_sugestoes, get_sugestoes_by_comprador, get_compradores
 from db import upsert_aprovacao, get_latest_session_id
+from db import get_sugestao_by_codigo, get_all_compradores_in_session
 from calc import process_transfer
 
 app = Flask(__name__)
@@ -446,6 +447,36 @@ def aprovacao(comprador, session_id=None):
                            n_aprovado=n_aprovado,
                            n_recusado=n_recusado,
                            n_alterado=n_alterado)
+
+
+# ─────────────────────────────────────────────
+# MEMÓRIA DE CÁLCULO / CONSULTA
+# ─────────────────────────────────────────────
+@app.route('/consulta/<int:session_id>', methods=['GET', 'POST'])
+def consulta(session_id):
+    sess = get_session(session_id)
+    if not sess:
+        abort(404)
+    if request.method == 'POST':
+        codigo = request.form.get('codigo', '').strip()
+        if codigo:
+            return redirect(url_for('consulta_produto', session_id=session_id, codigo=codigo))
+    return render_template('consulta.html', sess=sess, produto=None, codigo_buscado='')
+
+
+@app.route('/consulta/<int:session_id>/<path:codigo>')
+def consulta_produto(session_id, codigo):
+    from calc import Z_FACTORS
+    sess = get_session(session_id)
+    if not sess:
+        abort(404)
+    produto = get_sugestao_by_codigo(session_id, codigo)
+    if not produto:
+        flash(f'Produto "{codigo}" não encontrado nesta sessão.', 'warning')
+    nivel_servico = sess['nivel_servico'] if sess['nivel_servico'] else 95
+    z_factor = Z_FACTORS.get(int(nivel_servico), 1.65)
+    return render_template('consulta.html', sess=sess, produto=produto,
+                           codigo_buscado=codigo, z_factor=z_factor)
 
 
 if __name__ == '__main__':

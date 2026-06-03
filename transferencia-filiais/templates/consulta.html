@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+{% block title %}Memória de Cálculo — Sessão #{{ sess['id'] }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="mb-1">
+            <i class="bi bi-calculator me-2"></i>Memória de Cálculo
+        </h4>
+        <div class="text-muted small">
+            <strong>{{ sess['filial_origem'] }}</strong> → <strong>{{ sess['filial_destino'] }}</strong>
+            &nbsp;|&nbsp; Período: {{ sess['periodo_dias'] }} dias
+            &nbsp;|&nbsp; Cobertura destino: {{ sess['dias_meta_destino'] }}d
+            &nbsp;|&nbsp; Proteção origem: {{ sess['dias_min_origem'] }}d
+            &nbsp;|&nbsp; Nível de serviço: <strong>{{ sess['nivel_servico'] or 95 }}%</strong>
+            &nbsp;|&nbsp; Sessão #{{ sess['id'] }} ({{ sess['created_at'][:16] }})
+        </div>
+    </div>
+    <div>
+        <a href="{{ url_for('resultado', session_id=sess['id']) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-table me-1"></i>Ver Resultados
+        </a>
+    </div>
+</div>
+
+<!-- Search form -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('consulta', session_id=sess['id']) }}" class="row g-2 align-items-end">
+            <div class="col-md-8">
+                <label class="form-label fw-semibold">Código do Produto</label>
+                <input type="text" name="codigo" class="form-control font-monospace"
+                       placeholder="Digite o código do produto..." value="{{ codigo_buscado }}"
+                       autofocus>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search me-1"></i>Consultar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if codigo_buscado and not produto %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    Produto <strong>{{ codigo_buscado }}</strong> não encontrado nesta sessão.
+</div>
+{% endif %}
+
+{% if produto %}
+{# Helper variables #}
+{% set sigma = produto['sigma_destino'] if produto['sigma_destino'] is not none else 0 %}
+{% set cv = produto['cv_destino'] if produto['cv_destino'] is not none else 0 %}
+{% set est_seg = produto['estoque_seguranca'] if produto['estoque_seguranca'] is not none else 0 %}
+{% set mdv_d = produto['mdv_destino'] %}
+{% set mdv_o = produto['mdv_origem'] %}
+{% set dias_meta = sess['dias_meta_destino'] %}
+{% set dias_min = sess['dias_min_origem'] %}
+{% set periodo = sess['periodo_dias'] %}
+{% set total_vendas_d = (mdv_d * periodo) | round(1) %}
+{% set total_vendas_o = (mdv_o * periodo) | round(1) %}
+
+<!-- Product header -->
+<div class="card mb-3 border-0 bg-light">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-8">
+                <h5 class="mb-1 fw-bold">{{ produto['descricao_produto'] }}</h5>
+                <div class="text-muted small">
+                    <span class="font-monospace me-3"><i class="bi bi-upc me-1"></i>{{ produto['codigo_produto'] }}</span>
+                    {% if produto['comprador'] and produto['comprador'] != 'Sem Comprador' %}
+                    <span class="me-3"><i class="bi bi-person me-1"></i>{{ produto['comprador'] }}</span>
+                    {% else %}
+                    <span class="me-3 text-danger"><i class="bi bi-person-x me-1"></i>Sem Comprador</span>
+                    {% endif %}
+                    {% if produto['nome_fornecedor'] %}
+                    <span><i class="bi bi-building me-1"></i>{{ produto['nome_fornecedor'] }}
+                    {% if produto['codigo_fornecedor'] %}<span class="text-muted">({{ produto['codigo_fornecedor'] }})</span>{% endif %}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-4 text-md-end mt-2 mt-md-0">
+                {% if produto['incluido'] %}
+                <span class="badge bg-success fs-6"><i class="bi bi-check-circle me-1"></i>Incluído na sugestão</span>
+                {% else %}
+                <span class="badge bg-secondary fs-6"><i class="bi bi-x-circle me-1"></i>Excluído da sugestão</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DESTINO card -->
+<div class="card mb-3 shadow-sm">
+    <div class="card-header bg-primary text-white fw-bold">
+        <i class="bi bi-geo-alt me-2"></i>DESTINO — {{ sess['filial_destino'] }}
+    </div>
+    <div class="card-body font-monospace" style="font-size:0.92rem;">
+        <table class="table table-borderless table-sm mb-0">
+            <tbody>
+                <tr>
+                    <td class="text-muted pe-3 text-nowrap" style="width:220px;">MDV (Média Diária de Vendas)</td>
+                    <td>
+                        = total_vendas / período<br>
+                        = <strong>{{ total_vendas_d | br(1) }}</strong> un / <strong>{{ periodo }}</strong> dias
+                        = <strong class="text-primary">{{ mdv_d | br(4) }} un/dia</strong>
+                    </td>
+                </tr>
+                {% if sigma > 0 %}
+                <tr>
+                    <td class="text-muted">σ (Desvio Padrão)</td>
+                    <td>
+                        = <strong>{{ sigma | br(4) }}</strong> un/dia
+                        &nbsp;&nbsp;|&nbsp;&nbsp;
+                        CV = σ / MDV = {{ cv | br(3) }}
+                        {% if cv > 1.0 %}<span class="badge bg-danger ms-1">Alta variação</span>
+                        {% elif cv > 0.5 %}<span class="badge bg-warning text-dark ms-1">Variação moderada</span>
+                        {% else %}<span class="badge bg-success ms-1">Baixa variação</span>{% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td class="text-muted">Estoque de Segurança</td>
+                    <td>
+                        = Z × σ × √(dias_meta)<br>
+                        = <strong>{{ z_factor }}</strong> × <strong>{{ sigma | br(4) }}</strong> × √<strong>{{ dias_meta }}</strong>
+                        = <strong class="text-info">{{ est_seg | br(2) }} un</strong>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td class="text-muted">σ / Estoque Segurança</td>
+                    <td><span class="text-muted">Sem dados históricos de desvio (σ = 0)</span></td>
+                </tr>
+                {% endif %}
+                <tr class="border-top">
+                    <td class="text-muted">Estoque Desejado</td>
+                    <td>
+                        = (MDV × dias_meta) + Est.Segurança<br>
+                        = (<strong>{{ mdv_d | br(4) }}</strong> × <strong>{{ dias_meta }}</strong>) + <strong>{{ est_seg | br(2) }}</strong>
+                        = <strong class="text-primary">{{ produto['estoque_desejado'] | br(2) }} un</strong>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="text-muted">Estoque Atual</td>
+                    <td>= <strong>{{ produto['estoque_destino'] | br_int }}</strong> un</td>
+                </tr>
+                <tr>
+                    <td class="text-muted">Em Trânsito</td>
+                    <td>= <strong>{{ produto['em_transito'] | br_int }}</strong> un</td>
+                </tr>
+                <tr>
+                    <td class="text-muted">Reservas / Pedidos</td>
+                    <td>= <strong>{{ produto['reservas'] | br_int }}</strong> un</td>
+                </tr>
+                <tr class="border-top table-light">
+                    <td class="fw-bold text-dark">NECESSIDADE</td>
+                    <td>
+                        = max(0, Desejado − Atual − Trânsito − Reservas)<br>
+                        = max(0, <strong>{{ produto['estoque_desejado'] | br(2) }}</strong>
+                               − <strong>{{ produto['estoque_destino'] | br_int }}</strong>
+                               − <strong>{{ produto['em_transito'] | br_int }}</strong>
+                               − <strong>{{ produto['reservas'] | br_int }}</strong>)
+                        = <strong class="text-primary fs-6">{{ produto['necessidade'] | br(2) }} un</strong>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="text-muted">Cobertura Atual</td>
+                    <td>
+                        = Atual / MDV
+                        {% if mdv_d > 0 %}
+                        = {{ produto['estoque_destino'] | br_int }} / {{ mdv_d | br(4) }}
+                        = <strong class="{% if produto['cobertura_destino_atual'] < 7 %}text-danger{% elif produto['cobertura_destino_atual'] < 15 %}text-warning{% else %}text-success{% endif %}">
+                            {{ produto['cobertura_destino_atual'] | br(1) }} dias
+                          </strong>
+                        {% else %}
+                        <span class="text-muted">— (sem vendas)</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ORIGEM card -->
+<div class="card mb-3 shadow-sm">
+    <div class="card-header bg-warning text-dark fw-bold">
+        <i class="bi bi-geo me-2"></i>ORIGEM — {{ sess['filial_origem'] }}
+    </div>
+    <div class="card-body font-monospace" style="font-size:0.92rem;">
+        <table class="table table-borderless table-sm mb-0">
+            <tbody>
+                <tr>
+                    <td class="text-muted pe-3 text-nowrap" style="width:220px;">MDV (Média Diária de Vendas)</td>
+                    <td>
+                        = <strong>{{ total_vendas_o | br(1) }}</strong> un / <strong>{{ periodo }}</strong> dias
+                        = <strong class="text-warning">{{ mdv_o | br(4) }} un/dia</strong>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="text-muted">Estoque Atual</td>
+                    <td>= <strong>{{ produto['estoque_origem'] | br_int }}</strong> un</td>
+                </tr>
+                <tr>
+                    <td class="text-muted">Estoque Vital</td>
+                    <td>
+                        = MDV × dias_min
+                        = <strong>{{ mdv_o | br(4) }}</strong> × <strong>{{ dias_min }}</strong>
+                        = <strong class="text-danger">{{ produto['estoque_vital'] | br(2) }} un</strong>
+                    </td>
+                </tr>
+                <tr class="border-top table-light">
+                    <td class="fw-bold text-dark">DISPONÍVEL</td>
+                    <td>
+                        = max(0, Atual − Vital)<br>
+                        = max(0, <strong>{{ produto['estoque_origem'] | br_int }}</strong> − <strong>{{ produto['estoque_vital'] | br(2) }}</strong>)
+                        = <strong class="text-success fs-6">{{ produto['disponivel'] | br(2) }} un</strong>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- RESULTADO card -->
+{% set status = produto['status'] %}
+{% if status == 'Transferência Completa' %}
+  {% set result_cls = 'bg-success text-white' %}
+  {% set body_cls = 'table-success' %}
+{% elif status == 'Transferência Parcial' %}
+  {% set result_cls = 'bg-warning text-dark' %}
+  {% set body_cls = 'table-warning' %}
+{% elif status == 'Origem Insuficiente' %}
+  {% set result_cls = 'bg-danger text-white' %}
+  {% set body_cls = 'table-danger' %}
+{% else %}
+  {% set result_cls = 'bg-secondary text-white' %}
+  {% set body_cls = 'table-secondary' %}
+{% endif %}
+
+<div class="card mb-3 shadow-sm">
+    <div class="card-header {{ result_cls }} fw-bold">
+        <i class="bi bi-clipboard-check me-2"></i>RESULTADO
+    </div>
+    <div class="card-body font-monospace {{ body_cls }}" style="font-size:0.92rem;">
+        <table class="table table-borderless table-sm mb-0">
+            <tbody>
+                <tr>
+                    <td class="fw-bold text-dark pe-3 text-nowrap" style="width:220px;">SUGESTÃO DE TRANSFERÊNCIA</td>
+                    <td>
+                        = min(Disponível, Necessidade)<br>
+                        = min(<strong>{{ produto['disponivel'] | br(2) }}</strong>, <strong>{{ produto['necessidade'] | br(2) }}</strong>)
+                        = <strong class="fs-5">{{ produto['sugestao'] | br_int }} un</strong>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="text-muted">STATUS</td>
+                    <td>{{ status | status_badge | safe }}</td>
+                </tr>
+                <tr>
+                    <td class="text-muted">Incluído na sugestão</td>
+                    <td>
+                        {% if produto['incluido'] %}
+                        <span class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>Sim</span>
+                        {% else %}
+                        <span class="text-secondary fw-bold"><i class="bi bi-x-circle me-1"></i>Não</span>
+                        {% if produto['motivo_exclusao'] %}
+                        <span class="text-muted ms-2">— {{ produto['motivo_exclusao'] }}</span>
+                        {% endif %}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% if produto['decisao'] %}
+                <tr>
+                    <td class="text-muted">Decisão de Aprovação</td>
+                    <td>
+                        {{ produto['decisao'] | decisao_badge | safe }}
+                        {% if produto['quantidade_aprovada'] is not none %}
+                        <span class="ms-2">Qtd: <strong>{{ produto['quantidade_aprovada'] | br_int }}</strong> un</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}

@@ -343,11 +343,19 @@ def process_transfer(
         else:
             status = 'Transferência Parcial'
 
-        # Include in results if: has comprador AND (necessidade > 0 OR origem insuficiente)
+        # Determine if product should be included in suggestions
         if comprador == 'Sem Comprador':
-            continue
-        if necessidade == 0 and status != 'Origem Insuficiente':
-            continue
+            incluido = False
+            motivo_exclusao = 'Sem comprador cadastrado'
+        elif mdv_destino == 0:
+            incluido = False
+            motivo_exclusao = 'Sem vendas no destino'
+        elif necessidade == 0 and status != 'Origem Insuficiente':
+            incluido = False
+            motivo_exclusao = 'Sem necessidade (cobertura OK)'
+        else:
+            incluido = True
+            motivo_exclusao = ''
 
         results.append({
             'codigo_produto': cod,
@@ -372,9 +380,11 @@ def process_transfer(
             'sugestao': sugestao,
             'status': status,
             'cobertura_origem_atual': round(cobertura_origem, 1),
+            'incluido': incluido,
+            'motivo_exclusao': motivo_exclusao,
         })
 
-    if not results:
+    if not any(r['incluido'] for r in results):
         sem_comprador = sum(1 for cod in all_products if compradores_map.get(cod, {}).get('comprador', 'Sem Comprador') == 'Sem Comprador')
         errors.append(
             f"⚠ Nenhuma sugestão gerada. "

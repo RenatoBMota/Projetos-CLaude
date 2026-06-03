@@ -51,7 +51,9 @@ def init_db():
             estoque_vital REAL,
             disponivel REAL,
             sugestao REAL,
-            status TEXT
+            status TEXT,
+            incluido INTEGER DEFAULT 1,
+            motivo_exclusao TEXT DEFAULT ''
         );
 
         CREATE TABLE IF NOT EXISTS aprovacoes (
@@ -73,6 +75,10 @@ def init_db():
     for col, typ in [('sigma_destino', 'REAL'), ('cv_destino', 'REAL'), ('estoque_seguranca', 'REAL')]:
         if col not in existing_s:
             c.execute(f"ALTER TABLE sugestoes ADD COLUMN {col} {typ} DEFAULT 0")
+    if 'incluido' not in existing_s:
+        c.execute("ALTER TABLE sugestoes ADD COLUMN incluido INTEGER DEFAULT 1")
+    if 'motivo_exclusao' not in existing_s:
+        c.execute("ALTER TABLE sugestoes ADD COLUMN motivo_exclusao TEXT DEFAULT ''")
     conn.commit()
     conn.close()
 
@@ -118,15 +124,17 @@ def insert_sugestoes(session_id, rows):
             mdv_destino, sigma_destino, cv_destino, estoque_seguranca,
             estoque_destino, em_transito, reservas,
             cobertura_destino_atual, estoque_desejado, necessidade,
-            mdv_origem, estoque_origem, estoque_vital, disponivel, sugestao, status)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            mdv_origem, estoque_origem, estoque_vital, disponivel, sugestao, status,
+            incluido, motivo_exclusao)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     """, [(session_id, r['codigo_produto'], r['descricao_produto'],
            r['comprador'], r['codigo_fornecedor'], r['nome_fornecedor'],
            r['mdv_destino'], r['sigma_destino'], r['cv_destino'], r['estoque_seguranca'],
            r['estoque_destino'], r['em_transito'], r['reservas'],
            r['cobertura_destino_atual'], r['estoque_desejado'], r['necessidade'],
            r['mdv_origem'], r['estoque_origem'], r['estoque_vital'],
-           r['disponivel'], r['sugestao'], r['status']) for r in rows])
+           r['disponivel'], r['sugestao'], r['status'],
+           1 if r.get('incluido', True) else 0, r.get('motivo_exclusao', '')) for r in rows])
     conn.commit()
     conn.close()
 
@@ -137,7 +145,7 @@ def get_sugestoes(session_id):
         SELECT s.*, a.decisao, a.quantidade_aprovada, a.updated_at as aprovado_em
         FROM sugestoes s
         LEFT JOIN aprovacoes a ON a.sugestao_id = s.id
-        WHERE s.session_id = ?
+        WHERE s.session_id = ? AND (s.incluido = 1 OR s.incluido IS NULL)
         ORDER BY s.comprador, s.descricao_produto
     """, (session_id,)).fetchall()
     conn.close()
@@ -188,6 +196,32 @@ def upsert_aprovacao(sugestao_id, session_id, comprador, decisao, quantidade_apr
     """, (sugestao_id, session_id, comprador, decisao, quantidade_aprovada))
     conn.commit()
     conn.close()
+
+
+def get_sugestao_by_codigo(session_id, codigo_produto):
+    """Return full calc details for a specific product code in a session."""
+    conn = get_connection()
+    row = conn.execute("""
+        SELECT s.*, a.decisao, a.quantidade_aprovada, a.updated_at as aprovado_em
+        FROM sugestoes s
+        LEFT JOIN aprovacoes a ON a.sugestao_id = s.id
+        WHERE s.session_id = ? AND s.codigo_produto LIKE ?
+        LIMIT 1
+    """, (session_id, f'%{codigo_produto.strip()}%')).fetchone()
+    conn.close()
+    return row
+
+
+def get_all_compradores_in_session(session_id):
+    """Return distinct comprador values from sugestoes for a session."""
+    conn = get_connection()
+    rows = conn.execute("""
+        SELECT DISTINCT comprador FROM sugestoes
+        WHERE session_id = ?
+        ORDER BY comprador
+    """, (session_id,)).fetchall()
+    conn.close()
+    return [r['comprador'] for r in rows]
 
 
 def get_latest_session_id():
