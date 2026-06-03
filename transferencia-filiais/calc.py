@@ -4,6 +4,33 @@ import pandas as pd
 # Z-score by service level (%)
 Z_FACTORS = {90: 1.28, 95: 1.65, 98: 2.05, 99: 2.33}
 
+# Formatos de data aceitos, em ordem de prioridade (padrão BR primeiro)
+_DATE_FORMATS = [
+    '%d/%m/%Y',        # 01/04/2026
+    '%d/%m/%y',        # 01/04/26
+    '%Y-%m-%d',        # 2026-04-01
+    '%d-%m-%Y',        # 01-04-2026
+    '%Y/%m/%d',        # 2026/04/01
+]
+
+
+def parse_dates(series):
+    """Parse dates trying Brazilian formats first, never US MM/DD."""
+    # Remover hora se vier junto (ex: "2026-04-01 00:00:00")
+    s = series.str.replace(r'\s+\d{2}:\d{2}(:\d{2})?$', '', regex=True).str.strip()
+
+    # ISO8601 primeiro (YYYY-MM-DD) — não tem ambiguidade
+    result = pd.to_datetime(s, format='%Y-%m-%d', errors='coerce')
+
+    # Para os que não parsearam, tentar DD/MM/YYYY e variantes
+    for fmt in ['%d/%m/%Y', '%d/%m/%y', '%d-%m-%Y', '%Y/%m/%d']:
+        mask = result.isna()
+        if not mask.any():
+            break
+        result[mask] = pd.to_datetime(s[mask], format=fmt, errors='coerce')
+
+    return result
+
 
 def normalize_columns(df):
     """Normalize column names: strip whitespace and lowercase."""
@@ -133,7 +160,7 @@ def process_transfer(
     df_vendas[col_filial_v] = df_vendas[col_filial_v].str.strip().str.upper()
     df_vendas[col_cod_v] = df_vendas[col_cod_v].apply(normalize_cod)
     df_vendas[col_qtd_v] = df_vendas[col_qtd_v].apply(safe_float)
-    df_vendas[col_data] = pd.to_datetime(df_vendas[col_data], dayfirst=True, errors='coerce', format='mixed')
+    df_vendas[col_data] = parse_dates(df_vendas[col_data].astype(str))
     df_vendas = df_vendas.dropna(subset=[col_data])
 
     # Auto-detectar período a partir das datas reais do arquivo
