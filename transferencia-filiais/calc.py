@@ -1,6 +1,9 @@
 import math
 import pandas as pd
 
+# Z-score by service level (%)
+Z_FACTORS = {90: 1.28, 95: 1.65, 98: 2.05, 99: 2.33}
+
 
 def normalize_columns(df):
     """Normalize column names: strip whitespace and lowercase."""
@@ -69,7 +72,8 @@ def process_transfer(
     transito_file, transito_filename,
     reservas_file, reservas_filename,
     filial_origem, filial_destino,
-    periodo_dias, dias_min_origem, dias_meta_destino
+    periodo_dias, dias_min_origem, dias_meta_destino,
+    nivel_servico=95
 ):
     errors = []
 
@@ -127,12 +131,13 @@ def process_transfer(
     # Filter to period
     max_date = df_vendas[col_data].max()
     min_date = max_date - pd.Timedelta(days=periodo_dias - 1)
-    df_vendas_periodo = df_vendas[df_vendas[col_data] >= min_date]
+    df_vendas_periodo = df_vendas[df_vendas[col_data] >= min_date].copy()
 
-    # Actual days in period
-    period_days = periodo_dias  # use parameter directly
+    # Full date range for the period (to include zero-sale days in std dev)
+    all_dates = pd.date_range(start=min_date, end=max_date, freq='D')
+    period_days = periodo_dias
 
-    # Sales by filial+product
+    # Sales by filial+product (total)
     vendas_destino = (
         df_vendas_periodo[df_vendas_periodo[col_filial_v] == filial_destino.upper()]
         .groupby(col_cod_v)[col_qtd_v].sum()
@@ -143,6 +148,23 @@ def process_transfer(
         .groupby(col_cod_v)[col_qtd_v].sum()
         .to_dict()
     )
+
+    # Daily sales series per product per filial (including zero-sale days)
+    # Used to calculate standard deviation
+    def _daily_series(filial):
+        df_f = df_vendas_periodo[df_vendas_periodo[col_filial_v] == filial.upper()]
+        if df_f.empty:
+            return {}
+        daily = (
+            df_f.groupby([col_cod_v, col_data])[col_qtd_v]
+            .sum()
+            .unstack(level=col_data)
+            .reindex(columns=all_dates, fill_value=0.0)
+        )
+        return daily  # DataFrame: index=produto, columns=datas
+
+    daily_destino = _daily_series(filial_destino)
+    daily_origem = _daily_series(filial_origem)
 
     # --- Process Estoque ---
     col_filial_e = find_col(df_estoque, 'filial')
@@ -246,6 +268,20 @@ def process_transfer(
         mdv_destino = vendas_destino.get(cod, 0.0) / period_days
         mdv_origem = vendas_origem.get(cod, 0.0) / period_days
 
+        # Standard deviation of daily sales (includes zero-sale days)
+        z = Z_FACTORS.get(int(nivel_servico), 1.65)
+
+        if not isinstance(daily_destino, dict) and cod in daily_destino.index:
+            sigma_destino = float(daily_destino.loc[cod].std(ddof=1))
+        else:
+            sigma_destino = 0.0
+        sigma_destino = sigma_destino if not math.isnan(sigma_destino) else 0.0
+
+        cv_destino = round(sigma_destino / mdv_destino, 3) if mdv_destino > 0 else 0.0
+
+        # Safety stock: Z × σ × √(dias_meta)
+        estoque_seguranca = z * sigma_destino * math.sqrt(dias_meta_destino)
+
         # Stocks
         est_destino = estoque_destino.get(cod, 0.0)
         est_origem = estoque_origem.get(cod, 0.0)
@@ -257,7 +293,7 @@ def process_transfer(
         cobertura_origem = est_origem / mdv_origem if mdv_origem > 0 else 999.0
 
         # Needs
-        estoque_desejado = mdv_destino * dias_meta_destino
+        estoque_desejado = mdv_destino * dias_meta_destino + estoque_seguranca
         estoque_vital = mdv_origem * dias_min_origem
 
         necessidade = max(0.0, estoque_desejado - est_destino - em_transito - reservas)
@@ -287,6 +323,9 @@ def process_transfer(
             'codigo_fornecedor': cod_forn,
             'nome_fornecedor': nome_forn,
             'mdv_destino': round(mdv_destino, 4),
+            'sigma_destino': round(sigma_destino, 4),
+            'cv_destino': cv_destino,
+            'estoque_seguranca': round(estoque_seguranca, 2),
             'estoque_destino': est_destino,
             'em_transito': em_transito,
             'reservas': reservas,

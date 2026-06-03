@@ -10,6 +10,9 @@
         <div class="text-muted small">
             <strong>{{ sess['filial_origem'] }}</strong> → <strong>{{ sess['filial_destino'] }}</strong>
             &nbsp;|&nbsp; Período: {{ sess['periodo_dias'] }} dias
+            &nbsp;|&nbsp; Cobertura destino: {{ sess['dias_meta_destino'] }}d
+            &nbsp;|&nbsp; Proteção origem: {{ sess['dias_min_origem'] }}d
+            &nbsp;|&nbsp; Nível de serviço: <strong>{{ sess['nivel_servico'] or 95 }}%</strong>
             &nbsp;|&nbsp; Sessão #{{ sess['id'] }} ({{ sess['created_at'][:16] }})
         </div>
     </div>
@@ -124,7 +127,7 @@
                         <th rowspan="2" class="align-middle">Produto</th>
                         <th rowspan="2" class="align-middle">Comprador</th>
                         <th rowspan="2" class="align-middle">Fornecedor</th>
-                        <th colspan="5" class="text-center table-info text-dark">Destino</th>
+                        <th colspan="8" class="text-center table-info text-dark">Destino</th>
                         <th colspan="4" class="text-center table-warning text-dark">Origem</th>
                         <th rowspan="2" class="align-middle text-center">Sugestão</th>
                         <th rowspan="2" class="align-middle text-center">Status</th>
@@ -133,6 +136,9 @@
                     </tr>
                     <tr>
                         <th class="table-info text-dark text-center">MDV</th>
+                        <th class="table-info text-dark text-center" title="Desvio Padrão diário das vendas">σ (Desvio)</th>
+                        <th class="table-info text-dark text-center" title="Coeficiente de Variação = σ / MDV">CV</th>
+                        <th class="table-info text-dark text-center" title="Estoque de Segurança = Z × σ × √(dias_meta)">Est. Segurança</th>
                         <th class="table-info text-dark text-center">Estoque</th>
                         <th class="table-info text-dark text-center">Trânsito</th>
                         <th class="table-info text-dark text-center">Reservas</th>
@@ -155,6 +161,11 @@
                         </td>
                         <td class="text-muted small">{{ r['nome_fornecedor'] }}</td>
                         <td class="text-end">{{ r['mdv_destino'] | br(4) }}</td>
+                        <td class="text-end text-secondary">{{ r['sigma_destino'] | br(4) }}</td>
+                        <td class="text-end {% if r['cv_destino'] > 1.0 %}text-danger{% elif r['cv_destino'] > 0.5 %}text-warning{% else %}text-success{% endif %}">
+                            {{ r['cv_destino'] | br(2) }}
+                        </td>
+                        <td class="text-end text-primary">{{ r['estoque_seguranca'] | br(1) }}</td>
                         <td class="text-end">{{ r['estoque_destino'] | br_int }}</td>
                         <td class="text-end">{{ r['em_transito'] | br_int }}</td>
                         <td class="text-end">{{ r['reservas'] | br_int }}</td>

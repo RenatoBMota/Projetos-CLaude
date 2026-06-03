@@ -46,6 +46,17 @@
                                            min="0" max="365" value="{{ request.form.get('dias_meta_destino', 15) }}" required>
                                     <div class="form-text">Meta de reposição no destino</div>
                                 </div>
+                                <div class="col-sm-4">
+                                    <label class="form-label fw-semibold">Nível de Serviço</label>
+                                    <select name="nivel_servico" class="form-select">
+                                        {% set ns_sel = request.form.get('nivel_servico', '95') %}
+                                        <option value="90" {% if ns_sel == '90' %}selected{% endif %}>90% — Z = 1,28</option>
+                                        <option value="95" {% if ns_sel == '95' %}selected{% endif %}>95% — Z = 1,65 (padrão)</option>
+                                        <option value="98" {% if ns_sel == '98' %}selected{% endif %}>98% — Z = 2,05</option>
+                                        <option value="99" {% if ns_sel == '99' %}selected{% endif %}>99% — Z = 2,33</option>
+                                    </select>
+                                    <div class="form-text">Probabilidade de não haver ruptura</div>
+                                </div>
                             </div>
                         </div>
                     </div>

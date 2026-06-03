@@ -133,6 +133,7 @@ def index():
             periodo_dias = int(request.form.get('periodo_dias', 30))
             dias_min_origem = int(request.form.get('dias_min_origem', 30))
             dias_meta_destino = int(request.form.get('dias_meta_destino', 15))
+            nivel_servico = int(request.form.get('nivel_servico', 95))
         except ValueError as e:
             flash(f'Parâmetro inválido: {e}', 'danger')
             return render_template('index.html', sessions=sessions)
@@ -149,7 +150,7 @@ def index():
                 transito_buf, transito_name,
                 reservas_buf, reservas_name,
                 filial_origem, filial_destino,
-                periodo_dias, dias_min_origem, dias_meta_destino
+                periodo_dias, dias_min_origem, dias_meta_destino, nivel_servico
             )
         except ValueError as e:
             flash(str(e), 'danger')
@@ -166,7 +167,7 @@ def index():
 
         session_id = create_session(
             filial_origem, filial_destino, periodo_dias,
-            dias_min_origem, dias_meta_destino,
+            dias_min_origem, dias_meta_destino, nivel_servico,
             total_produtos, total_unidades
         )
         insert_sugestoes(session_id, results)
@@ -258,7 +259,8 @@ def exportar(session_id):
 
     headers = [
         'Código', 'Produto', 'Comprador', 'Fornecedor',
-        'MDV Destino', 'Estoque Destino', 'Em Trânsito', 'Reservas',
+        'MDV Destino', 'σ Desvio Padrão', 'CV', 'Est. Segurança',
+        'Estoque Destino', 'Em Trânsito', 'Reservas',
         'Cobertura Atual (dias)', 'Estoque Desejado', 'Necessidade',
         'MDV Origem', 'Estoque Origem', 'Estoque Vital', 'Disponível',
         'Sugestão', 'Status', 'Decisão', 'Qtd Aprovada'
@@ -293,6 +295,9 @@ def exportar(session_id):
             row['comprador'],
             row['nome_fornecedor'],
             row['mdv_destino'],
+            row['sigma_destino'],
+            row['cv_destino'],
+            row['estoque_seguranca'],
             row['estoque_destino'],
             row['em_transito'],
             row['reservas'],

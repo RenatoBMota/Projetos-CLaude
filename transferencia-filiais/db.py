@@ -23,6 +23,7 @@ def init_db():
             periodo_dias INTEGER,
             dias_min_origem INTEGER,
             dias_meta_destino INTEGER,
+            nivel_servico INTEGER DEFAULT 95,
             total_produtos INTEGER,
             total_unidades REAL
         );
@@ -36,6 +37,9 @@ def init_db():
             codigo_fornecedor TEXT,
             nome_fornecedor TEXT,
             mdv_destino REAL,
+            sigma_destino REAL DEFAULT 0,
+            cv_destino REAL DEFAULT 0,
+            estoque_seguranca REAL DEFAULT 0,
             estoque_destino REAL,
             em_transito REAL,
             reservas REAL,
@@ -61,6 +65,14 @@ def init_db():
             UNIQUE(sugestao_id)
         );
     """)
+    # Migrate existing DB: add new columns if they don't exist yet
+    existing = {row[1] for row in c.execute("PRAGMA table_info(sessions)")}
+    if 'nivel_servico' not in existing:
+        c.execute("ALTER TABLE sessions ADD COLUMN nivel_servico INTEGER DEFAULT 95")
+    existing_s = {row[1] for row in c.execute("PRAGMA table_info(sugestoes)")}
+    for col, typ in [('sigma_destino', 'REAL'), ('cv_destino', 'REAL'), ('estoque_seguranca', 'REAL')]:
+        if col not in existing_s:
+            c.execute(f"ALTER TABLE sugestoes ADD COLUMN {col} {typ} DEFAULT 0")
     conn.commit()
     conn.close()
 
@@ -82,15 +94,15 @@ def get_session(session_id):
 
 
 def create_session(filial_origem, filial_destino, periodo_dias, dias_min_origem,
-                   dias_meta_destino, total_produtos, total_unidades):
+                   dias_meta_destino, nivel_servico, total_produtos, total_unidades):
     conn = get_connection()
     c = conn.cursor()
     c.execute("""
         INSERT INTO sessions (filial_origem, filial_destino, periodo_dias,
-            dias_min_origem, dias_meta_destino, total_produtos, total_unidades)
-        VALUES (?,?,?,?,?,?,?)
+            dias_min_origem, dias_meta_destino, nivel_servico, total_produtos, total_unidades)
+        VALUES (?,?,?,?,?,?,?,?)
     """, (filial_origem, filial_destino, periodo_dias, dias_min_origem,
-          dias_meta_destino, total_produtos, total_unidades))
+          dias_meta_destino, nivel_servico, total_produtos, total_unidades))
     session_id = c.lastrowid
     conn.commit()
     conn.close()
@@ -103,13 +115,15 @@ def insert_sugestoes(session_id, rows):
     c.executemany("""
         INSERT INTO sugestoes (session_id, codigo_produto, descricao_produto,
             comprador, codigo_fornecedor, nome_fornecedor,
-            mdv_destino, estoque_destino, em_transito, reservas,
+            mdv_destino, sigma_destino, cv_destino, estoque_seguranca,
+            estoque_destino, em_transito, reservas,
             cobertura_destino_atual, estoque_desejado, necessidade,
             mdv_origem, estoque_origem, estoque_vital, disponivel, sugestao, status)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     """, [(session_id, r['codigo_produto'], r['descricao_produto'],
            r['comprador'], r['codigo_fornecedor'], r['nome_fornecedor'],
-           r['mdv_destino'], r['estoque_destino'], r['em_transito'], r['reservas'],
+           r['mdv_destino'], r['sigma_destino'], r['cv_destino'], r['estoque_seguranca'],
+           r['estoque_destino'], r['em_transito'], r['reservas'],
            r['cobertura_destino_atual'], r['estoque_desejado'], r['necessidade'],
            r['mdv_origem'], r['estoque_origem'], r['estoque_vital'],
            r['disponivel'], r['sugestao'], r['status']) for r in rows])
