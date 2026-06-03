@@ -77,7 +77,8 @@
                 <tbody>
                     {% for r in rows %}
                     {% set sid = r['id']|string %}
-                    <tr class="{% if r['status'] == 'Origem Insuficiente' %}table-danger{% endif %}">
+                    {% set needs_qty = r['status'] in ['Transferência Parcial', 'Origem Insuficiente'] %}
+                    <tr class="{% if r['status'] == 'Origem Insuficiente' %}table-danger{% elif r['status'] == 'Transferência Parcial' %}table-warning{% endif %}">
                         <td class="font-monospace">{{ r['codigo_produto'] }}</td>
                         <td>
                             {{ r['descricao_produto'] }}
@@ -92,10 +93,54 @@
                             {{ r['cobertura_destino_atual'] | br(1) }}d
                         </td>
                         <td class="text-end">{{ r['necessidade'] | br_int }}</td>
-                        <td class="text-end fw-bold">{{ r['sugestao'] | br_int }}</td>
+                        <td class="text-end fw-bold">
+                            {{ r['sugestao'] | br_int }}
+                            {% if needs_qty and r['sugestao'] == 0 %}
+                            <span class="text-muted small d-block">Disponível: {{ r['disponivel'] | br_int }}</span>
+                            {% endif %}
+                        </td>
                         <td>
+                            {% if needs_qty %}
+                            <input type="hidden" name="needs_qty_{{ sid }}" value="1">
+                            {% endif %}
                             <div class="d-flex align-items-center gap-2 flex-wrap">
                                 {% if not sess['finalizada'] %}
+                                {% if needs_qty %}
+                                {# Parcial / Origem Insuficiente: buyer must enter qty to approve #}
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <input type="radio" class="btn-check" name="decisao_{{ sid }}"
+                                               id="apr_{{ sid }}" value="aprovado"
+                                               {% if r['decisao'] in ('aprovado', 'alterado') %}checked{% endif %}
+                                               onchange="handleDecisaoNeedsQty('{{ sid }}')">
+                                        <label class="btn btn-outline-success" for="apr_{{ sid }}">
+                                            <i class="bi bi-check-lg"></i> Aprovar
+                                        </label>
+
+                                        <input type="radio" class="btn-check" name="decisao_{{ sid }}"
+                                               id="rec_{{ sid }}" value="recusado"
+                                               {% if r['decisao'] == 'recusado' %}checked{% endif %}
+                                               onchange="handleDecisaoNeedsQty('{{ sid }}')">
+                                        <label class="btn btn-outline-danger" for="rec_{{ sid }}">
+                                            <i class="bi bi-x-lg"></i> Recusar
+                                        </label>
+                                    </div>
+
+                                    <input type="number" name="quantidade_{{ sid }}"
+                                           id="qty_{{ sid }}"
+                                           class="form-control form-control-sm"
+                                           style="width:90px"
+                                           step="1" min="0"
+                                           placeholder="Qtd *"
+                                           {% if r['decisao'] in ('aprovado', 'alterado') and r['quantidade_aprovada'] is not none %}
+                                               value="{{ r['quantidade_aprovada']|int }}"
+                                           {% elif r['sugestao'] > 0 %}
+                                               value="{{ r['sugestao']|int }}"
+                                           {% endif %}
+                                           {% if r['decisao'] not in ('recusado',) %}required{% endif %}>
+                                </div>
+                                {% else %}
+                                {# Completa: standard 3-button approve/reject/alter #}
                                 <div class="btn-group btn-group-sm" role="group">
                                     <input type="radio" class="btn-check" name="decisao_{{ sid }}"
                                            id="apr_{{ sid }}" value="aprovado"
@@ -131,6 +176,7 @@
                                            value="{{ r['quantidade_aprovada']|int if r['decisao'] == 'alterado' and r['quantidade_aprovada'] else r['sugestao']|int }}">
                                 </div>
                                 {% endif %}
+                                {% endif %}
 
                                 {% if r['decisao'] %}
                                 <span class="decisao-badge">{{ r['decisao'] | decisao_badge | safe }}</span>
@@ -164,6 +210,18 @@ function handleDecisao(sid, decisao) {
     } else {
         qtyGroup.style.display = 'none';
         qtyGroup.querySelector('input').required = false;
+    }
+}
+
+function handleDecisaoNeedsQty(sid) {
+    const qtyInput = document.getElementById('qty_' + sid);
+    const recRadio = document.getElementById('rec_' + sid);
+    if (recRadio && recRadio.checked) {
+        qtyInput.required = false;
+        qtyInput.disabled = true;
+    } else {
+        qtyInput.required = true;
+        qtyInput.disabled = false;
     }
 }
 </script>

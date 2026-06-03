@@ -414,14 +414,16 @@ def aprovacao(comprador, session_id=None):
                 errors.append(f'Decisão inválida para produto {row["codigo_produto"]}.')
                 continue
 
-            if decisao == 'alterado':
+            needs_qty = request.form.get(f'needs_qty_{sid}') == '1'
+
+            if decisao == 'alterado' or (decisao == 'aprovado' and needs_qty):
                 qtd_str = request.form.get(f'quantidade_{sid}', '').strip()
                 try:
                     qtd = float(qtd_str.replace(',', '.'))
-                    if qtd <= 0:
+                    if qtd < 0:
                         raise ValueError
                 except (ValueError, AttributeError):
-                    errors.append(f'Quantidade inválida para produto {row["codigo_produto"]} (deve ser > 0).')
+                    errors.append(f'Quantidade inválida para produto {row["codigo_produto"]} (informe a quantidade).')
                     continue
                 quantidade_aprovada = qtd
             elif decisao == 'aprovado':
