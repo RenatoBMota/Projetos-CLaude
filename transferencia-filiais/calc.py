@@ -270,10 +270,15 @@ def process_transfer(
         )
 
     # --- Build product universe ---
-    # All products that exist in origem estoque or compradores
-    all_products = set(estoque_origem.keys()) | set(compradores_map.keys())
-    # Also include products with sales at destination
-    all_products |= set(vendas_destino.keys())
+    # Union of ALL sources: estoque origem, estoque destino, compradores,
+    # vendas origem e vendas destino — qualquer produto em qualquer arquivo entra
+    all_products = (
+        set(estoque_origem.keys())
+        | set(estoque_destino.keys())
+        | set(compradores_map.keys())
+        | set(vendas_origem.keys())
+        | set(vendas_destino.keys())
+    )
 
     results = []
     for cod in sorted(all_products):
