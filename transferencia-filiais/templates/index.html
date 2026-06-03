@@ -29,10 +29,11 @@
                                            value="{{ request.form.get('filial_destino', '') }}">
                                 </div>
                                 <div class="col-sm-4">
-                                    <label class="form-label fw-semibold">Período de Análise (dias)</label>
-                                    <input type="number" name="periodo_dias" class="form-control"
-                                           min="1" max="365" value="{{ request.form.get('periodo_dias', 30) }}" required>
-                                    <div class="form-text">Dias retroativos para calcular MDV</div>
+                                    <label class="form-label fw-semibold">Período de Análise</label>
+                                    <input type="text" class="form-control" disabled
+                                           value="Detectado automaticamente pelo arquivo"
+                                           style="background:#f8f9fa; color:#6c757d; font-style:italic;">
+                                    <div class="form-text">Data mínima e máxima do histórico de vendas</div>
                                 </div>
                                 <div class="col-sm-4">
                                     <label class="form-label fw-semibold">Cobertura Mínima Origem (dias)</label>

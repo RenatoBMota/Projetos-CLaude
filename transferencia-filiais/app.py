@@ -131,7 +131,6 @@ def index():
         try:
             filial_origem = request.form.get('filial_origem', '').strip().upper()
             filial_destino = request.form.get('filial_destino', '').strip().upper()
-            periodo_dias = int(request.form.get('periodo_dias', 30))
             dias_min_origem = int(request.form.get('dias_min_origem', 30))
             dias_meta_destino = int(request.form.get('dias_meta_destino', 15))
             nivel_servico = int(request.form.get('nivel_servico', 95))
@@ -144,14 +143,14 @@ def index():
             return render_template('index.html', sessions=sessions)
 
         try:
-            results, warnings = process_transfer(
+            results, warnings, meta = process_transfer(
                 vendas_buf, vendas_name,
                 estoque_buf, estoque_name,
                 compradores_buf, compradores_name,
                 transito_buf, transito_name,
                 reservas_buf, reservas_name,
                 filial_origem, filial_destino,
-                periodo_dias, dias_min_origem, dias_meta_destino, nivel_servico
+                dias_min_origem, dias_meta_destino, nivel_servico
             )
         except ValueError as e:
             flash(str(e), 'danger')
@@ -163,8 +162,14 @@ def index():
         for w in warnings:
             flash(w, 'warning')
 
-        total_produtos = len(results)
-        total_unidades = sum(r['sugestao'] for r in results)
+        periodo_dias = meta['period_days']
+        flash(
+            f'Período detectado automaticamente: {meta["min_date"]} a {meta["max_date"]} ({periodo_dias} dias).',
+            'info'
+        )
+
+        total_produtos = sum(1 for r in results if r['incluido'])
+        total_unidades = sum(r['sugestao'] for r in results if r['incluido'])
 
         session_id = create_session(
             filial_origem, filial_destino, periodo_dias,

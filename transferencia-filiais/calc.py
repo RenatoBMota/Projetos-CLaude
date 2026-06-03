@@ -80,7 +80,7 @@ def process_transfer(
     transito_file, transito_filename,
     reservas_file, reservas_filename,
     filial_origem, filial_destino,
-    periodo_dias, dias_min_origem, dias_meta_destino,
+    dias_min_origem, dias_meta_destino,
     nivel_servico=95
 ):
     errors = []
@@ -136,14 +136,14 @@ def process_transfer(
     df_vendas[col_data] = pd.to_datetime(df_vendas[col_data], dayfirst=True, errors='coerce', format='mixed')
     df_vendas = df_vendas.dropna(subset=[col_data])
 
-    # Filter to period
+    # Auto-detectar período a partir das datas reais do arquivo
+    min_date = df_vendas[col_data].min()
     max_date = df_vendas[col_data].max()
-    min_date = max_date - pd.Timedelta(days=periodo_dias - 1)
-    df_vendas_periodo = df_vendas[df_vendas[col_data] >= min_date].copy()
+    period_days = (max_date - min_date).days + 1  # inclui o dia inicial
+    df_vendas_periodo = df_vendas.copy()  # usa todos os dados sem filtro
 
-    # Full date range for the period (to include zero-sale days in std dev)
+    # Full date range for σ calculation (zero-sale days included)
     all_dates = pd.date_range(start=min_date, end=max_date, freq='D')
-    period_days = periodo_dias
 
     # Sales by filial+product (total)
     vendas_destino = (
@@ -398,4 +398,10 @@ def process_transfer(
             f"Verifique se os nomes das filiais e os códigos de produto conferem entre os arquivos."
         )
 
-    return results, errors
+    meta = {
+        'min_date': min_date.date().isoformat(),
+        'max_date': max_date.date().isoformat(),
+        'period_days': period_days,
+    }
+
+    return results, errors, meta
