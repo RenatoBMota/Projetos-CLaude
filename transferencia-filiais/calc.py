@@ -65,6 +65,14 @@ def safe_float(val, default=0.0):
         return default
 
 
+def normalize_cod(val):
+    """Normalize product codes: strip whitespace, remove .0 suffix from floats read as strings."""
+    s = str(val).strip()
+    if s.endswith('.0'):
+        s = s[:-2]
+    return s
+
+
 def process_transfer(
     vendas_file, vendas_filename,
     estoque_file, estoque_filename,
@@ -123,7 +131,7 @@ def process_transfer(
         raise ValueError("Coluna 'Quantidade Faturada' não encontrada no Histórico de Vendas.")
 
     df_vendas[col_filial_v] = df_vendas[col_filial_v].str.strip().str.upper()
-    df_vendas[col_cod_v] = df_vendas[col_cod_v].str.strip()
+    df_vendas[col_cod_v] = df_vendas[col_cod_v].apply(normalize_cod)
     df_vendas[col_qtd_v] = df_vendas[col_qtd_v].apply(safe_float)
     df_vendas[col_data] = pd.to_datetime(df_vendas[col_data], dayfirst=True, errors='coerce', format='mixed')
     df_vendas = df_vendas.dropna(subset=[col_data])
@@ -179,7 +187,7 @@ def process_transfer(
         raise ValueError("Coluna 'Quantidade' não encontrada no Estoque Atual.")
 
     df_estoque[col_filial_e] = df_estoque[col_filial_e].str.strip().str.upper()
-    df_estoque[col_cod_e] = df_estoque[col_cod_e].str.strip()
+    df_estoque[col_cod_e] = df_estoque[col_cod_e].apply(normalize_cod)
     df_estoque[col_qtd_e] = df_estoque[col_qtd_e].apply(safe_float)
 
     estoque_destino = (
@@ -205,7 +213,7 @@ def process_transfer(
     if not col_comprador:
         raise ValueError("Coluna 'Comprador' não encontrada em Compradores.")
 
-    df_compradores[col_cod_c] = df_compradores[col_cod_c].str.strip()
+    df_compradores[col_cod_c] = df_compradores[col_cod_c].apply(normalize_cod)
     compradores_map = {}
     for _, row in df_compradores.iterrows():
         cod = str(row[col_cod_c]).strip()
@@ -222,7 +230,7 @@ def process_transfer(
         col_cod_t = find_col(df_transito, 'codigo_produto')
         col_qtd_t = find_col(df_transito, 'quantidade_em_transito')
         if col_cod_t and col_qtd_t:
-            df_transito[col_cod_t] = df_transito[col_cod_t].str.strip()
+            df_transito[col_cod_t] = df_transito[col_cod_t].apply(normalize_cod)
             df_transito[col_qtd_t] = df_transito[col_qtd_t].apply(safe_float)
             transito_map = df_transito.groupby(col_cod_t)[col_qtd_t].sum().to_dict()
 
@@ -232,9 +240,34 @@ def process_transfer(
         col_cod_r = find_col(df_reservas, 'codigo_produto')
         col_qtd_r = find_col(df_reservas, 'quantidade_reservada')
         if col_cod_r and col_qtd_r:
-            df_reservas[col_cod_r] = df_reservas[col_cod_r].str.strip()
+            df_reservas[col_cod_r] = df_reservas[col_cod_r].apply(normalize_cod)
             df_reservas[col_qtd_r] = df_reservas[col_qtd_r].apply(safe_float)
             reservas_map = df_reservas.groupby(col_cod_r)[col_qtd_r].sum().to_dict()
+
+    # --- Diagnóstico de filiais ---
+    filiais_vendas = df_vendas_periodo[col_filial_v].unique().tolist()
+    filiais_estoque = df_estoque[col_filial_e].unique().tolist()
+
+    if filial_destino.upper() not in filiais_vendas:
+        errors.append(
+            f"⚠ Filial Destino '{filial_destino}' não encontrada no Histórico de Vendas. "
+            f"Filiais disponíveis: {', '.join(sorted(filiais_vendas))}"
+        )
+    if filial_origem.upper() not in filiais_vendas:
+        errors.append(
+            f"⚠ Filial Origem '{filial_origem}' não encontrada no Histórico de Vendas. "
+            f"Filiais disponíveis: {', '.join(sorted(filiais_vendas))}"
+        )
+    if filial_destino.upper() not in filiais_estoque:
+        errors.append(
+            f"⚠ Filial Destino '{filial_destino}' não encontrada no Estoque Atual. "
+            f"Filiais disponíveis: {', '.join(sorted(filiais_estoque))}"
+        )
+    if filial_origem.upper() not in filiais_estoque:
+        errors.append(
+            f"⚠ Filial Origem '{filial_origem}' não encontrada no Estoque Atual. "
+            f"Filiais disponíveis: {', '.join(sorted(filiais_estoque))}"
+        )
 
     # --- Build product universe ---
     # All products that exist in origem estoque or compradores
@@ -340,5 +373,14 @@ def process_transfer(
             'status': status,
             'cobertura_origem_atual': round(cobertura_origem, 1),
         })
+
+    if not results:
+        sem_comprador = sum(1 for cod in all_products if compradores_map.get(cod, {}).get('comprador', 'Sem Comprador') == 'Sem Comprador')
+        errors.append(
+            f"⚠ Nenhuma sugestão gerada. "
+            f"Produtos no universo: {len(all_products)} | "
+            f"Sem comprador: {sem_comprador} | "
+            f"Verifique se os nomes das filiais e os códigos de produto conferem entre os arquivos."
+        )
 
     return results, errors
