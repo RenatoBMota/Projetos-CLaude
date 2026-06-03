@@ -334,7 +334,7 @@ def process_transfer(
         mdv_origem = vendas_origem.get(cod, 0.0) / period_days
 
         # Standard deviation of daily sales (includes zero-sale days)
-        z = Z_FACTORS.get(int(nivel_servico), 1.65)
+        z = Z_FACTORS.get(int(nivel_servico), 0.0)
 
         if not isinstance(daily_destino, dict) and cod in daily_destino.index:
             sigma_destino = float(daily_destino.loc[cod].std(ddof=1))

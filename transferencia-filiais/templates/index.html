@@ -51,6 +51,7 @@
                                     <label class="form-label fw-semibold">Nível de Serviço</label>
                                     <select name="nivel_servico" class="form-select">
                                         {% set ns_sel = request.form.get('nivel_servico', '95') %}
+                                        <option value="0"  {% if ns_sel == '0'  %}selected{% endif %}>Sem nível de serviço (sem estoque segurança)</option>
                                         <option value="90" {% if ns_sel == '90' %}selected{% endif %}>90% — Z = 1,28</option>
                                         <option value="95" {% if ns_sel == '95' %}selected{% endif %}>95% — Z = 1,65 (padrão)</option>
                                         <option value="98" {% if ns_sel == '98' %}selected{% endif %}>98% — Z = 2,05</option>
