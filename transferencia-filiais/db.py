@@ -77,6 +77,10 @@ def init_db():
         c.execute("ALTER TABLE sessions ADD COLUMN data_inicio TEXT")
     if 'data_fim' not in existing:
         c.execute("ALTER TABLE sessions ADD COLUMN data_fim TEXT")
+    if 'finalizada' not in existing:
+        c.execute("ALTER TABLE sessions ADD COLUMN finalizada INTEGER DEFAULT 0")
+    if 'finalizada_em' not in existing:
+        c.execute("ALTER TABLE sessions ADD COLUMN finalizada_em TIMESTAMP")
     existing_s = {row[1] for row in c.execute("PRAGMA table_info(sugestoes)")}
     for col, typ in [('sigma_destino', 'REAL'), ('cv_destino', 'REAL'), ('estoque_seguranca', 'REAL')]:
         if col not in existing_s:
@@ -119,6 +123,13 @@ def create_session(filial_origem, filial_destino, periodo_dias, data_inicio, dat
     conn.commit()
     conn.close()
     return session_id
+
+
+def finalize_session(session_id):
+    conn = get_connection()
+    conn.execute("UPDATE sessions SET finalizada=1, finalizada_em=CURRENT_TIMESTAMP WHERE id=?", (session_id,))
+    conn.commit()
+    conn.close()
 
 
 def insert_sugestoes(session_id, rows):
@@ -164,7 +175,7 @@ def get_sugestoes_by_comprador(session_id, comprador):
         SELECT s.*, a.decisao, a.quantidade_aprovada, a.updated_at as aprovado_em
         FROM sugestoes s
         LEFT JOIN aprovacoes a ON a.sugestao_id = s.id
-        WHERE s.session_id = ? AND s.comprador = ?
+        WHERE s.session_id = ? AND s.comprador = ? AND s.sugestao > 0
         ORDER BY s.descricao_produto
     """, (session_id, comprador)).fetchall()
     conn.close()
@@ -182,7 +193,7 @@ def get_compradores(session_id):
                SUM(CASE WHEN a.decisao = 'alterado' THEN 1 ELSE 0 END) as alterado
         FROM sugestoes s
         LEFT JOIN aprovacoes a ON a.sugestao_id = s.id
-        WHERE s.session_id = ?
+        WHERE s.session_id = ? AND s.sugestao > 0
         GROUP BY s.comprador
         ORDER BY s.comprador
     """, (session_id,)).fetchall()
@@ -235,3 +246,67 @@ def get_latest_session_id():
     row = conn.execute("SELECT id FROM sessions ORDER BY created_at DESC LIMIT 1").fetchone()
     conn.close()
     return row['id'] if row else None
+
+
+def get_dashboard_data(date_from=None, date_to=None):
+    """Returns dashboard metrics, optionally filtered by session creation date."""
+    conn = get_connection()
+
+    # Build date filter
+    params = []
+    date_filter = ""
+    if date_from:
+        date_filter += " AND DATE(s.created_at) >= ?"
+        params.append(date_from)
+    if date_to:
+        date_filter += " AND DATE(s.created_at) <= ?"
+        params.append(date_to)
+
+    # Overall totals (only sugestoes with sugestao > 0 and incluido = 1)
+    totals = conn.execute(f"""
+        SELECT
+            COUNT(DISTINCT su.codigo_produto) as total_skus,
+            COUNT(su.id) as total_sugestoes,
+            SUM(su.sugestao) as total_unidades,
+            SUM(CASE WHEN a.decisao = 'aprovado' THEN 1 ELSE 0 END) as aprovados,
+            SUM(CASE WHEN a.decisao = 'recusado' THEN 1 ELSE 0 END) as recusados,
+            SUM(CASE WHEN a.decisao = 'alterado' THEN 1 ELSE 0 END) as alterados,
+            SUM(CASE WHEN a.decisao IS NULL THEN 1 ELSE 0 END) as pendentes
+        FROM sessions s
+        JOIN sugestoes su ON su.session_id = s.id
+        LEFT JOIN aprovacoes a ON a.sugestao_id = su.id
+        WHERE su.sugestao > 0 AND (su.incluido = 1 OR su.incluido IS NULL)
+        {date_filter}
+    """, params).fetchone()
+
+    # Per-buyer breakdown
+    buyers = conn.execute(f"""
+        SELECT
+            su.comprador,
+            COUNT(su.id) as total,
+            SUM(CASE WHEN a.decisao = 'aprovado' THEN 1 ELSE 0 END) as aprovados,
+            SUM(CASE WHEN a.decisao = 'recusado' THEN 1 ELSE 0 END) as recusados,
+            SUM(CASE WHEN a.decisao = 'alterado' THEN 1 ELSE 0 END) as alterados,
+            SUM(CASE WHEN a.decisao IS NULL THEN 1 ELSE 0 END) as pendentes,
+            SUM(su.sugestao) as unidades_sugeridas,
+            SUM(CASE WHEN a.decisao IN ('aprovado','alterado') THEN COALESCE(a.quantidade_aprovada, su.sugestao) ELSE 0 END) as unidades_aprovadas
+        FROM sessions s
+        JOIN sugestoes su ON su.session_id = s.id
+        LEFT JOIN aprovacoes a ON a.sugestao_id = su.id
+        WHERE su.sugestao > 0 AND (su.incluido = 1 OR su.incluido IS NULL)
+        {date_filter}
+        GROUP BY su.comprador
+        ORDER BY total DESC
+    """, params).fetchall()
+
+    # Sessions in filter
+    sessions_list = conn.execute(f"""
+        SELECT id, created_at, filial_origem, filial_destino, periodo_dias,
+               data_inicio, data_fim, finalizada, total_produtos, total_unidades
+        FROM sessions s
+        WHERE 1=1 {date_filter}
+        ORDER BY created_at DESC
+    """, params).fetchall()
+
+    conn.close()
+    return dict(totals), [dict(b) for b in buyers], [dict(s) for s in sessions_list]

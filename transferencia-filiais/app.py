@@ -14,6 +14,7 @@ from db import init_db, get_sessions, get_session, create_session, insert_sugest
 from db import get_sugestoes, get_sugestoes_by_comprador, get_compradores
 from db import upsert_aprovacao, get_latest_session_id
 from db import get_sugestao_by_codigo, get_all_compradores_in_session
+from db import finalize_session, get_dashboard_data
 from calc import process_transfer
 
 app = Flask(__name__)
@@ -485,6 +486,32 @@ def consulta_produto(session_id, codigo):
     z_factor = Z_FACTORS.get(int(nivel_servico), 1.65)
     return render_template('consulta.html', sess=sess, produto=produto,
                            codigo_buscado=codigo, z_factor=z_factor)
+
+
+@app.route('/finalizar/<int:session_id>', methods=['POST'])
+def finalizar(session_id):
+    sess = get_session(session_id)
+    if not sess:
+        abort(404)
+    if sess['finalizada']:
+        flash('Sessão já estava finalizada.', 'warning')
+    else:
+        finalize_session(session_id)
+        flash('Análise finalizada com sucesso. Nenhuma alteração adicional é permitida.', 'success')
+    return redirect(url_for('resultado', session_id=session_id))
+
+
+@app.route('/dashboard')
+def dashboard():
+    date_from = request.args.get('date_from', '')
+    date_to = request.args.get('date_to', '')
+    totals, buyers, sessions_list = get_dashboard_data(
+        date_from or None,
+        date_to or None
+    )
+    return render_template('dashboard.html',
+        totals=totals, buyers=buyers, sessions_list=sessions_list,
+        date_from=date_from, date_to=date_to)
 
 
 if __name__ == '__main__':

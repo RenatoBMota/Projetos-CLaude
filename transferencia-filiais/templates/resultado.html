@@ -6,6 +6,9 @@
     <div>
         <h4 class="mb-1">
             <i class="bi bi-table me-2"></i>Sugestões de Transferência
+            {% if sess['finalizada'] %}
+            <span class="badge bg-danger ms-2"><i class="bi bi-lock-fill me-1"></i>Finalizada</span>
+            {% endif %}
         </h4>
         <div class="text-muted small">
             <strong>{{ sess['filial_origem'] }}</strong> → <strong>{{ sess['filial_destino'] }}</strong>
@@ -18,7 +21,7 @@
             &nbsp;|&nbsp; Sessão #{{ sess['id'] }} ({{ sess['created_at'][:16] }})
         </div>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 align-items-center flex-wrap justify-content-end">
         <a href="{{ url_for('consulta', session_id=sess['id']) }}" class="btn btn-outline-primary">
             <i class="bi bi-search me-1"></i>Consultar Produto
         </a>
@@ -28,6 +31,18 @@
         <a href="{{ url_for('exportar', session_id=sess['id']) }}" class="btn btn-success">
             <i class="bi bi-file-earmark-excel me-1"></i>Exportar XLSX
         </a>
+        {% if not sess['finalizada'] %}
+        <form method="post" action="{{ url_for('finalizar', session_id=sess['id']) }}" class="d-inline"
+              onsubmit="return confirm('Finalizar a análise? Nenhuma alteração será permitida após isso.')">
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-lock me-1"></i>Finalizar Análise
+            </button>
+        </form>
+        {% else %}
+        <span class="badge bg-danger fs-6 px-3 py-2">
+            <i class="bi bi-lock-fill me-1"></i>Finalizada em {{ sess['finalizada_em'][:16] }}
+        </span>
+        {% endif %}
     </div>
 </div>
 
