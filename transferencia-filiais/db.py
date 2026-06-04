@@ -275,7 +275,7 @@ def get_dashboard_data(date_from=None, date_to=None):
         FROM sessions s
         JOIN sugestoes su ON su.session_id = s.id
         LEFT JOIN aprovacoes a ON a.sugestao_id = su.id
-        WHERE su.sugestao > 0 AND (su.incluido = 1 OR su.incluido IS NULL)
+        WHERE su.necessidade > 0 AND su.estoque_origem > 0 AND (su.incluido = 1 OR su.incluido IS NULL)
         {date_filter}
     """, params).fetchone()
 
@@ -293,7 +293,7 @@ def get_dashboard_data(date_from=None, date_to=None):
         FROM sessions s
         JOIN sugestoes su ON su.session_id = s.id
         LEFT JOIN aprovacoes a ON a.sugestao_id = su.id
-        WHERE su.sugestao > 0 AND (su.incluido = 1 OR su.incluido IS NULL)
+        WHERE su.necessidade > 0 AND su.estoque_origem > 0 AND (su.incluido = 1 OR su.incluido IS NULL)
         {date_filter}
         GROUP BY su.comprador
         ORDER BY total DESC
