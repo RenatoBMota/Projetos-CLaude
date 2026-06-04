@@ -175,7 +175,7 @@ def get_sugestoes_by_comprador(session_id, comprador):
         SELECT s.*, a.decisao, a.quantidade_aprovada, a.updated_at as aprovado_em
         FROM sugestoes s
         LEFT JOIN aprovacoes a ON a.sugestao_id = s.id
-        WHERE s.session_id = ? AND s.comprador = ? AND s.sugestao > 0
+        WHERE s.session_id = ? AND s.comprador = ? AND s.necessidade > 0 AND s.estoque_origem > 0
         ORDER BY s.descricao_produto
     """, (session_id, comprador)).fetchall()
     conn.close()
@@ -193,7 +193,7 @@ def get_compradores(session_id):
                SUM(CASE WHEN a.decisao = 'alterado' THEN 1 ELSE 0 END) as alterado
         FROM sugestoes s
         LEFT JOIN aprovacoes a ON a.sugestao_id = s.id
-        WHERE s.session_id = ? AND s.sugestao > 0
+        WHERE s.session_id = ? AND s.necessidade > 0 AND s.estoque_origem > 0
         GROUP BY s.comprador
         ORDER BY s.comprador
     """, (session_id,)).fetchall()
