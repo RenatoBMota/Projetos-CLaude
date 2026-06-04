@@ -69,6 +69,8 @@
                         <th>Produto</th>
                         <th>Fornecedor</th>
                         <th class="text-center">Cobertura Atual</th>
+                        <th class="text-end">Est. Origem</th>
+                        <th class="text-end">Est. Destino</th>
                         <th class="text-end">Necessidade</th>
                         <th class="text-end">Sugestão</th>
                         <th class="text-center" style="min-width:320px">Decisão</th>
@@ -92,6 +94,8 @@
                         <td class="text-center fw-semibold {% if r['cobertura_destino_atual'] < 7 %}text-danger{% elif r['cobertura_destino_atual'] < 15 %}text-warning{% endif %}">
                             {{ r['cobertura_destino_atual'] | br(1) }}d
                         </td>
+                        <td class="text-end">{{ r['estoque_origem'] | br_int }}</td>
+                        <td class="text-end">{{ r['estoque_destino'] | br_int }}</td>
                         <td class="text-end">{{ r['necessidade'] | br_int }}</td>
                         <td class="text-end fw-bold">
                             {{ r['sugestao'] | br_int }}
