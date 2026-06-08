@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fiado-facil-db
+    environment:
+      POSTGRES_USER: fiado_user
+      POSTGRES_PASSWORD: fiado_pass
+      POSTGRES_DB: fiado_facil
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fiado-facil-api
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: fiado_user
+      DB_PASSWORD: fiado_pass
+      DB_DATABASE: fiado_facil
+    ports:
+      - '3000:3000'
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
