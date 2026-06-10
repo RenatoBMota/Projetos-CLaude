@@ -15,6 +15,7 @@ from db import get_sugestoes, get_sugestoes_by_comprador, get_compradores
 from db import upsert_aprovacao, get_latest_session_id
 from db import get_sugestao_by_codigo, get_all_compradores_in_session
 from db import finalize_session, get_dashboard_data
+from db import upsert_compradores_base, get_compradores_base, get_compradores_base_count
 from calc import process_transfer
 
 app = Flask(__name__)
@@ -103,16 +104,18 @@ with app.app_context():
 def index():
     sessions = get_sessions()
 
+    base_info = get_compradores_base_count()
+
     if request.method == 'POST':
         # Validate required files
-        required = ['vendas', 'estoque', 'compradores']
+        required = ['vendas', 'estoque']
         for field in required:
             if field not in request.files or request.files[field].filename == '':
                 flash(f'Arquivo "{field}" é obrigatório.', 'danger')
-                return render_template('index.html', sessions=sessions)
+                return render_template('index.html', sessions=sessions, base_info=base_info)
             if not allowed_file(request.files[field].filename):
                 flash(f'Formato inválido para "{field}". Use CSV ou XLSX.', 'danger')
-                return render_template('index.html', sessions=sessions)
+                return render_template('index.html', sessions=sessions, base_info=base_info)
 
         # Read files into memory
         def get_file(field):
@@ -128,6 +131,16 @@ def index():
         transito_buf, transito_name = get_file('transito')
         reservas_buf, reservas_name = get_file('reservas')
 
+        # Compradores: uploaded file takes priority; fall back to base cadastrada
+        compradores_df_base = None
+        if compradores_buf is None:
+            base_rows = get_compradores_base()
+            if not base_rows:
+                flash('Nenhuma base de compradores cadastrada. Faça o upload do arquivo ou cadastre a base.', 'danger')
+                return render_template('index.html', sessions=sessions, base_info=base_info)
+            compradores_df_base = pd.DataFrame(base_rows)
+            flash('Usando base de compradores cadastrada no sistema.', 'info')
+
         # Parameters
         try:
             filial_origem = request.form.get('filial_origem', '').strip().upper()
@@ -137,11 +150,11 @@ def index():
             nivel_servico = int(request.form.get('nivel_servico', 95))
         except ValueError as e:
             flash(f'Parâmetro inválido: {e}', 'danger')
-            return render_template('index.html', sessions=sessions)
+            return render_template('index.html', sessions=sessions, base_info=base_info)
 
         if not filial_origem or not filial_destino:
             flash('Filial Origem e Filial Destino são obrigatórios.', 'danger')
-            return render_template('index.html', sessions=sessions)
+            return render_template('index.html', sessions=sessions, base_info=base_info)
 
         try:
             results, warnings, meta = process_transfer(
@@ -151,14 +164,15 @@ def index():
                 transito_buf, transito_name,
                 reservas_buf, reservas_name,
                 filial_origem, filial_destino,
-                dias_min_origem, dias_meta_destino, nivel_servico
+                dias_min_origem, dias_meta_destino, nivel_servico,
+                compradores_df=compradores_df_base,
             )
         except ValueError as e:
             flash(str(e), 'danger')
-            return render_template('index.html', sessions=sessions)
+            return render_template('index.html', sessions=sessions, base_info=base_info)
         except Exception as e:
             flash(f'Erro inesperado ao processar arquivos: {e}', 'danger')
-            return render_template('index.html', sessions=sessions)
+            return render_template('index.html', sessions=sessions, base_info=base_info)
 
         for w in warnings:
             flash(w, 'warning')
@@ -185,7 +199,71 @@ def index():
         flash(f'Processamento concluído! {total_produtos} produtos encontrados.', 'success')
         return redirect(url_for('resultado', session_id=session_id))
 
-    return render_template('index.html', sessions=sessions)
+    return render_template('index.html', sessions=sessions, base_info=base_info)
+
+
+# ─────────────────────────────────────────────
+# BASE DE COMPRADORES
+# ─────────────────────────────────────────────
+@app.route('/base-compradores', methods=['GET', 'POST'])
+def base_compradores():
+    base_info = get_compradores_base_count()
+
+    if request.method == 'POST':
+        f = request.files.get('compradores_base')
+        if not f or not f.filename:
+            flash('Selecione um arquivo para importar.', 'danger')
+            return redirect(url_for('base_compradores'))
+        if not allowed_file(f.filename):
+            flash('Formato inválido. Use CSV ou XLSX.', 'danger')
+            return redirect(url_for('base_compradores'))
+
+        from calc import read_file, normalize_cod, find_col
+        try:
+            buf = io.BytesIO(f.read())
+            df = read_file(buf, f.filename)
+        except Exception as e:
+            flash(f'Erro ao ler arquivo: {e}', 'danger')
+            return redirect(url_for('base_compradores'))
+
+        col_cod = find_col(df, 'codigo_produto')
+        col_desc = find_col(df, 'descricao_produto')
+        col_cod_forn = find_col(df, 'codigo_fornecedor')
+        col_nome_forn = find_col(df, 'nome_fornecedor')
+        col_comp = find_col(df, 'comprador')
+
+        if not col_cod or not col_comp:
+            flash('Arquivo deve conter colunas "Código Produto" e "Comprador".', 'danger')
+            return redirect(url_for('base_compradores'))
+
+        df[col_cod] = df[col_cod].apply(normalize_cod)
+        rows = []
+        for _, row in df.iterrows():
+            cod = str(row[col_cod]).strip()
+            if not cod or cod == 'nan':
+                continue
+            rows.append({
+                'codigo_produto': cod,
+                'descricao_produto': str(row[col_desc]).strip() if col_desc else cod,
+                'codigo_fornecedor': str(row[col_cod_forn]).strip() if col_cod_forn else '',
+                'nome_fornecedor': str(row[col_nome_forn]).strip() if col_nome_forn else '',
+                'comprador': str(row[col_comp]).strip() if col_comp else 'Sem Comprador',
+            })
+
+        if not rows:
+            flash('Nenhum registro válido encontrado no arquivo.', 'danger')
+            return redirect(url_for('base_compradores'))
+
+        upsert_compradores_base(rows)
+        flash(f'Base atualizada com sucesso! {len(rows)} produtos cadastrados.', 'success')
+        return redirect(url_for('base_compradores'))
+
+    rows = get_compradores_base()
+    compradores_unicos = sorted({r['comprador'] for r in rows})
+    return render_template('base_compradores.html',
+                           base_info=base_info,
+                           rows=rows,
+                           compradores_unicos=compradores_unicos)
 
 
 # ─────────────────────────────────────────────

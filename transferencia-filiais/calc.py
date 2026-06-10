@@ -58,13 +58,13 @@ def read_file(file_obj, filename):
 COL_ALIASES = {
     'filial': ['filial', 'branch', 'loja'],
     'data': ['data faturamento', 'data', 'date', 'dt faturamento', 'data_faturamento'],
-    'codigo_produto': ['código produto', 'codigo produto', 'cod produto', 'code', 'produto', 'codigo_produto', 'código_produto', 'cod_produto', 'item'],
+    'codigo_produto': ['código produto', 'codigo produto', 'cod produto', 'code', 'produto', 'codigo_produto', 'código_produto', 'cod_produto', 'item', 'código', 'codigo'],
     'descricao_produto': ['descrição produto', 'descricao produto', 'descrição', 'descricao', 'description', 'produto desc', 'descricao_produto', 'descrição_produto'],
     'nf': ['nf', 'nota fiscal', 'nota', 'invoice'],
     'quantidade_faturada': ['quantidade faturada', 'qtd faturada', 'quantidade', 'qty', 'qtd', 'quantidade_faturada'],
     'quantidade': ['quantidade', 'qtd', 'qty', 'estoque', 'saldo', 'saldo estoque'],
-    'codigo_fornecedor': ['código fornecedor', 'codigo fornecedor', 'cod fornecedor', 'codigo_fornecedor', 'código_fornecedor', 'cod_fornecedor'],
-    'nome_fornecedor': ['nome fornecedor', 'fornecedor', 'supplier', 'nome_fornecedor'],
+    'codigo_fornecedor': ['código fornecedor', 'codigo fornecedor', 'cod fornecedor', 'codigo_fornecedor', 'código_fornecedor', 'cod_fornecedor', 'cód. fornec', 'cod. fornec', 'cód fornec'],
+    'nome_fornecedor': ['nome fornecedor', 'fornecedor', 'supplier', 'nome_fornecedor', 'fantasia', 'nome fantasia'],
     'comprador': ['comprador', 'buyer', 'responsavel', 'responsável'],
     'quantidade_em_transito': ['quantidade em trânsito', 'quantidade em transito', 'qtd em trânsito', 'qtd transito', 'em transito', 'em trânsito', 'transito', 'quantidade_em_transito'],
     'quantidade_reservada': ['quantidade reservada', 'qtd reservada', 'reservas', 'pedidos', 'quantidade_reservada'],
@@ -108,7 +108,8 @@ def process_transfer(
     reservas_file, reservas_filename,
     filial_origem, filial_destino,
     dias_min_origem, dias_meta_destino,
-    nivel_servico=95
+    nivel_servico=95,
+    compradores_df=None,
 ):
     errors = []
 
@@ -123,10 +124,15 @@ def process_transfer(
     except Exception as e:
         raise ValueError(f"Erro ao ler Estoque Atual: {e}")
 
-    try:
-        df_compradores = read_file(compradores_file, compradores_filename)
-    except Exception as e:
-        raise ValueError(f"Erro ao ler Compradores: {e}")
+    if compradores_df is not None:
+        df_compradores = compradores_df
+    elif compradores_file is not None:
+        try:
+            df_compradores = read_file(compradores_file, compradores_filename)
+        except Exception as e:
+            raise ValueError(f"Erro ao ler Compradores: {e}")
+    else:
+        raise ValueError("Nenhuma base de compradores disponível. Faça o upload ou cadastre a base.")
 
     df_transito = None
     if transito_file is not None:

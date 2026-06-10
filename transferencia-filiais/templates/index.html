@@ -88,10 +88,14 @@
                         </div>
 
                         <div class="col-md-6">
-                            <div class="upload-zone" id="zone-compradores" onclick="document.getElementById('compradores').click()">
-                                <i class="bi bi-person-badge fs-3 text-primary"></i>
-                                <div class="mt-2 fw-semibold">Compradores <span class="text-danger">*</span></div>
-                                <div class="text-muted small">Código Produto, Fornecedor, Comprador</div>
+                            <div class="upload-zone optional" id="zone-compradores" onclick="document.getElementById('compradores').click()">
+                                <i class="bi bi-person-badge fs-3 {% if base_info and base_info['n'] > 0 %}text-success{% else %}text-warning{% endif %}"></i>
+                                <div class="mt-2 fw-semibold">Compradores <span class="text-muted">(opcional)</span></div>
+                                {% if base_info and base_info['n'] > 0 %}
+                                <div class="text-success small"><i class="bi bi-check-circle me-1"></i>Base cadastrada: {{ base_info['n'] }} produtos — clique para atualizar</div>
+                                {% else %}
+                                <div class="text-warning small"><i class="bi bi-exclamation-triangle me-1"></i>Sem base cadastrada — envie o arquivo</div>
+                                {% endif %}
                                 <div class="file-name mt-1 text-primary small" id="name-compradores"></div>
                                 <input type="file" id="compradores" name="compradores" accept=".csv,.xlsx,.xls" class="d-none" onchange="showFileName(this,'name-compradores','zone-compradores')">
                             </div>

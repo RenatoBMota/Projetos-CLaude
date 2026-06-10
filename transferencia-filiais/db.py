@@ -68,6 +68,15 @@ def init_db():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(sugestao_id)
         );
+
+        CREATE TABLE IF NOT EXISTS compradores_base (
+            codigo_produto TEXT PRIMARY KEY,
+            descricao_produto TEXT,
+            codigo_fornecedor TEXT,
+            nome_fornecedor TEXT,
+            comprador TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
     """)
     # Migrate existing DB: add new columns if they don't exist yet
     existing = {row[1] for row in c.execute("PRAGMA table_info(sessions)")}
@@ -239,6 +248,33 @@ def get_all_compradores_in_session(session_id):
     """, (session_id,)).fetchall()
     conn.close()
     return [r['comprador'] for r in rows]
+
+
+def upsert_compradores_base(rows):
+    """Replace all rows in compradores_base with new data."""
+    conn = get_connection()
+    conn.execute("DELETE FROM compradores_base")
+    conn.executemany("""
+        INSERT INTO compradores_base (codigo_produto, descricao_produto, codigo_fornecedor, nome_fornecedor, comprador, updated_at)
+        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    """, [(r['codigo_produto'], r['descricao_produto'], r['codigo_fornecedor'], r['nome_fornecedor'], r['comprador']) for r in rows])
+    conn.commit()
+    conn.close()
+
+
+def get_compradores_base():
+    """Return all rows from compradores_base as list of dicts."""
+    conn = get_connection()
+    rows = conn.execute("SELECT * FROM compradores_base ORDER BY comprador, descricao_produto").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_compradores_base_count():
+    conn = get_connection()
+    row = conn.execute("SELECT COUNT(*) as n, MAX(updated_at) as ultima_atualizacao FROM compradores_base").fetchone()
+    conn.close()
+    return dict(row)
 
 
 def get_latest_session_id():

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Base de Compradores{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="mb-1"><i class="bi bi-person-badge me-2"></i>Base de Compradores</h4>
+        <div class="text-muted small">
+            {% if base_info['n'] > 0 %}
+                <strong>{{ base_info['n'] }}</strong> produtos cadastrados
+                &nbsp;|&nbsp; Última atualização: {{ base_info['ultima_atualizacao'][:16] if base_info['ultima_atualizacao'] else '—' }}
+            {% else %}
+                Nenhum produto cadastrado ainda.
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Upload card -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white">
+        <h6 class="mb-0"><i class="bi bi-cloud-upload me-2"></i>Importar / Atualizar Base</h6>
+    </div>
+    <div class="card-body">
+        <form method="POST" enctype="multipart/form-data" class="row g-3 align-items-end">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Arquivo de Compradores (CSV ou XLSX)</label>
+                <input type="file" name="compradores_base" class="form-control" accept=".csv,.xlsx,.xls" required>
+                <div class="form-text">Colunas obrigatórias: <strong>Código Produto</strong>, <strong>Comprador</strong>. Opcionais: Descrição Produto, Código Fornecedor, Nome Fornecedor.</div>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100"
+                        onclick="return confirm('Isso substituirá toda a base atual. Continuar?')">
+                    <i class="bi bi-arrow-repeat me-1"></i>Importar e Substituir Base
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if rows %}
+<!-- Summary por comprador -->
+<div class="card shadow-sm mb-3">
+    <div class="card-header">
+        <h6 class="mb-0"><i class="bi bi-people me-2"></i>{{ compradores_unicos|length }} Compradores Cadastrados</h6>
+    </div>
+    <div class="card-body py-2">
+        {% for c in compradores_unicos %}
+        {% set count = rows | selectattr('comprador', 'equalto', c) | list | length %}
+        <span class="badge bg-secondary me-1 mb-1 fs-6 fw-normal">{{ c }} <span class="badge bg-light text-dark ms-1">{{ count }}</span></span>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Tabela completa -->
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-table me-2"></i>Todos os Produtos</h6>
+        <span class="text-muted small">{{ rows|length }} registros</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive" style="max-height:600px; overflow-y:auto;">
+            <table class="table table-sm table-hover table-bordered mb-0">
+                <thead class="table-dark sticky-top">
+                    <tr>
+                        <th>Código</th>
+                        <th>Descrição</th>
+                        <th>Fornecedor</th>
+                        <th>Comprador</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in rows %}
+                    <tr>
+                        <td class="font-monospace">{{ r['codigo_produto'] }}</td>
+                        <td>{{ r['descricao_produto'] }}</td>
+                        <td class="text-muted small">{{ r['nome_fornecedor'] or '—' }}</td>
+                        <td>{{ r['comprador'] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    A base de compradores está vazia. Importe um arquivo para começar.
+</div>
+{% endif %}
+{% endblock %}
