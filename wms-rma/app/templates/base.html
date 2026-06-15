@@ -236,6 +236,10 @@
        class="nav-link {% if request.blueprint == 'produtos' %}active{% endif %}">
       <i class="fa-solid fa-box-open"></i> Produtos
     </a>
+    <a href="{{ url_for('fornecedores.index') }}"
+       class="nav-link {% if request.blueprint == 'fornecedores' %}active{% endif %}">
+      <i class="fa-solid fa-truck"></i> Fornecedores
+    </a>
     {% endif %}
     {% if current_user.has_role('admin','supervisor','operador') %}
     <a href="{{ url_for('lote.index') }}"

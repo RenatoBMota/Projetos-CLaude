@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Editar' if fornecedor else 'Novo' }} Fornecedor{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('fornecedores.index') }}">Fornecedores</a></li>
+<li class="breadcrumb-item active">{{ 'Editar' if fornecedor else 'Novo' }}</li>
+{% endblock %}
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between">
+  <div>
+    <h1>
+      <i class="fa-solid fa-truck me-2 text-primary"></i>
+      {{ 'Editar Fornecedor' if fornecedor else 'Novo Fornecedor' }}
+    </h1>
+    {% if fornecedor %}
+    <p class="subtitle">{{ fornecedor.nome }}</p>
+    {% endif %}
+  </div>
+  <a href="{{ url_for('fornecedores.index') }}" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i>Voltar
+  </a>
+</div>
+
+<div class="form-card" style="max-width:640px;">
+  <form method="POST">
+    <div class="mb-3">
+      <label class="form-label fw-bold">Nome <span class="text-danger">*</span></label>
+      <input type="text" name="nome" class="form-control" required maxlength="200"
+             value="{{ fornecedor.nome if fornecedor else '' }}"
+             placeholder="Razão social do fornecedor">
+    </div>
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <label class="form-label fw-bold">CNPJ</label>
+        <input type="text" name="cnpj" class="form-control" maxlength="20"
+               value="{{ fornecedor.cnpj or '' if fornecedor else '' }}"
+               placeholder="00.000.000/0001-00">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label fw-bold">Telefone</label>
+        <input type="text" name="telefone" class="form-control" maxlength="30"
+               value="{{ fornecedor.telefone or '' if fornecedor else '' }}"
+               placeholder="(11) 99999-0000">
+      </div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label fw-bold">E-mail</label>
+      <input type="email" name="email" class="form-control" maxlength="150"
+             value="{{ fornecedor.email or '' if fornecedor else '' }}"
+             placeholder="rma@fornecedor.com.br">
+    </div>
+    <div class="mb-3">
+      <label class="form-label fw-bold">Nome do Contato</label>
+      <input type="text" name="contato" class="form-control" maxlength="100"
+             value="{{ fornecedor.contato or '' if fornecedor else '' }}"
+             placeholder="Responsável pelo RMA">
+    </div>
+    {% if fornecedor %}
+    <div class="mb-4">
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" name="ativo" id="ativo"
+               {% if fornecedor.ativo %}checked{% endif %}>
+        <label class="form-check-label" for="ativo">Fornecedor ativo</label>
+      </div>
+    </div>
+    {% endif %}
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary-custom">
+        <i class="fa-solid fa-save me-1"></i>
+        {{ 'Salvar Alterações' if fornecedor else 'Cadastrar Fornecedor' }}
+      </button>
+      <a href="{{ url_for('fornecedores.index') }}" class="btn btn-outline-secondary">
+        Cancelar
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}

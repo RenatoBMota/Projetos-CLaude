@@ -121,6 +121,7 @@ TELAS = {
     'triagem':      'Triagem',
     'armazem':      'Armazém',
     'produtos':     'Produtos',
+    'fornecedores': 'Fornecedores',
     'lote':         'Lotes',
     'sla':          'Monitor SLA',
     'relatorios':   'Relatórios',

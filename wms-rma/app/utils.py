@@ -12,6 +12,7 @@ BLUEPRINT_ROLES = {
     'triagem':      ['admin', 'supervisor', 'tecnico', 'operador'],
     'armazem':      ['admin', 'supervisor', 'tecnico', 'operador'],
     'produtos':     ['admin', 'supervisor', 'compras', 'operador'],
+    'fornecedores': ['admin', 'supervisor', 'compras', 'operador'],
     'lote':         ['admin', 'supervisor', 'operador'],
     'sla':          ['admin', 'supervisor', 'compras', 'financeiro', 'auditor'],
     'relatorios':   ['admin', 'supervisor', 'compras', 'financeiro', 'auditor'],

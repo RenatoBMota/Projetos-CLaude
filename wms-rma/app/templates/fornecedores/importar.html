@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}Importar Fornecedores{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('fornecedores.index') }}">Fornecedores</a></li>
+<li class="breadcrumb-item active">Importar Excel</li>
+{% endblock %}
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between">
+  <div>
+    <h1><i class="fa-solid fa-file-excel me-2 text-success"></i>Importar Fornecedores</h1>
+    <p class="subtitle">Carga em lote via planilha Excel (.xlsx)</p>
+  </div>
+  <a href="{{ url_for('fornecedores.index') }}" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i>Voltar
+  </a>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="form-card h-100">
+      <h5 class="fw-bold mb-3"><i class="fa-solid fa-upload me-2 text-primary"></i>Enviar Planilha</h5>
+      <form method="POST" enctype="multipart/form-data">
+        <div class="mb-4">
+          <label class="form-label fw-bold">Arquivo Excel</label>
+          <input type="file" name="arquivo" class="form-control" accept=".xlsx,.xls" required>
+          <div class="form-text">Formato aceito: .xlsx ou .xls. Máximo 16MB.</div>
+        </div>
+        <div class="alert alert-info py-2 small mb-4">
+          <i class="fa-solid fa-circle-info me-1"></i>
+          Fornecedores com o mesmo <strong>nome</strong> serão <strong>atualizados</strong>.
+          Novos nomes serão <strong>criados</strong>.
+        </div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary-custom">
+            <i class="fa-solid fa-upload me-1"></i>Importar
+          </button>
+          <a href="{{ url_for('fornecedores.template_excel') }}" class="btn btn-outline-success">
+            <i class="fa-solid fa-download me-1"></i>Baixar Template
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="form-card h-100">
+      <h5 class="fw-bold mb-3"><i class="fa-solid fa-table me-2 text-success"></i>Estrutura da Planilha</h5>
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered mb-3" style="font-size:.82rem;">
+          <thead class="table-dark">
+            <tr>
+              <th>Coluna</th>
+              <th>Campo</th>
+              <th>Obrigatório</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>A</td><td>nome</td><td><span class="badge bg-danger">Sim</span></td></tr>
+            <tr><td>B</td><td>cnpj</td><td><span class="badge bg-secondary">Não</span></td></tr>
+            <tr><td>C</td><td>email</td><td><span class="badge bg-secondary">Não</span></td></tr>
+            <tr><td>D</td><td>telefone</td><td><span class="badge bg-secondary">Não</span></td></tr>
+            <tr><td>E</td><td>contato</td><td><span class="badge bg-secondary">Não</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul class="small text-muted ps-3 mb-0">
+        <li>A linha 1 é o cabeçalho — <strong>não altere</strong></li>
+        <li>A partir da linha 2 vêm os dados</li>
+        <li>Linhas com nome em branco são ignoradas</li>
+        <li>Baixe o template para garantir o formato correto</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="form-card mt-4">
+  <h5 class="fw-bold mb-3"><i class="fa-solid fa-pen me-2 text-primary"></i>Prefere cadastrar manualmente?</h5>
+  <p class="text-muted small mb-3">Se tiver poucos fornecedores ou quiser adicionar um por vez, use o formulário.</p>
+  <a href="{{ url_for('fornecedores.novo') }}" class="btn btn-outline-primary">
+    <i class="fa-solid fa-plus me-1"></i>Cadastrar Fornecedor Manualmente
+  </a>
+</div>
+{% endblock %}

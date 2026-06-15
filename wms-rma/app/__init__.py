@@ -37,6 +37,7 @@ def create_app():
     from app.routes.triagem      import bp as triagem_bp
     from app.routes.armazem      import bp as armazem_bp
     from app.routes.produtos      import bp as produtos_bp
+    from app.routes.fornecedores  import bp as fornecedores_bp
     from app.routes.sla          import bp as sla_bp
     from app.routes.relatorios   import bp as relatorios_bp
     from app.routes.usuarios     import bp as usuarios_bp
@@ -50,6 +51,7 @@ def create_app():
     app.register_blueprint(triagem_bp)
     app.register_blueprint(armazem_bp)
     app.register_blueprint(produtos_bp)
+    app.register_blueprint(fornecedores_bp)
     app.register_blueprint(sla_bp)
     app.register_blueprint(relatorios_bp)
     app.register_blueprint(usuarios_bp)
