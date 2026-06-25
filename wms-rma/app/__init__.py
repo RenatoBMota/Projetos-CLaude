@@ -1,15 +1,21 @@
 import os
 from flask import Flask, render_template
+from werkzeug.middleware.proxy_fix import ProxyFix
 from app.extensions import db, login_manager
 
 
 def create_app():
     app = Flask(__name__, instance_relative_config=True)
 
+    # Necessário atrás de um reverse proxy (Nginx) para detectar https/host corretos
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
     # ── Configuração base ─────────────────────────────────────────────────────
     instance_path = app.instance_path
     os.makedirs(instance_path, exist_ok=True)
     os.makedirs(os.path.join(app.root_path, 'static', 'uploads'), exist_ok=True)
+
+    atras_de_proxy_https = os.environ.get('FORCE_HTTPS', '0') == '1'
 
     app.config.update(
         SECRET_KEY=os.environ.get('SECRET_KEY', 'wms-rma-enterprise-secret-2024'),
@@ -18,6 +24,9 @@ def create_app():
         MAX_CONTENT_LENGTH=16 * 1024 * 1024,  # 16MB
         UPLOAD_FOLDER=os.path.join(app.root_path, 'static', 'uploads'),
         WTF_CSRF_ENABLED=True,
+        SESSION_COOKIE_SECURE=atras_de_proxy_https,
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE='Lax',
     )
 
     # ── Extensões ─────────────────────────────────────────────────────────────

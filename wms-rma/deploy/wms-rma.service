@@ -1,0 +1,24 @@
+[Unit]
+Description=WMS RMA Enterprise - Gunicorn
+After=network.target
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/wms-rma
+EnvironmentFile=/var/www/wms-rma/.env
+ExecStart=/var/www/wms-rma/.venv/bin/gunicorn \
+    --workers 3 \
+    --bind unix:/run/wms-rma/wms-rma.sock \
+    --umask 007 \
+    --access-logfile /var/log/wms-rma/access.log \
+    --error-logfile /var/log/wms-rma/error.log \
+    wsgi:app
+RuntimeDirectory=wms-rma
+RuntimeDirectoryMode=0755
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
