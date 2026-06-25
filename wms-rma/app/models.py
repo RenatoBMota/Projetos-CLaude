@@ -32,6 +32,7 @@ class Roles:
 
 class EstadoRMA:
     ABERTO               = 'ABERTO'
+    AGUARDANDO_APROVACAO = 'AGUARDANDO_APROVACAO'
     AGUARDANDO_TRIAGEM   = 'AGUARDANDO_TRIAGEM'
     EM_ANALISE           = 'EM_ANALISE'
     AGUARDANDO_DEST      = 'AGUARDANDO_DESTINACAO'
@@ -41,8 +42,12 @@ class EstadoRMA:
     CANCELADO            = 'CANCELADO'
     SUCATA               = 'SUCATA'
 
+    # Perfis que podem aprovar/reprovar um RMA antes da triagem
+    APROVADORES = ('admin', 'supervisor')
+
     LABELS = {
         'ABERTO':               ('Aberto',            'secondary'),
+        'AGUARDANDO_APROVACAO': ('Ag. Aprovação',      'warning'),
         'AGUARDANDO_TRIAGEM':   ('Ag. Triagem',        'warning'),
         'EM_ANALISE':           ('Em Análise',         'info'),
         'AGUARDANDO_DESTINACAO':('Ag. Destinação',     'primary'),
@@ -427,7 +432,8 @@ class RMA(db.Model):
 
     def pode_transitar(self, novo_estado):
         transicoes = {
-            EstadoRMA.ABERTO:            [EstadoRMA.AGUARDANDO_TRIAGEM, EstadoRMA.CANCELADO],
+            EstadoRMA.ABERTO:            [EstadoRMA.AGUARDANDO_APROVACAO, EstadoRMA.CANCELADO],
+            EstadoRMA.AGUARDANDO_APROVACAO:[EstadoRMA.AGUARDANDO_TRIAGEM, EstadoRMA.ABERTO, EstadoRMA.CANCELADO],
             EstadoRMA.AGUARDANDO_TRIAGEM:[EstadoRMA.EM_ANALISE, EstadoRMA.CANCELADO],
             EstadoRMA.EM_ANALISE:        [EstadoRMA.AGUARDANDO_DEST, EstadoRMA.CANCELADO],
             EstadoRMA.AGUARDANDO_DEST:   [EstadoRMA.AGUARDANDO_COLETA, EstadoRMA.SUCATA, EstadoRMA.CANCELADO],
@@ -439,7 +445,11 @@ class RMA(db.Model):
 
     def proximas_transicoes(self):
         mapa = {
-            EstadoRMA.ABERTO:            [('receber', EstadoRMA.AGUARDANDO_TRIAGEM, 'Receber RMA', 'success')],
+            EstadoRMA.ABERTO:            [('enviar_aprovacao', EstadoRMA.AGUARDANDO_APROVACAO, 'Enviar para Aprovação', 'warning')],
+            EstadoRMA.AGUARDANDO_APROVACAO:[
+                ('aprovar', EstadoRMA.AGUARDANDO_TRIAGEM, 'Aprovar RMA', 'success'),
+                ('reprovar', EstadoRMA.ABERTO, 'Reprovar (devolver p/ correção)', 'danger'),
+            ],
             EstadoRMA.AGUARDANDO_TRIAGEM:[('iniciar_triagem', EstadoRMA.EM_ANALISE, 'Iniciar Triagem', 'info')],
             EstadoRMA.EM_ANALISE:        [('concluir_triagem', EstadoRMA.AGUARDANDO_DEST, 'Concluir Triagem', 'primary')],
             EstadoRMA.AGUARDANDO_DEST:   [

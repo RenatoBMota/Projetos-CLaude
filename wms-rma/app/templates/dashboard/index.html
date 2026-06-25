@@ -202,12 +202,12 @@ new Chart(document.getElementById('chartEvolucao'), {
 // ── Por estado (rosca) ──────────────────────────────────────────────────────
 const estadoData = {{ por_estado | tojson }};
 const estadoCores = {
-  'ABERTO':'#6b7280','AGUARDANDO_TRIAGEM':'#f59e0b','EM_ANALISE':'#3b82f6',
+  'ABERTO':'#6b7280','AGUARDANDO_APROVACAO':'#eab308','AGUARDANDO_TRIAGEM':'#f59e0b','EM_ANALISE':'#3b82f6',
   'AGUARDANDO_DESTINACAO':'#8b5cf6','AGUARDANDO_COLETA':'#f97316',
   'COLETADO':'#10b981','FINALIZADO':'#16a34a','CANCELADO':'#ef4444','SUCATA':'#374151'
 };
 const estadoLabels = {
-  'ABERTO':'Aberto','AGUARDANDO_TRIAGEM':'Ag. Triagem','EM_ANALISE':'Em Análise',
+  'ABERTO':'Aberto','AGUARDANDO_APROVACAO':'Ag. Aprovação','AGUARDANDO_TRIAGEM':'Ag. Triagem','EM_ANALISE':'Em Análise',
   'AGUARDANDO_DESTINACAO':'Ag. Destinação','AGUARDANDO_COLETA':'Ag. Coleta',
   'COLETADO':'Coletado','FINALIZADO':'Finalizado','CANCELADO':'Cancelado','SUCATA':'Sucata'
 };

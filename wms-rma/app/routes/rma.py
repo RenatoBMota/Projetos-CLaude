@@ -155,6 +155,10 @@ def transitar(rma_id):
         flash('Transição de estado não permitida.', 'danger')
         return redirect(url_for('rma.detalhe', rma_id=rma.id))
 
+    if rma.estado == EstadoRMA.AGUARDANDO_APROVACAO and current_user.role not in EstadoRMA.APROVADORES:
+        flash('Apenas um supervisor ou administrador pode aprovar/reprovar este RMA.', 'danger')
+        return redirect(url_for('rma.detalhe', rma_id=rma.id))
+
     estado_anterior = rma.estado
 
     # Atualiza campos opcionais
