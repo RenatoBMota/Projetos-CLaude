@@ -3,6 +3,10 @@ from flask import abort, redirect, url_for, flash
 from flask_login import current_user
 from datetime import datetime
 import os
+import secrets
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 
 # Mapa de acesso: blueprint -> roles com permissão (None = todos autenticados)
@@ -110,3 +114,36 @@ def formatar_datetime(dt):
     if not dt:
         return '-'
     return dt.strftime('%d/%m/%Y %H:%M')
+
+
+def gerar_senha_provisoria(tamanho=10):
+    """Gera uma senha provisória aleatória para envio por e-mail."""
+    alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
+    return ''.join(secrets.choice(alfabeto) for _ in range(tamanho))
+
+
+def enviar_email(destinatario, assunto, corpo_html):
+    """Envia um e-mail usando as configurações SMTP salvas em Configuracao."""
+    from app.models import Configuracao
+
+    host = Configuracao.get('smtp_host')
+    porta = Configuracao.get('smtp_port')
+    usuario = Configuracao.get('smtp_user')
+    senha = Configuracao.get('smtp_password')
+    usar_tls = str(Configuracao.get('smtp_tls', '1')) in ('1', 'true', 'True', 'on')
+
+    if not host or not porta or not usuario:
+        raise RuntimeError('SMTP não configurado. Configure em Configurações > E-mail.')
+
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = assunto
+    msg['From'] = usuario
+    msg['To'] = destinatario
+    msg.attach(MIMEText(corpo_html, 'html'))
+
+    with smtplib.SMTP(host, int(porta), timeout=10) as servidor:
+        if usar_tls:
+            servidor.starttls()
+        if senha:
+            servidor.login(usuario, senha)
+        servidor.sendmail(usuario, [destinatario], msg.as_string())

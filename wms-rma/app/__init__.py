@@ -68,6 +68,18 @@ def create_app():
     app.register_blueprint(lote_bp)
     app.register_blueprint(auditoria_bp)
 
+    # ── Força troca de senha provisória antes de qualquer outra tela ─────────────
+    @app.before_request
+    def forcar_troca_senha():
+        from flask import request as req, redirect, url_for
+        from flask_login import current_user as u
+        if not u.is_authenticated or not u.senha_provisoria:
+            return
+        bp_name = req.blueprints[-1] if req.blueprints else ''
+        if bp_name == 'auth' or bp_name == 'static' or req.endpoint == 'static':
+            return
+        return redirect(url_for('auth.trocar_senha'))
+
     # ── Controle de acesso por perfil ─────────────────────────────────────────
     from app.utils import BLUEPRINT_ROLES
 
@@ -135,7 +147,22 @@ def create_app():
     # ── Banco e seed ──────────────────────────────────────────────────────────
     with app.app_context():
         db.create_all()
+        _migrar_colunas_novas()
         from app.seed import seed_banco
         seed_banco()
 
     return app
+
+
+def _migrar_colunas_novas():
+    """Adiciona colunas novas em bancos já existentes (sem Alembic)."""
+    from sqlalchemy import inspect, text
+    insp = inspect(db.engine)
+    if 'usuarios' not in insp.get_table_names():
+        return
+    colunas = {c['name'] for c in insp.get_columns('usuarios')}
+    if 'senha_provisoria' not in colunas:
+        with db.engine.begin() as conn:
+            conn.execute(text(
+                'ALTER TABLE usuarios ADD COLUMN senha_provisoria BOOLEAN DEFAULT 0'
+            ))

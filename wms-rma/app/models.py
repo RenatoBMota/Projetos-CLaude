@@ -144,11 +144,13 @@ class Usuario(UserMixin, db.Model):
     departamento = db.Column(db.String(100))
     telefone     = db.Column(db.String(30))
     ultimo_login = db.Column(db.DateTime)
+    senha_provisoria = db.Column(db.Boolean, default=True, nullable=False)
     criado_em    = db.Column(db.DateTime, default=datetime.utcnow)
     atualizado_em= db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    def set_senha(self, senha):
+    def set_senha(self, senha, provisoria=True):
         self.senha_hash = generate_password_hash(senha)
+        self.senha_provisoria = provisoria
 
     def check_senha(self, senha):
         return check_password_hash(self.senha_hash, senha)
