@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from datetime import datetime
 from app.extensions import db
-from app.models import Usuario, Roles, PermissaoPerfil
+from app.models import Usuario, Roles, PermissaoPerfil, SolicitacaoSenha, SENHA_PADRAO
 from app.utils import role_required, BLUEPRINT_ROLES
 
 bp = Blueprint('usuarios', __name__, url_prefix='/usuarios')
@@ -31,13 +31,53 @@ def index():
         q = q.filter_by(ativo=False)
 
     usuarios = q.order_by(Usuario.nome).all()
+    solicitacoes_pendentes = SolicitacaoSenha.query.filter_by(status='pendente') \
+        .order_by(SolicitacaoSenha.criado_em.desc()).all()
     return render_template('usuarios/index.html',
         usuarios=usuarios,
         roles=Roles.LABELS,
         filtro_busca=busca,
         filtro_role=role,
         filtro_ativo=ativo,
+        solicitacoes_pendentes=solicitacoes_pendentes,
+        senha_padrao=SENHA_PADRAO,
     )
+
+
+@bp.route('/solicitacoes/<int:solicitacao_id>/aprovar', methods=['POST'])
+@login_required
+@role_required(Roles.ADMIN, Roles.SUPERVISOR)
+def solicitacao_aprovar(solicitacao_id):
+    sol = SolicitacaoSenha.query.get_or_404(solicitacao_id)
+    if sol.status != 'pendente':
+        flash('Esta solicitação já foi resolvida.', 'warning')
+        return redirect(url_for('usuarios.index'))
+
+    sol.usuario.set_senha(SENHA_PADRAO, provisoria=True)
+    sol.status = 'aprovada'
+    sol.resolvido_em = datetime.utcnow()
+    sol.resolvido_por_id = current_user.id
+    db.session.commit()
+    flash(f'Senha de {sol.usuario.nome} redefinida para a senha padrão. '
+          f'No próximo login será solicitada a troca.', 'success')
+    return redirect(url_for('usuarios.index'))
+
+
+@bp.route('/solicitacoes/<int:solicitacao_id>/rejeitar', methods=['POST'])
+@login_required
+@role_required(Roles.ADMIN, Roles.SUPERVISOR)
+def solicitacao_rejeitar(solicitacao_id):
+    sol = SolicitacaoSenha.query.get_or_404(solicitacao_id)
+    if sol.status != 'pendente':
+        flash('Esta solicitação já foi resolvida.', 'warning')
+        return redirect(url_for('usuarios.index'))
+
+    sol.status = 'rejeitada'
+    sol.resolvido_em = datetime.utcnow()
+    sol.resolvido_por_id = current_user.id
+    db.session.commit()
+    flash(f'Solicitação de {sol.usuario.nome} rejeitada.', 'info')
+    return redirect(url_for('usuarios.index'))
 
 
 @bp.route('/novo', methods=['GET', 'POST'])

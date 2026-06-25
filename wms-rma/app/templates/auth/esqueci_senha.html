@@ -52,10 +52,10 @@
 <div class="login-card">
   <div class="login-header">
     <div class="logo-wrapper">
-      <i class="fa-solid fa-envelope-open-text fa-2x text-white"></i>
+      <i class="fa-solid fa-user-shield fa-2x text-white"></i>
     </div>
     <h1>Esqueci minha senha</h1>
-    <p>Enviaremos uma senha provisória para seu e-mail</p>
+    <p>Solicite a liberação ao administrador</p>
   </div>
 
   <div class="login-body">
@@ -69,6 +69,12 @@
     {% endif %}
     {% endwith %}
 
+    <p class="text-muted small mb-4">
+      Informe seu e-mail cadastrado. Sua solicitação será enviada ao administrador,
+      que poderá liberar o acesso novamente com a senha padrão. No próximo login você
+      será solicitado a definir uma nova senha.
+    </p>
+
     <form method="POST" action="{{ url_for('auth.esqueci_senha') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
       <div class="mb-4">
@@ -80,7 +86,7 @@
         </div>
       </div>
       <button type="submit" class="btn btn-login">
-        <i class="fa-solid fa-paper-plane me-2"></i>Enviar Senha Provisória
+        <i class="fa-solid fa-paper-plane me-2"></i>Solicitar Liberação
       </button>
     </form>
 

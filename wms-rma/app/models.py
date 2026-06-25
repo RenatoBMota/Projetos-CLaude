@@ -169,6 +169,22 @@ class Usuario(UserMixin, db.Model):
         return self.role in (Roles.ADMIN, Roles.SUPERVISOR)
 
 
+SENHA_PADRAO = 'wms@123'
+
+
+class SolicitacaoSenha(db.Model):
+    __tablename__ = 'solicitacoes_senha'
+    id           = db.Column(db.Integer, primary_key=True)
+    usuario_id   = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
+    status       = db.Column(db.String(20), default='pendente', nullable=False)  # pendente, aprovada, rejeitada
+    criado_em    = db.Column(db.DateTime, default=datetime.utcnow)
+    resolvido_em = db.Column(db.DateTime)
+    resolvido_por_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'))
+
+    usuario       = db.relationship('Usuario', foreign_keys=[usuario_id])
+    resolvido_por = db.relationship('Usuario', foreign_keys=[resolvido_por_id])
+
+
 class Fornecedor(db.Model):
     __tablename__ = 'fornecedores'
     id        = db.Column(db.Integer, primary_key=True)

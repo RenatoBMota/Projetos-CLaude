@@ -22,6 +22,37 @@
   </div>
 </div>
 
+{% if solicitacoes_pendentes %}
+<div class="form-card mb-4 border-warning">
+  <h6 class="fw-bold mb-3">
+    <i class="fa-solid fa-triangle-exclamation me-2 text-warning"></i>
+    Solicitações de Senha Pendentes ({{ solicitacoes_pendentes|length }})
+  </h6>
+  {% for sol in solicitacoes_pendentes %}
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 py-2 {% if not loop.last %}border-bottom{% endif %}">
+    <div>
+      <strong>{{ sol.usuario.nome }}</strong>
+      <span class="text-muted small">{{ sol.usuario.email }} · solicitado em {{ sol.criado_em|datahora }}</span>
+    </div>
+    <div class="d-flex gap-2">
+      <form method="POST" action="{{ url_for('usuarios.solicitacao_aprovar', solicitacao_id=sol.id) }}">
+        <button type="submit" class="btn btn-sm btn-success"
+                onclick="return confirm('Redefinir a senha de {{ sol.usuario.nome }} para a senha padrão ({{ senha_padrao }})?');">
+          <i class="fa-solid fa-check me-1"></i>Aprovar
+        </button>
+      </form>
+      <form method="POST" action="{{ url_for('usuarios.solicitacao_rejeitar', solicitacao_id=sol.id) }}">
+        <button type="submit" class="btn btn-sm btn-outline-danger"
+                onclick="return confirm('Rejeitar a solicitação de {{ sol.usuario.nome }}?');">
+          <i class="fa-solid fa-xmark me-1"></i>Rejeitar
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 <!-- Filtros -->
 <div class="form-card mb-4">
   <form method="GET" class="row g-2 align-items-end">

@@ -61,27 +61,20 @@ def trocar_senha():
 @bp.route('/esqueci-senha', methods=['GET', 'POST'])
 def esqueci_senha():
     if request.method == 'POST':
-        from app.utils import gerar_senha_provisoria, enviar_email
+        from app.models import SolicitacaoSenha
 
         email = request.form.get('email', '').strip().lower()
         usuario = Usuario.query.filter_by(email=email).first()
 
         if usuario and usuario.ativo:
-            senha_temp = gerar_senha_provisoria()
-            usuario.set_senha(senha_temp, provisoria=True)
-            db.session.commit()
-            try:
-                enviar_email(
-                    usuario.email,
-                    'Senha Provisória - WMS RMA',
-                    f'<p>Olá, {usuario.nome}.</p>'
-                    f'<p>Sua senha provisória é: <strong>{senha_temp}</strong></p>'
-                    f'<p>Use-a para entrar no sistema. Você será solicitado a criar uma nova senha no próximo login.</p>'
-                )
-            except Exception:
-                pass
+            ja_pendente = SolicitacaoSenha.query.filter_by(
+                usuario_id=usuario.id, status='pendente').first()
+            if not ja_pendente:
+                db.session.add(SolicitacaoSenha(usuario_id=usuario.id))
+                db.session.commit()
 
-        flash('Se o e-mail informado estiver cadastrado, uma senha provisória foi enviada.', 'info')
+        flash('Se o e-mail informado estiver cadastrado, uma solicitação foi enviada ao administrador. '
+              'Aguarde a liberação para acessar novamente com a senha padrão.', 'info')
         return redirect(url_for('auth.login'))
 
     return render_template('auth/esqueci_senha.html')
