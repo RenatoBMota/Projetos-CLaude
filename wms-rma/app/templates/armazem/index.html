@@ -60,14 +60,21 @@
 
 {% for arm in armazens %}
 <div class="form-card mb-4">
-  <div class="d-flex align-items-center gap-3 mb-3 pb-2 border-bottom">
-    <div style="width:42px;height:42px;border-radius:10px;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-size:1.2rem;">
-      <i class="fa-solid fa-warehouse"></i>
+  <div class="d-flex align-items-center justify-content-between gap-3 mb-3 pb-2 border-bottom">
+    <div class="d-flex align-items-center gap-3">
+      <div style="width:42px;height:42px;border-radius:10px;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-size:1.2rem;">
+        <i class="fa-solid fa-warehouse"></i>
+      </div>
+      <div>
+        <h5 class="mb-0 fw-bold">{{ arm.nome }}</h5>
+        <small class="text-muted">{{ arm.codigo }} · {{ arm.endereco or 'Sem endereço' }}</small>
+      </div>
     </div>
-    <div>
-      <h5 class="mb-0 fw-bold">{{ arm.nome }}</h5>
-      <small class="text-muted">{{ arm.codigo }} · {{ arm.endereco or 'Sem endereço' }}</small>
-    </div>
+    <button type="button" class="btn btn-sm btn-outline-primary"
+            data-bs-toggle="modal" data-bs-target="#modalNovaZona"
+            data-armazem-id="{{ arm.id }}">
+      <i class="fa-solid fa-plus me-1"></i>Nova Zona
+    </button>
   </div>
 
   <div class="row g-3">
@@ -112,6 +119,12 @@
                   title="Gerar Endereços">
             <i class="fa-solid fa-wand-magic-sparkles"></i>
           </button>
+          <form method="POST" action="{{ url_for('armazem.zona_deletar', zona_id=zona.id) }}"
+                onsubmit="return confirm('Excluir a zona \'{{ zona.nome }}\'? Isso remove módulos, ruas, números e endereços vazios dentro dela.');">
+            <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir Zona">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </form>
         </div>
       </div>
     </div>
@@ -119,6 +132,52 @@
   </div>
 </div>
 {% endfor %}
+
+<!-- Modal Nova Zona -->
+<div class="modal fade" id="modalNovaZona" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('armazem.zona_nova') }}">
+        <input type="hidden" name="armazem_id" id="inputNovaZonaArmazemId">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fa-solid fa-layer-group me-2"></i>Nova Zona</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-5">
+              <label class="form-label fw-bold">Código</label>
+              <input type="text" name="codigo" class="form-control" placeholder="Z-NOVA" required maxlength="20">
+            </div>
+            <div class="col-7">
+              <label class="form-label fw-bold">Nome</label>
+              <input type="text" name="nome" class="form-control" placeholder="Nome da zona" required maxlength="100">
+            </div>
+            <div class="col-7">
+              <label class="form-label">Tipo</label>
+              <select name="tipo" class="form-select">
+                <option value="">— Sem tipo —</option>
+                {% for cod, label in TipoZona.LABELS.items() %}
+                <option value="{{ cod }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-5">
+              <label class="form-label">Capacidade Máx.</label>
+              <input type="number" name="capacidade_max" class="form-control" min="1">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary-custom">
+            <i class="fa-solid fa-check me-1"></i>Criar Zona
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
 <!-- Modal Editar Nome da Zona -->
 <div class="modal fade" id="modalEditarZona" tabindex="-1">
@@ -205,6 +264,11 @@ document.getElementById('modalEditarZona').addEventListener('show.bs.modal', fun
   const zonaId = btn.dataset.zonaId;
   document.getElementById('inputZonaNomeEdit').value = btn.dataset.zonaNome;
   document.getElementById('formEditarZona').action = `/armazem/zona/${zonaId}/editar-nome`;
+});
+
+document.getElementById('modalNovaZona').addEventListener('show.bs.modal', function(e) {
+  const btn = e.relatedTarget;
+  document.getElementById('inputNovaZonaArmazemId').value = btn.dataset.armazemId;
 });
 </script>
 {% endblock %}

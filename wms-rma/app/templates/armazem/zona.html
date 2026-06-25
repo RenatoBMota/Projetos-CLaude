@@ -5,33 +5,83 @@
 <li class="breadcrumb-item active">{{ zona.nome }}</li>
 {% endblock %}
 {% block content %}
-<div class="page-header">
-  <h1><i class="fa-solid fa-layer-group me-2 text-primary"></i>{{ zona.nome }}</h1>
-  <p class="subtitle">{{ zona.tipo_label }} · {{ zona.total_apartamentos }} apartamentos · {{ zona.ocupacao_pct }}% ocupado</p>
+<div class="page-header d-flex align-items-start justify-content-between flex-wrap gap-2">
+  <div>
+    <h1><i class="fa-solid fa-layer-group me-2 text-primary"></i>{{ zona.nome }}</h1>
+    <p class="subtitle">{{ zona.tipo_label }} · {{ zona.total_apartamentos }} apartamentos · {{ zona.ocupacao_pct }}% ocupado</p>
+  </div>
+  <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalNovoModulo">
+    <i class="fa-solid fa-plus me-1"></i>Novo Módulo
+  </button>
 </div>
 
 {% for modulo in modulos %}
 <div class="form-card mb-3">
-  <h6 class="fw-bold mb-3 pb-2 border-bottom">
-    <i class="fa-solid fa-cube me-2 text-primary"></i>
-    Módulo {{ modulo.codigo }} {{ '— ' + modulo.nome if modulo.nome else '' }}
-  </h6>
+  <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom flex-wrap gap-2">
+    <h6 class="fw-bold mb-0">
+      <i class="fa-solid fa-cube me-2 text-primary"></i>
+      Módulo {{ modulo.codigo }} {{ '— ' + modulo.nome if modulo.nome else '' }}
+    </h6>
+    <div class="d-flex gap-2">
+      <button type="button" class="btn btn-sm btn-outline-primary"
+              data-bs-toggle="modal" data-bs-target="#modalNovaRua" data-modulo-id="{{ modulo.id }}">
+        <i class="fa-solid fa-plus me-1"></i>Rua
+      </button>
+      <form method="POST" action="{{ url_for('armazem.modulo_deletar', modulo_id=modulo.id) }}"
+            onsubmit="return confirm('Excluir o módulo {{ modulo.codigo }}? Remove ruas, números e endereços vazios dentro dele.');">
+        <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir Módulo">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </form>
+    </div>
+  </div>
 
   {% for rua in modulo.ruas.all() %}
   <div class="mb-3">
-    <div class="text-muted small fw-bold mb-2">
-      <i class="fa-solid fa-road me-1"></i>Rua {{ rua.codigo }}
+    <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+      <div class="text-muted small fw-bold">
+        <i class="fa-solid fa-road me-1"></i>Rua {{ rua.codigo }}
+      </div>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-xs btn-outline-primary" style="font-size:.72rem;padding:.15rem .5rem;"
+                data-bs-toggle="modal" data-bs-target="#modalNovoNumero" data-rua-id="{{ rua.id }}">
+          <i class="fa-solid fa-plus me-1"></i>Número
+        </button>
+        <form method="POST" action="{{ url_for('armazem.rua_deletar', rua_id=rua.id) }}"
+              onsubmit="return confirm('Excluir a rua {{ rua.codigo }}? Remove números e endereços vazios dentro dela.');">
+          <button type="submit" class="btn btn-xs btn-outline-danger" style="font-size:.72rem;padding:.15rem .5rem;" title="Excluir Rua">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </form>
+      </div>
     </div>
     {% for num in rua.numeros.all() %}
     <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
       <span class="badge bg-light text-dark border" style="min-width:60px;">Nº {{ num.codigo }}</span>
       {% for apt in num.apartamentos.all() %}
-      <span class="badge {% if apt.ocupado %}bg-danger{% else %}bg-success{% endif %}"
-            title="Endereço: {{ apt.endereco }}{% if apt.ocupado %} (Ocupado){% endif %}"
-            style="cursor:default;">
+      <span class="badge {% if apt.ocupado %}bg-danger{% else %}bg-success{% endif %} d-inline-flex align-items-center gap-1"
+            title="Endereço: {{ apt.endereco }}{% if apt.ocupado %} (Ocupado){% endif %}">
         {{ apt.endereco }}
+        {% if not apt.ocupado %}
+        <form method="POST" action="{{ url_for('armazem.apartamento_deletar', apartamento_id=apt.id) }}"
+              onsubmit="return confirm('Excluir o endereço {{ apt.endereco }}?');" class="d-inline">
+          <button type="submit" class="btn btn-link text-white p-0 ms-1" style="line-height:1;" title="Excluir endereço">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </form>
+        {% endif %}
       </span>
       {% endfor %}
+      <button type="button" class="btn btn-link p-0 small" style="font-size:.72rem;"
+              data-bs-toggle="modal" data-bs-target="#modalNovoApartamento" data-numero-id="{{ num.id }}">
+        <i class="fa-solid fa-plus me-1"></i>Endereço
+      </button>
+      <form method="POST" action="{{ url_for('armazem.numero_deletar', numero_id=num.id) }}"
+            onsubmit="return confirm('Excluir o número {{ num.codigo }}? Remove os endereços vazios dentro dele.');" class="d-inline">
+        <button type="submit" class="btn btn-link text-danger p-0 small" style="font-size:.72rem;" title="Excluir número">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </form>
     </div>
     {% endfor %}
   </div>
@@ -43,10 +93,7 @@
 <div class="form-card text-center py-5">
   <i class="fa-solid fa-inbox fa-3x mb-3 text-muted"></i>
   <p class="text-muted">Nenhum módulo cadastrado nesta zona.</p>
-  <p class="text-muted small">Use o botão "Gerar Endereços" na tela de Armazém para criar a estrutura.</p>
-  <a href="{{ url_for('armazem.index') }}" class="btn btn-outline-primary">
-    <i class="fa-solid fa-arrow-left me-1"></i>Voltar ao Armazém
-  </a>
+  <p class="text-muted small">Crie um módulo manualmente acima, ou use o gerador em lote na tela de Armazém.</p>
 </div>
 {% endfor %}
 
@@ -55,4 +102,114 @@
     <i class="fa-solid fa-arrow-left me-1"></i>Voltar
   </a>
 </div>
+
+<!-- Modal Novo Módulo -->
+<div class="modal fade" id="modalNovoModulo" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('armazem.modulo_novo') }}">
+        <input type="hidden" name="zona_id" value="{{ zona.id }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Novo Módulo</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label">Código</label>
+          <input type="text" name="codigo" class="form-control mb-3" placeholder="01" required maxlength="20">
+          <label class="form-label">Nome (opcional)</label>
+          <input type="text" name="nome" class="form-control" maxlength="100">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary-custom">Criar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Nova Rua -->
+<div class="modal fade" id="modalNovaRua" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <form method="POST" id="formNovaRua" action="{{ url_for('armazem.rua_nova') }}">
+        <input type="hidden" name="modulo_id" id="inputRuaModuloId">
+        <div class="modal-header">
+          <h5 class="modal-title">Nova Rua</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label">Código</label>
+          <input type="text" name="codigo" class="form-control" placeholder="A" required maxlength="20">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary-custom">Criar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Novo Número -->
+<div class="modal fade" id="modalNovoNumero" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <form method="POST" id="formNovoNumero" action="{{ url_for('armazem.numero_novo') }}">
+        <input type="hidden" name="rua_id" id="inputNumeroRuaId">
+        <div class="modal-header">
+          <h5 class="modal-title">Novo Número</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label">Código</label>
+          <input type="text" name="codigo" class="form-control" placeholder="01" required maxlength="20">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary-custom">Criar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Novo Apartamento -->
+<div class="modal fade" id="modalNovoApartamento" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <form method="POST" id="formNovoApartamento" action="{{ url_for('armazem.apartamento_novo') }}">
+        <input type="hidden" name="numero_id" id="inputApartamentoNumeroId">
+        <div class="modal-header">
+          <h5 class="modal-title">Novo Endereço</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label">Código</label>
+          <input type="text" name="codigo" class="form-control mb-3" placeholder="01" required maxlength="20">
+          <label class="form-label">Peso Máximo (kg)</label>
+          <input type="number" name="peso_maximo_kg" class="form-control" value="50" step="0.1">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary-custom">Criar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('modalNovaRua').addEventListener('show.bs.modal', function(e) {
+  document.getElementById('inputRuaModuloId').value = e.relatedTarget.dataset.moduloId;
+});
+document.getElementById('modalNovoNumero').addEventListener('show.bs.modal', function(e) {
+  document.getElementById('inputNumeroRuaId').value = e.relatedTarget.dataset.ruaId;
+});
+document.getElementById('modalNovoApartamento').addEventListener('show.bs.modal', function(e) {
+  document.getElementById('inputApartamentoNumeroId').value = e.relatedTarget.dataset.numeroId;
+});
+</script>
 {% endblock %}
