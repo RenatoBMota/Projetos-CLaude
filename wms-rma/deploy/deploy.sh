@@ -1,18 +1,14 @@
 #!/usr/bin/env bash
-# deploy.sh — primeira instalação ou atualização do WMS RMA no VPS.
-# Uso: sudo bash deploy/deploy.sh
+# deploy.sh — primeira instalação ou atualização do WMS RMA via Docker/Traefik.
+# Espelha o mesmo padrão usado no LOGTRACK (rede Docker "n8n_default" compartilhada
+# com o Traefik já existente na VPS, que cuida do roteamento e do SSL).
+#
+# Uso: bash deploy/deploy.sh
 set -euo pipefail
 
 APP_DIR="/var/www/wms-rma"
 REPO_URL="${REPO_URL:-}"
 BRANCH="${BRANCH:-claude/wms-rma-enterprise-roadmap-nMj8E}"
-SERVICE="wms-rma"
-
-echo "==> Verificando dependências do sistema..."
-if ! command -v python3 >/dev/null; then
-    apt-get update -y
-    apt-get install -y python3 python3-venv python3-pip nginx
-fi
 
 if [ ! -d "$APP_DIR/.git" ]; then
     echo "==> Primeira instalação: clonando repositório..."
@@ -32,38 +28,24 @@ fi
 
 cd "$APP_DIR"
 
-echo "==> Configurando ambiente virtual..."
-if [ ! -d ".venv" ]; then
-    python3 -m venv .venv
-fi
-source .venv/bin/activate
-pip install --upgrade pip --quiet
-pip install -r requirements.txt --quiet
-deactivate
-
 if [ ! -f "$APP_DIR/.env" ]; then
     echo "==> Criando .env a partir do exemplo (EDITE antes de continuar!)"
     cp deploy/.env.example "$APP_DIR/.env"
 fi
 
-mkdir -p /var/log/wms-rma
-chown -R www-data:www-data "$APP_DIR" /var/log/wms-rma
+if ! docker network inspect n8n_default >/dev/null 2>&1; then
+    echo "ERRO: a rede Docker 'n8n_default' não existe nesta VPS." >&2
+    echo "Ela deve ser a mesma rede usada pelo Traefik/n8n/LogTrack. Verifique com 'docker network ls'." >&2
+    exit 1
+fi
 
-echo "==> Instalando unit do systemd..."
-cp deploy/wms-rma.service /etc/systemd/system/wms-rma.service
-systemctl daemon-reload
-systemctl enable wms-rma
-systemctl restart wms-rma
+echo "==> Build e (re)inicialização do container..."
+docker compose --env-file .env build
+docker compose --env-file .env up -d
 
-echo "==> Instalando configuração do Nginx..."
-cp deploy/nginx-rma.conf /etc/nginx/sites-available/rma.renatomota.online
-ln -sf /etc/nginx/sites-available/rma.renatomota.online /etc/nginx/sites-enabled/rma.renatomota.online
-nginx -t
-systemctl reload nginx
-
-echo "==> Deploy concluído. Status do serviço:"
-systemctl status "$SERVICE" --no-pager -l | head -n 10
+echo "==> Status do container:"
+docker compose ps
 
 echo
-echo "Próximo passo (somente na primeira instalação): emitir o certificado SSL com:"
-echo "  certbot --nginx -d rma.renatomota.online"
+echo "Deploy concluído. O Traefik deve assumir o roteamento de https://rma.renatomota.online"
+echo "automaticamente (rota e certificado configurados via labels no docker-compose.yml)."

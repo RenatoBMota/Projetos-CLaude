@@ -1,0 +1,29 @@
+services:
+  wms-rma:
+    build: .
+    container_name: wms-rma
+    restart: unless-stopped
+    expose:
+      - "8000"
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - FORCE_HTTPS=1
+    volumes:
+      - instance_data:/app/instance
+      - uploads_data:/app/app/static/uploads
+    networks:
+      - n8n_default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wms-rma.rule=Host(`rma.renatomota.online`)"
+      - "traefik.http.routers.wms-rma.entrypoints=websecure"
+      - "traefik.http.routers.wms-rma.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.wms-rma.loadbalancer.server.port=8000"
+
+networks:
+  n8n_default:
+    external: true
+
+volumes:
+  instance_data:
+  uploads_data:

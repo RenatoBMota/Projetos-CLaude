@@ -1,0 +1,14 @@
+.venv
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+instance/
+app/static/uploads/
+app/static/logos/
+*.log
+.git
+.gitignore
+.env
+deploy/
