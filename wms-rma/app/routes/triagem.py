@@ -1,41 +1,63 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from app.extensions import db
-from app.models import RMA, EstadoRMA, HistoricoRMA, ListaOpcao, TipoLista, Apartamento
+from app.models import RMA, EstadoRMA, HistoricoRMA, ListaOpcao, TipoLista, Apartamento, Produto
 
 bp = Blueprint('triagem', __name__, url_prefix='/triagem')
 
 
-def _alocar_apartamento(rma):
-    """Aloca apartamento livre, tentando agrupar RMAs do mesmo fornecedor."""
+def _modulos_ocupados_por(filtros, rma, join_produto=False):
+    """Ids dos módulos que já têm RMAs ativos atendendo aos filtros informados."""
     from app.models import Numero, Rua, Modulo
+    query = db.session.query(Modulo.id).join(
+        Rua, Rua.modulo_id == Modulo.id
+    ).join(
+        Numero, Numero.rua_id == Rua.id
+    ).join(
+        Apartamento, Apartamento.numero_id == Numero.id
+    ).join(
+        RMA, RMA.apartamento_id == Apartamento.id
+    )
+    if join_produto:
+        query = query.join(Produto, RMA.produto_id == Produto.id)
+    return [row[0] for row in query.filter(
+        RMA.estado.notin_([EstadoRMA.FINALIZADO, EstadoRMA.CANCELADO]),
+        RMA.id != rma.id,
+        *filtros,
+    ).distinct().all()]
+
+
+def _apartamento_livre_em(modulo_ids):
+    from app.models import Numero, Rua
+    if not modulo_ids:
+        return None
+    return Apartamento.query.join(
+        Numero, Apartamento.numero_id == Numero.id
+    ).join(
+        Rua, Numero.rua_id == Rua.id
+    ).filter(
+        Rua.modulo_id.in_(modulo_ids),
+        Apartamento.ocupado == False,
+    ).first()
+
+
+def _alocar_apartamento(rma):
+    """Aloca apartamento livre, priorizando agrupar por fornecedor e, na falta
+    deste critério, por departamento (categoria do produto). Se nenhum dos
+    dois encontrar vaga, usa o primeiro apartamento livre disponível."""
     apt = None
 
     if rma.fornecedor_id:
-        # Módulos que já têm RMAs deste fornecedor
-        modulo_ids = [row[0] for row in db.session.query(Modulo.id).join(
-            Rua, Rua.modulo_id == Modulo.id
-        ).join(
-            Numero, Numero.rua_id == Rua.id
-        ).join(
-            Apartamento, Apartamento.numero_id == Numero.id
-        ).join(
-            RMA, RMA.apartamento_id == Apartamento.id
-        ).filter(
-            RMA.fornecedor_id == rma.fornecedor_id,
-            RMA.estado.notin_([EstadoRMA.FINALIZADO, EstadoRMA.CANCELADO]),
-            RMA.id != rma.id,
-        ).distinct().all()]
+        modulo_ids = _modulos_ocupados_por([RMA.fornecedor_id == rma.fornecedor_id], rma)
+        apt = _apartamento_livre_em(modulo_ids)
 
-        if modulo_ids:
-            apt = Apartamento.query.join(
-                Numero, Apartamento.numero_id == Numero.id
-            ).join(
-                Rua, Numero.rua_id == Rua.id
-            ).filter(
-                Rua.modulo_id.in_(modulo_ids),
-                Apartamento.ocupado == False,
-            ).first()
+    if not apt and rma.produto_id:
+        departamento = db.session.query(Produto.categoria).filter(
+            Produto.id == rma.produto_id).scalar()
+        if departamento:
+            modulo_ids = _modulos_ocupados_por(
+                [Produto.categoria == departamento], rma, join_produto=True)
+            apt = _apartamento_livre_em(modulo_ids)
 
     if not apt:
         apt = Apartamento.query.filter_by(ocupado=False).first()
