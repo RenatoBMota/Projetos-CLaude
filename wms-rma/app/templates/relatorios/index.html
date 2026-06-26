@@ -199,7 +199,7 @@
           <td class="text-truncate" style="max-width:130px;">{{ r.cliente_nome or '—' }}</td>
           <td class="text-truncate" style="max-width:150px;">{{ r.produto.descricao if r.produto else '—' }}</td>
           <td class="text-truncate" style="max-width:120px;">{{ r.fornecedor.nome if r.fornecedor else '—' }}</td>
-          <td>{{ r.valor_produto|moeda }}</td>
+          <td>{{ r.valor_total|moeda }}</td>
           <td>
             {% if r.em_atraso %}
             <span class="badge bg-danger">Atrasado</span>

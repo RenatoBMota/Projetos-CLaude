@@ -407,6 +407,13 @@ class RMA(db.Model):
     documentos  = db.relationship('Documento', backref='rma', lazy='select')
 
     @property
+    def valor_total(self):
+        """Valor do produto multiplicado pela quantidade de unidades do RMA."""
+        if self.valor_produto is None:
+            return None
+        return self.valor_produto * (self.quantidade or 1)
+
+    @property
     def estado_info(self):
         return EstadoRMA.LABELS.get(self.estado, (self.estado, 'secondary'))
 

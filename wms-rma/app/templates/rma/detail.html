@@ -78,8 +78,12 @@
           <div>{{ rma.numero_serie or '—' }}</div>
         </div>
         <div class="col-md-4">
-          <div class="text-muted small fw-bold text-uppercase">Valor Produto</div>
+          <div class="text-muted small fw-bold text-uppercase">Valor Unitário</div>
           <div>{{ rma.valor_produto|moeda }}</div>
+        </div>
+        <div class="col-md-4">
+          <div class="text-muted small fw-bold text-uppercase">Valor Total ({{ rma.quantidade }}x)</div>
+          <div class="fw-bold">{{ rma.valor_total|moeda }}</div>
         </div>
         <div class="col-md-4">
           <div class="text-muted small fw-bold text-uppercase">Valor Crédito</div>

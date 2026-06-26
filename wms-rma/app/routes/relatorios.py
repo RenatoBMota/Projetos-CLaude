@@ -57,7 +57,7 @@ def index():
 
     # Métricas de resumo
     total  = len(rmas)
-    valor_total = sum(float(r.valor_produto or 0) for r in rmas)
+    valor_total = sum(float(r.valor_total or 0) for r in rmas)
     finalizados = sum(1 for r in rmas if r.estado == EstadoRMA.FINALIZADO)
     atrasados   = sum(1 for r in rmas if r.em_atraso)
 
@@ -123,7 +123,7 @@ def exportar_excel():
     cabecalhos = [
         'Número', 'Estado', 'Canal', 'Cliente', 'Produto',
         'Fornecedor', 'Quantidade', 'NF Original', 'Motivo',
-        'Categoria Defeito', 'Disposição', 'Valor Produto (R$)',
+        'Categoria Defeito', 'Disposição', 'Valor Total (R$)',
         'Dias em Aberto', 'SLA em Atraso', 'Recebido Em', 'Finalizado Em',
     ]
     larguras = [18, 18, 10, 25, 30, 20, 10, 15, 30, 20, 20, 15, 12, 12, 18, 18]
@@ -156,7 +156,7 @@ def exportar_excel():
             rma.motivo_devolucao or '',
             rma.categoria_defeito or '',
             rma.disposicao or '',
-            float(rma.valor_produto) if rma.valor_produto else 0,
+            float(rma.valor_total) if rma.valor_total else 0,
             rma.dias_em_aberto,
             'SIM' if rma.em_atraso else 'NÃO',
             rma.recebido_em.strftime('%d/%m/%Y %H:%M') if rma.recebido_em else '',
@@ -170,7 +170,7 @@ def exportar_excel():
     row_total = len(rmas) + 3
     ws.cell(row=row_total, column=1, value='TOTAL').font = Font(bold=True)
     ws.cell(row=row_total, column=7, value=sum(r.quantidade for r in rmas)).font = Font(bold=True)
-    ws.cell(row=row_total, column=12, value=sum(float(r.valor_produto or 0) for r in rmas)).font = Font(bold=True)
+    ws.cell(row=row_total, column=12, value=sum(float(r.valor_total or 0) for r in rmas)).font = Font(bold=True)
 
     output = io.BytesIO()
     wb.save(output)
@@ -282,7 +282,7 @@ def aging():
     resultado = []
     for label, ini, fim in faixas:
         itens = [r for r in rmas_ativos if ini <= r.dias_em_aberto <= fim]
-        valor = sum(float(r.valor_produto or 0) for r in itens)
+        valor = sum(float(r.valor_total or 0) for r in itens)
         resultado.append({'label': label, 'count': len(itens),
                           'valor': valor, 'rmas': itens[:10]})
 
