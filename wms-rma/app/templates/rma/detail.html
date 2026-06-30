@@ -22,6 +22,11 @@
     </p>
   </div>
   <div class="d-flex gap-2">
+    {% if rma.estado == 'ABERTO' %}
+    <a href="{{ url_for('rma.editar', rma_id=rma.id) }}" class="btn btn-warning">
+      <i class="fa-solid fa-pen-to-square me-1"></i>Editar RMA
+    </a>
+    {% endif %}
     {% if rma.laudo_tecnico %}
     <a href="{{ url_for('triagem.etiqueta', rma_id=rma.id) }}" class="btn btn-outline-primary" target="_blank">
       <i class="fa-solid fa-print me-1"></i>Reimprimir Etiqueta
@@ -32,6 +37,20 @@
     </a>
   </div>
 </div>
+
+{% set ultimo_hist = rma.historico|reverse|first %}
+{% if rma.estado == 'ABERTO' and ultimo_hist and ultimo_hist.estado_anterior == 'AGUARDANDO_APROVACAO' %}
+<div class="alert alert-danger d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <div>
+    <i class="fa-solid fa-circle-exclamation me-1"></i>
+    <strong>RMA reprovado e devolvido para correção.</strong>
+    {% if ultimo_hist.observacao %}<div class="small mt-1">Motivo: {{ ultimo_hist.observacao }}</div>{% endif %}
+  </div>
+  <a href="{{ url_for('rma.editar', rma_id=rma.id) }}" class="btn btn-sm btn-danger">
+    <i class="fa-solid fa-pen-to-square me-1"></i>Corrigir agora
+  </a>
+</div>
+{% endif %}
 
 <div class="row g-3">
   <!-- Coluna principal -->

@@ -130,6 +130,54 @@ def novo():
     )
 
 
+@bp.route('/<int:rma_id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar(rma_id):
+    rma = RMA.query.get_or_404(rma_id)
+
+    if rma.estado != EstadoRMA.ABERTO:
+        flash('Este RMA só pode ser editado enquanto estiver no estado "Aberto" '
+              '(ex: logo após uma reprovação).', 'warning')
+        return redirect(url_for('rma.detalhe', rma_id=rma.id))
+
+    if request.method == 'POST':
+        rma.canal              = request.form.get('canal', rma.canal)
+        rma.cliente_nome       = request.form.get('cliente_nome')
+        rma.cliente_documento  = request.form.get('cliente_documento')
+        rma.loja_origem        = request.form.get('loja_origem')
+        rma.produto_id         = request.form.get('produto_id', type=int) or None
+        rma.fornecedor_id      = request.form.get('fornecedor_id', type=int) or None
+        rma.quantidade         = request.form.get('quantidade', 1, type=int)
+        rma.numero_serie       = request.form.get('numero_serie')
+        rma.nf_original        = request.form.get('nf_original')
+        rma.motivo_devolucao   = request.form.get('motivo_devolucao')
+        rma.descricao_defeito  = request.form.get('descricao_defeito')
+        rma.categoria_defeito  = request.form.get('categoria_defeito')
+        rma.valor_produto      = request.form.get('valor_produto') or None
+
+        db.session.add(HistoricoRMA(
+            rma_id=rma.id,
+            estado_anterior=rma.estado,
+            estado_novo=rma.estado,
+            observacao='RMA editado/corrigido pelo operador.',
+            usuario_id=current_user.id,
+        ))
+        db.session.commit()
+        flash(f'RMA {rma.numero} atualizado com sucesso!', 'success')
+        return redirect(url_for('rma.detalhe', rma_id=rma.id))
+
+    produtos          = Produto.query.filter_by(ativo=True).order_by(Produto.descricao).all()
+    fornecedores      = Fornecedor.query.filter_by(ativo=True).order_by(Fornecedor.nome).all()
+    opcoes_canal      = ListaOpcao.por_tipo(TipoLista.CANAL)
+    opcoes_motivo     = ListaOpcao.por_tipo(TipoLista.MOTIVO_DEVOLUCAO)
+    opcoes_categoria  = ListaOpcao.por_tipo(TipoLista.CATEGORIA_DEFEITO)
+    return render_template('rma/form.html',
+        rma=rma, produtos=produtos, fornecedores=fornecedores,
+        opcoes_canal=opcoes_canal, opcoes_motivo=opcoes_motivo,
+        opcoes_categoria=opcoes_categoria,
+    )
+
+
 @bp.route('/<int:rma_id>')
 @login_required
 def detalhe(rma_id):

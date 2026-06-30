@@ -8,11 +8,22 @@
 
 {% block content %}
 <div class="page-header">
-  <h1><i class="fa-solid fa-plus-circle me-2 text-primary"></i>Abertura de Chamado RMA</h1>
-  <p class="subtitle">Preencha os dados do produto devolvido</p>
+  <h1><i class="fa-solid fa-plus-circle me-2 text-primary"></i>{{ 'Abertura de Chamado RMA' if not rma else 'Editar RMA ' + rma.numero }}</h1>
+  <p class="subtitle">{{ 'Preencha os dados do produto devolvido' if not rma else 'Corrija os dados necessários e salve novamente' }}</p>
 </div>
 
-<form method="POST" action="{{ url_for('rma.novo') if not rma else '#' }}">
+{% if rma %}
+{% set ultimo = rma.historico|reverse|first %}
+{% if ultimo and ultimo.estado_anterior == 'AGUARDANDO_APROVACAO' and ultimo.estado_novo == 'ABERTO' %}
+<div class="alert alert-danger">
+  <i class="fa-solid fa-circle-exclamation me-1"></i>
+  <strong>RMA reprovado.</strong>
+  {% if ultimo.observacao %}Motivo: {{ ultimo.observacao }}{% endif %}
+</div>
+{% endif %}
+{% endif %}
+
+<form method="POST" action="{{ url_for('rma.novo') if not rma else url_for('rma.editar', rma_id=rma.id) }}">
   <div class="row g-3">
 
     <!-- Coluna esquerda -->
@@ -35,19 +46,23 @@
           </div>
           <div class="col-md-4">
             <label class="form-label">Loja de Origem</label>
-            <input type="text" name="loja_origem" class="form-control" placeholder="Loja 01">
+            <input type="text" name="loja_origem" class="form-control" placeholder="Loja 01"
+                   value="{{ rma.loja_origem if rma else '' }}">
           </div>
           <div class="col-md-4">
             <label class="form-label">NF Original</label>
-            <input type="text" name="nf_original" class="form-control" placeholder="NF-12345">
+            <input type="text" name="nf_original" class="form-control" placeholder="NF-12345"
+                   value="{{ rma.nf_original if rma else '' }}">
           </div>
           <div class="col-md-6">
             <label class="form-label">Nome do Cliente</label>
-            <input type="text" name="cliente_nome" class="form-control" placeholder="Nome completo">
+            <input type="text" name="cliente_nome" class="form-control" placeholder="Nome completo"
+                   value="{{ rma.cliente_nome if rma else '' }}">
           </div>
           <div class="col-md-6">
             <label class="form-label">CPF / CNPJ</label>
-            <input type="text" name="cliente_documento" class="form-control" placeholder="000.000.000-00">
+            <input type="text" name="cliente_documento" class="form-control" placeholder="000.000.000-00"
+                   value="{{ rma.cliente_documento if rma else '' }}">
           </div>
         </div>
       </div>
@@ -63,7 +78,7 @@
             <select name="fornecedor_id" class="form-select" id="selectFornecedor">
               <option value="">Selecione...</option>
               {% for f in fornecedores %}
-              <option value="{{ f.id }}">{{ f.nome }}</option>
+              <option value="{{ f.id }}" {% if rma and rma.fornecedor_id == f.id %}selected{% endif %}>{{ f.nome }}</option>
               {% endfor %}
             </select>
           </div>
@@ -72,7 +87,7 @@
             <select name="produto_id" class="form-select" id="selectProduto" required>
               <option value="">Selecione...</option>
               {% for p in produtos %}
-              <option value="{{ p.id }}" data-forn="{{ p.fornecedor_id }}">
+              <option value="{{ p.id }}" data-forn="{{ p.fornecedor_id }}" {% if rma and rma.produto_id == p.id %}selected{% endif %}>
                 {{ p.codigo }} — {{ p.descricao }}
               </option>
               {% endfor %}
@@ -80,16 +95,19 @@
           </div>
           <div class="col-md-4">
             <label class="form-label">Quantidade *</label>
-            <input type="number" name="quantidade" class="form-control" value="1" min="1" required>
+            <input type="number" name="quantidade" class="form-control"
+                   value="{{ rma.quantidade if rma else 1 }}" min="1" required>
           </div>
           <div class="col-md-4">
             <label class="form-label">Número de Série</label>
-            <input type="text" name="numero_serie" class="form-control" placeholder="SN00000000">
+            <input type="text" name="numero_serie" class="form-control" placeholder="SN00000000"
+                   value="{{ rma.numero_serie if rma else '' }}">
           </div>
           <div class="col-md-4">
             <label class="form-label">Valor Unitário do Produto (R$)</label>
             <input type="number" name="valor_produto" class="form-control"
-                   step="0.01" min="0" placeholder="0,00">
+                   step="0.01" min="0" placeholder="0,00"
+                   value="{{ rma.valor_produto if rma else '' }}">
             <div class="form-text">Informe o valor de 1 unidade — o sistema multiplica pela quantidade.</div>
           </div>
         </div>
@@ -122,7 +140,7 @@
           <div class="col-12">
             <label class="form-label">Descrição Detalhada *</label>
             <textarea name="descricao_defeito" class="form-control" rows="4"
-                      placeholder="Descreva detalhadamente o defeito observado..." required></textarea>
+                      placeholder="Descreva detalhadamente o defeito observado..." required>{{ rma.descricao_defeito if rma else '' }}</textarea>
           </div>
         </div>
       </div>
@@ -149,16 +167,21 @@
           <i class="fa-solid fa-circle-info me-2 text-info"></i>Informações
         </h6>
         <p class="text-muted small mb-0">
+          {% if not rma %}
           Ao salvar, o RMA será criado com estado <strong>Aberto</strong> e
           aguardará ser recebido e encaminhado para triagem.
+          {% else %}
+          Ao salvar, as correções ficam registradas no histórico do RMA
+          <strong>{{ rma.numero }}</strong>.
+          {% endif %}
         </p>
       </div>
 
       <div class="d-grid gap-2">
         <button type="submit" class="btn btn-primary-custom btn-lg">
-          <i class="fa-solid fa-save me-2"></i>Salvar RMA
+          <i class="fa-solid fa-save me-2"></i>{{ 'Salvar RMA' if not rma else 'Salvar Correções' }}
         </button>
-        <a href="{{ url_for('rma.index') }}" class="btn btn-outline-secondary">
+        <a href="{{ url_for('rma.index') if not rma else url_for('rma.detalhe', rma_id=rma.id) }}" class="btn btn-outline-secondary">
           <i class="fa-solid fa-xmark me-1"></i>Cancelar
         </a>
       </div>
