@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
+from sqlalchemy import func
 from app.extensions import db
 from app.models import RMA, EstadoRMA, HistoricoRMA, ListaOpcao, TipoLista, Apartamento, Produto
 
@@ -54,9 +55,15 @@ def _alocar_apartamento(rma):
     if not apt and rma.produto_id:
         departamento = db.session.query(Produto.categoria).filter(
             Produto.id == rma.produto_id).scalar()
-        if departamento:
+        if departamento and departamento.strip():
+            # Comparação normalizada (case/whitespace insensitive): a Categoria do
+            # produto é um campo livre (com datalist de sugestões, não um enum),
+            # então "Eletrônicos", " eletrônicos " e "ELETRÔNICOS " devem ser
+            # tratados como o mesmo departamento.
+            dep_norm = departamento.strip().lower()
             modulo_ids = _modulos_ocupados_por(
-                [Produto.categoria == departamento], rma, join_produto=True)
+                [func.lower(func.trim(Produto.categoria)) == dep_norm],
+                rma, join_produto=True)
             apt = _apartamento_livre_em(modulo_ids)
 
     if not apt:
