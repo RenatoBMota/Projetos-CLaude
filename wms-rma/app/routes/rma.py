@@ -259,6 +259,26 @@ def upload_doc(rma_id):
     return redirect(url_for('rma.detalhe', rma_id=rma_id) + '#documentos')
 
 
+@bp.route('/<int:rma_id>/alocar-endereco', methods=['POST'])
+@login_required
+def alocar_endereco(rma_id):
+    rma = RMA.query.get_or_404(rma_id)
+    if rma.apartamento_id:
+        flash('Este RMA já possui um endereço atribuído.', 'info')
+        return redirect(url_for('rma.detalhe', rma_id=rma.id))
+
+    from app.routes.triagem import _alocar_apartamento
+    _alocar_apartamento(rma)
+
+    if rma.apartamento_id:
+        db.session.commit()
+        flash(f'Endereço {rma.apt_ref.endereco} atribuído automaticamente.', 'success')
+    else:
+        flash('Nenhum endereço livre encontrado. Verifique a configuração do armazém.', 'warning')
+
+    return redirect(url_for('rma.detalhe', rma_id=rma.id))
+
+
 @bp.route('/api/produto/<int:prod_id>')
 @login_required
 def api_produto(prod_id):

@@ -247,9 +247,18 @@
         </span>
       </div>
       {% else %}
-      <p class="text-muted small text-center mb-0">
-        <i class="fa-solid fa-circle-info me-1"></i>Endereço não atribuído
-      </p>
+      <div class="text-center">
+        <p class="text-muted small mb-2">
+          <i class="fa-solid fa-circle-info me-1"></i>Endereço não atribuído
+        </p>
+        {% if rma.estado not in ['FINALIZADO', 'CANCELADO'] %}
+        <form method="POST" action="{{ url_for('rma.alocar_endereco', rma_id=rma.id) }}">
+          <button type="submit" class="btn btn-sm btn-outline-primary">
+            <i class="fa-solid fa-location-dot me-1"></i>Atribuir Endereço
+          </button>
+        </form>
+        {% endif %}
+      </div>
       {% endif %}
     </div>
 
