@@ -37,7 +37,7 @@ def _apartamento_livre_em(modulo_ids):
         Rua, Numero.rua_id == Rua.id
     ).filter(
         Rua.modulo_id.in_(modulo_ids),
-        Apartamento.ocupado == False,
+        Apartamento.ocupado != True,
     ).first()
 
 
@@ -60,7 +60,7 @@ def _alocar_apartamento(rma):
             apt = _apartamento_livre_em(modulo_ids)
 
     if not apt:
-        apt = Apartamento.query.filter_by(ocupado=False).first()
+        apt = Apartamento.query.filter(Apartamento.ocupado != True).first()
 
     if apt:
         rma.apartamento_id = apt.id
@@ -110,9 +110,15 @@ def laudo(rma_id):
         if rma.prazo_sla:
             rma.prazo_sla.atualizar_status()
 
-        # Auto-atribuir endereço agrupando por fornecedor
+        # Auto-atribuir endereço agrupando por fornecedor / departamento
         if not rma.apartamento_id:
             _alocar_apartamento(rma)
+            if not rma.apartamento_id:
+                flash(
+                    'Laudo registrado, mas nenhum endereço de armazém disponível foi encontrado. '
+                    'Verifique se o armazém está configurado e possui posições livres.',
+                    'warning',
+                )
 
         db.session.commit()
         flash(f'Laudo registrado para RMA {rma.numero}.', 'success')

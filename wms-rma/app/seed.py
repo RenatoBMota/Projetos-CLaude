@@ -11,6 +11,57 @@ from app.utils import BLUEPRINT_ROLES
 import random
 
 
+def seed_armazem():
+    """Cria a estrutura básica de armazém/apartamentos se ainda não existir.
+    Roda independentemente de haver ou não usuários cadastrados."""
+    if Armazem.query.first():
+        return
+
+    arm = Armazem(codigo='ARM-01', nome='Armazém Principal RMA', endereco='Rua Logística, 100')
+    db.session.add(arm)
+    db.session.flush()
+
+    zonas_data = [
+        ('Z-ANA', 'Zona de Análise',    TipoZona.ANALISE,     50),
+        ('Z-DEF', 'Zona Defeituosos',   TipoZona.DEFEITUOSOS, 100),
+        ('Z-SUC', 'Zona Sucata',        TipoZona.SUCATA,      80),
+        ('Z-QUA', 'Quarentena',         TipoZona.QUARENTENA,  30),
+        ('Z-EXP', 'Expedição',          TipoZona.EXPEDICAO,   60),
+        ('Z-BLQ', 'Bloqueados',         TipoZona.BLOQUEADOS,  20),
+    ]
+    zonas = []
+    for cod, nome, tipo, cap in zonas_data:
+        z = Zona(armazem_id=arm.id, codigo=cod, nome=nome, tipo=tipo, capacidade_max=cap)
+        db.session.add(z)
+        zonas.append(z)
+    db.session.flush()
+
+    for z_idx, z in enumerate(zonas):
+        for mod_num in range(1, 3):
+            mod_cod = f'{z_idx + 1:02d}{mod_num:02d}'
+            mod = Modulo(zona_id=z.id, codigo=mod_cod, nome=f'Módulo {mod_num} — {z.nome}')
+            db.session.add(mod)
+            db.session.flush()
+            for rua_cod in ('A', 'B'):
+                rua = Rua(modulo_id=mod.id, codigo=rua_cod)
+                db.session.add(rua)
+                db.session.flush()
+                for num_idx in range(1, 4):
+                    num_cod = f'{num_idx:02d}'
+                    num = Numero(rua_id=rua.id, codigo=num_cod)
+                    db.session.add(num)
+                    db.session.flush()
+                    for apt_idx in range(1, 4):
+                        apt_cod = f'{apt_idx:02d}'
+                        endereco = f'{mod_cod}-{rua_cod}-{num_cod}-{apt_cod}'
+                        db.session.add(Apartamento(
+                            numero_id=num.id, codigo=apt_cod,
+                            endereco=endereco, peso_maximo_kg=50.0,
+                        ))
+    db.session.commit()
+    print('[seed] Armazém e apartamentos criados automaticamente.')
+
+
 def seed_banco():
     """Popula o banco com dados iniciais se estiver vazio."""
     # Seed permissões (sempre, independente de outros dados)
@@ -91,62 +142,6 @@ def seed_banco():
                     categoria=cat, fornecedor_id=fornecedores[forn_idx].id, peso_kg=peso)
         db.session.add(p)
         produtos.append(p)
-
-    # ── Armazém e Zonas ───────────────────────────────────────────────────────
-    arm = Armazem(codigo='ARM-01', nome='Armazém Principal RMA', endereco='Rua Logística, 100')
-    db.session.add(arm)
-    db.session.flush()
-
-    zonas_data = [
-        ('Z-ANA', 'Zona de Análise',    TipoZona.ANALISE,     50),
-        ('Z-DEF', 'Zona Defeituosos',   TipoZona.DEFEITUOSOS, 100),
-        ('Z-SUC', 'Zona Sucata',        TipoZona.SUCATA,      80),
-        ('Z-QUA', 'Quarentena',         TipoZona.QUARENTENA,  30),
-        ('Z-EXP', 'Expedição',          TipoZona.EXPEDICAO,   60),
-        ('Z-BLQ', 'Bloqueados',         TipoZona.BLOQUEADOS,  20),
-    ]
-    zonas = []
-    for cod, nome, tipo, cap in zonas_data:
-        z = Zona(armazem_id=arm.id, codigo=cod, nome=nome, tipo=tipo, capacidade_max=cap)
-        db.session.add(z)
-        zonas.append(z)
-
-    db.session.flush()
-
-    # ── Hierarquia: Módulo → Rua → Número → Apartamento ──────────────────────
-    # Formato de endereço: {mod}-{rua}-{num}-{apt}  ex: 01-A-01-01
-    apartamentos = []
-    for z_idx, z in enumerate(zonas):
-        for mod_num in range(1, 3):           # 2 módulos por zona
-            mod_cod = f'{z_idx + 1:02d}{mod_num:02d}'  # e.g. '0101', '0102'
-            mod = Modulo(zona_id=z.id, codigo=mod_cod,
-                         nome=f'Módulo {mod_num} — {z.nome}')
-            db.session.add(mod)
-            db.session.flush()
-            for rua_cod in ('A', 'B'):        # 2 ruas por módulo
-                rua = Rua(modulo_id=mod.id, codigo=rua_cod)
-                db.session.add(rua)
-                db.session.flush()
-                for num_idx in range(1, 4):   # 3 números por rua
-                    num_cod = f'{num_idx:02d}'
-                    num = Numero(rua_id=rua.id, codigo=num_cod)
-                    db.session.add(num)
-                    db.session.flush()
-                    for apt_idx in range(1, 4):  # 3 apartamentos por número
-                        apt_cod = f'{apt_idx:02d}'
-                        endereco = f'{mod_cod}-{rua_cod}-{num_cod}-{apt_cod}'
-                        apt = Apartamento(
-                            numero_id=num.id,
-                            codigo=apt_cod,
-                            endereco=endereco,
-                            peso_maximo_kg=50.0,
-                        )
-                        db.session.add(apt)
-                        apartamentos.append(apt)
-
-    db.session.flush()
-
-    db.session.flush()
 
     # ── Políticas SLA ─────────────────────────────────────────────────────────
     pol_loja = PoliticaSLA(

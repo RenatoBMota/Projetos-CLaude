@@ -148,8 +148,9 @@ def create_app():
     with app.app_context():
         db.create_all()
         _migrar_colunas_novas()
-        from app.seed import seed_banco
+        from app.seed import seed_banco, seed_armazem
         seed_banco()
+        seed_armazem()
 
     return app
 
