@@ -134,7 +134,7 @@ def novo():
 @login_required
 def detalhe(rma_id):
     rma               = RMA.query.get_or_404(rma_id)
-    apartamentos      = Apartamento.query.filter_by(ocupado=False).limit(50).all()
+    apartamentos      = Apartamento.query.filter(Apartamento.ocupado != True).limit(50).all()
     opcoes_destinacao = ListaOpcao.por_tipo(TipoLista.DESTINACAO)
     opcoes_categoria  = ListaOpcao.por_tipo(TipoLista.CATEGORIA_DEFEITO)
     return render_template('rma/detail.html', rma=rma, apartamentos=apartamentos,
