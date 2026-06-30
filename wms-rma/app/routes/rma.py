@@ -134,7 +134,8 @@ def novo():
 @login_required
 def detalhe(rma_id):
     rma               = RMA.query.get_or_404(rma_id)
-    apartamentos      = Apartamento.query.filter(Apartamento.ocupado != True).limit(50).all()
+    apartamentos      = Apartamento.query.filter(Apartamento.ocupado != True)\
+                            .order_by(Apartamento.endereco).limit(200).all()
     opcoes_destinacao = ListaOpcao.por_tipo(TipoLista.DESTINACAO)
     opcoes_categoria  = ListaOpcao.por_tipo(TipoLista.CATEGORIA_DEFEITO)
     return render_template('rma/detail.html', rma=rma, apartamentos=apartamentos,
@@ -276,6 +277,43 @@ def alocar_endereco(rma_id):
     else:
         flash('Nenhum endereço livre encontrado. Verifique a configuração do armazém.', 'warning')
 
+    return redirect(url_for('rma.detalhe', rma_id=rma.id))
+
+
+@bp.route('/<int:rma_id>/mudar-endereco', methods=['POST'])
+@login_required
+def mudar_endereco(rma_id):
+    rma = RMA.query.get_or_404(rma_id)
+    novo_apt_id = request.form.get('apartamento_id', type=int)
+    if not novo_apt_id:
+        flash('Selecione um endereço.', 'warning')
+        return redirect(url_for('rma.detalhe', rma_id=rma.id))
+
+    novo_apt = Apartamento.query.get_or_404(novo_apt_id)
+    if novo_apt.id == rma.apartamento_id:
+        flash('O RMA já está nesse endereço.', 'info')
+        return redirect(url_for('rma.detalhe', rma_id=rma.id))
+    if novo_apt.ocupado:
+        flash('Este endereço já está ocupado por outro RMA.', 'danger')
+        return redirect(url_for('rma.detalhe', rma_id=rma.id))
+
+    apt_antigo = rma.apt_ref
+    endereco_antigo = apt_antigo.endereco if apt_antigo else '—'
+    if apt_antigo:
+        apt_antigo.ocupado = False
+
+    rma.apartamento_id = novo_apt.id
+    novo_apt.ocupado = True
+
+    db.session.add(HistoricoRMA(
+        rma_id=rma.id,
+        estado_anterior=rma.estado,
+        estado_novo=rma.estado,
+        observacao=f'Endereço alterado manualmente de {endereco_antigo} para {novo_apt.endereco}.',
+        usuario_id=current_user.id,
+    ))
+    db.session.commit()
+    flash(f'Endereço alterado para {novo_apt.endereco}.', 'success')
     return redirect(url_for('rma.detalhe', rma_id=rma.id))
 
 

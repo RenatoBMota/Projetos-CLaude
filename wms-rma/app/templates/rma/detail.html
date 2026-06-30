@@ -245,6 +245,14 @@
         <span class="badge bg-dark py-2 px-3" style="font-size:1rem;letter-spacing:.05em;">
           <i class="fa-solid fa-location-dot me-1"></i>{{ rma.apt_ref.endereco }}
         </span>
+        {% if rma.estado not in ['FINALIZADO', 'CANCELADO'] %}
+        <div class="mt-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary"
+                  data-bs-toggle="modal" data-bs-target="#modalEndereco">
+            <i class="fa-solid fa-pen me-1"></i>Alterar Endereço
+          </button>
+        </div>
+        {% endif %}
       </div>
       {% else %}
       <div class="text-center">
@@ -252,11 +260,15 @@
           <i class="fa-solid fa-circle-info me-1"></i>Endereço não atribuído
         </p>
         {% if rma.estado not in ['FINALIZADO', 'CANCELADO'] %}
-        <form method="POST" action="{{ url_for('rma.alocar_endereco', rma_id=rma.id) }}">
+        <form method="POST" action="{{ url_for('rma.alocar_endereco', rma_id=rma.id) }}" class="d-inline">
           <button type="submit" class="btn btn-sm btn-outline-primary">
-            <i class="fa-solid fa-location-dot me-1"></i>Atribuir Endereço
+            <i class="fa-solid fa-location-dot me-1"></i>Atribuir Automaticamente
           </button>
         </form>
+        <button type="button" class="btn btn-sm btn-outline-secondary"
+                data-bs-toggle="modal" data-bs-target="#modalEndereco">
+          <i class="fa-solid fa-pen me-1"></i>Escolher Manualmente
+        </button>
         {% endif %}
       </div>
       {% endif %}
@@ -394,6 +406,42 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn" id="btnConfirmarTransicao">Confirmar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal de Alteração Manual de Endereço ───────────────────────────────── -->
+<div class="modal fade" id="modalEndereco" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('rma.mudar_endereco', rma_id=rma.id) }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Alterar Endereço de Armazenagem</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label">Novo Endereço</label>
+          <select name="apartamento_id" class="form-select" required>
+            <option value="">Selecione...</option>
+            {% if rma.apt_ref %}
+            <option value="{{ rma.apt_ref.id }}" selected>
+              {{ rma.apt_ref.endereco }} (atual) — {{ rma.apt_ref.numero.rua.modulo.zona.nome }}
+            </option>
+            {% endif %}
+            {% for a in apartamentos %}
+            <option value="{{ a.id }}">{{ a.endereco }} — {{ a.numero.rua.modulo.zona.nome }}</option>
+            {% endfor %}
+          </select>
+          <div class="form-text">
+            Apenas endereços livres são exibidos. Para mover para uma zona/módulo novo,
+            cadastre-o antes em Armazém.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary-custom">Salvar</button>
         </div>
       </form>
     </div>
