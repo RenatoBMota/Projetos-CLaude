@@ -99,12 +99,8 @@
           </div>
           <div class="col-md-6">
             <label class="form-label">Fornecedor</label>
-            <select name="fornecedor_id" class="form-select" id="selectFornecedor">
-              <option value="">Selecione...</option>
-              {% for f in fornecedores %}
-              <option value="{{ f.id }}" {% if rma and rma.fornecedor_id == f.id %}selected{% endif %}>{{ f.nome }}</option>
-              {% endfor %}
-            </select>
+            <div class="form-control bg-light text-muted" id="fornecedorNome" style="min-height:38px;">{{ rma.fornecedor.nome if rma and rma.fornecedor else '' }}</div>
+            <input type="hidden" name="fornecedor_id" id="fornecedorId" value="{{ rma.fornecedor_id if rma else '' }}">
           </div>
           <div class="col-md-4">
             <label class="form-label">Quantidade *</label>
@@ -233,9 +229,8 @@ document.getElementById('btnBuscar').addEventListener('click', function() {
       document.getElementById('produtoFornecedor').textContent = d.fornecedor_nome ? '— ' + d.fornecedor_nome : '';
       resultEl.style.display = '';
       erroEl.style.display = 'none';
-      if (d.fornecedor_id) {
-        document.getElementById('selectFornecedor').value = d.fornecedor_id;
-      }
+      document.getElementById('fornecedorId').value = d.fornecedor_id || '';
+      document.getElementById('fornecedorNome').textContent = d.fornecedor_nome || '';
     })
     .catch(function() {
       erroEl.textContent = 'Erro ao buscar produto.';
