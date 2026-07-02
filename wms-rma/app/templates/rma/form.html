@@ -73,23 +73,34 @@
           <i class="fa-solid fa-box-open me-2 text-primary"></i>Produto
         </h6>
         <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label">Produto *</label>
+            <div class="input-group">
+              <select id="tipoBusca" class="form-select" style="max-width:110px;">
+                <option value="codigo">Código</option>
+                <option value="ean">EAN</option>
+              </select>
+              <input type="text" id="valorBusca" class="form-control" placeholder="Digite e clique na lupa..."
+                     value="{{ rma.produto.codigo if rma and rma.produto else '' }}">
+              <button type="button" id="btnBuscar" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-magnifying-glass"></i>
+              </button>
+            </div>
+            <div id="produtoResultado" class="mt-2 p-2 bg-light rounded small d-flex align-items-center gap-2"
+                 {% if not (rma and rma.produto) %}style="display:none;"{% endif %}>
+              <i class="fa-solid fa-check-circle text-success"></i>
+              <span id="produtoDescricao" class="fw-bold">{{ rma.produto.descricao if rma and rma.produto else '' }}</span>
+              <span id="produtoFornecedor" class="text-muted">{{ ('— ' + rma.produto.fornecedor.nome) if rma and rma.produto and rma.produto.fornecedor else '' }}</span>
+            </div>
+            <div id="produtoErro" class="text-danger small mt-1" style="display:none;"></div>
+            <input type="hidden" name="produto_id" id="produtoId" value="{{ rma.produto_id if rma else '' }}">
+          </div>
           <div class="col-md-6">
             <label class="form-label">Fornecedor</label>
             <select name="fornecedor_id" class="form-select" id="selectFornecedor">
               <option value="">Selecione...</option>
               {% for f in fornecedores %}
               <option value="{{ f.id }}" {% if rma and rma.fornecedor_id == f.id %}selected{% endif %}>{{ f.nome }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Produto *</label>
-            <select name="produto_id" class="form-select" id="selectProduto" required>
-              <option value="">Selecione...</option>
-              {% for p in produtos %}
-              <option value="{{ p.id }}" data-forn="{{ p.fornecedor_id }}" {% if rma and rma.produto_id == p.id %}selected{% endif %}>
-                {{ p.codigo }} — {{ p.descricao }}
-              </option>
               {% endfor %}
             </select>
           </div>
@@ -192,26 +203,49 @@
 
 {% block scripts %}
 <script>
-// Filtrar produtos por fornecedor
-document.getElementById('selectFornecedor').addEventListener('change', function() {
-  const fornId = this.value;
-  const sel = document.getElementById('selectProduto');
-  Array.from(sel.options).forEach(o => {
-    if (!o.value) return;
-    o.style.display = (!fornId || o.dataset.forn == fornId) ? '' : 'none';
-  });
-});
+document.getElementById('btnBuscar').addEventListener('click', function() {
+  const tipo     = document.getElementById('tipoBusca').value;
+  const valor    = document.getElementById('valorBusca').value.trim();
+  const erroEl   = document.getElementById('produtoErro');
+  const resultEl = document.getElementById('produtoResultado');
 
-// Quando produto é selecionado, busca fornecedor via API
-document.getElementById('selectProduto').addEventListener('change', function() {
-  if (!this.value) return;
-  fetch(`/rma/api/produto/${this.value}`)
-    .then(r => r.json())
-    .then(d => {
+  erroEl.style.display = 'none';
+  if (!valor) {
+    erroEl.textContent = 'Digite um valor para buscar.';
+    erroEl.style.display = '';
+    return;
+  }
+
+  fetch('/rma/api/produto/buscar?tipo=' + encodeURIComponent(tipo) + '&valor=' + encodeURIComponent(valor))
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.erro) {
+        resultEl.style.display = 'none';
+        document.getElementById('produtoId').value = '';
+        erroEl.textContent = d.erro;
+        erroEl.style.display = '';
+        return;
+      }
+      document.getElementById('produtoId').value = d.id;
+      document.getElementById('produtoDescricao').textContent = d.descricao;
+      document.getElementById('produtoFornecedor').textContent = d.fornecedor_nome ? '— ' + d.fornecedor_nome : '';
+      resultEl.style.display = '';
+      erroEl.style.display = 'none';
       if (d.fornecedor_id) {
         document.getElementById('selectFornecedor').value = d.fornecedor_id;
       }
+    })
+    .catch(function() {
+      erroEl.textContent = 'Erro ao buscar produto.';
+      erroEl.style.display = '';
     });
+});
+
+document.getElementById('valorBusca').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    document.getElementById('btnBuscar').click();
+  }
 });
 </script>
 {% endblock %}

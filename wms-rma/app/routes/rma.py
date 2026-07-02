@@ -365,6 +365,28 @@ def mudar_endereco(rma_id):
     return redirect(url_for('rma.detalhe', rma_id=rma.id))
 
 
+@bp.route('/api/produto/buscar')
+@login_required
+def api_produto_buscar():
+    tipo  = request.args.get('tipo', 'codigo').lower()
+    valor = request.args.get('valor', '').strip()
+    if not valor:
+        return jsonify({'erro': 'Informe o valor para busca.'}), 400
+    if tipo == 'ean':
+        p = Produto.query.filter(Produto.ean == valor, Produto.ativo == True).first()
+    else:
+        p = Produto.query.filter(Produto.codigo == valor, Produto.ativo == True).first()
+    if not p:
+        return jsonify({'erro': 'Produto não encontrado.'}), 404
+    return jsonify({
+        'id': p.id,
+        'descricao': p.descricao,
+        'codigo': p.codigo,
+        'fornecedor_id': p.fornecedor_id,
+        'fornecedor_nome': p.fornecedor.nome if p.fornecedor else '',
+    })
+
+
 @bp.route('/api/produto/<int:prod_id>')
 @login_required
 def api_produto(prod_id):
