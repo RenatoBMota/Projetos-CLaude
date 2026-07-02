@@ -75,22 +75,24 @@
         <div class="row g-3">
           <div class="col-12">
             <label class="form-label">Produto *</label>
-            <div class="input-group">
-              <select id="tipoBusca" class="form-select" style="max-width:110px;">
-                <option value="codigo">Código</option>
-                <option value="ean">EAN</option>
-              </select>
-              <input type="text" id="valorBusca" class="form-control" placeholder="Digite e clique na lupa..."
-                     value="{{ rma.produto.codigo if rma and rma.produto else '' }}">
-              <button type="button" id="btnBuscar" class="btn btn-outline-secondary">
-                <i class="fa-solid fa-magnifying-glass"></i>
-              </button>
-            </div>
-            <div id="produtoResultado" class="mt-2 p-2 bg-light rounded small d-flex align-items-center gap-2"
-                 {% if not (rma and rma.produto) %}style="display:none;"{% endif %}>
-              <i class="fa-solid fa-check-circle text-success"></i>
-              <span id="produtoDescricao" class="fw-bold">{{ rma.produto.descricao if rma and rma.produto else '' }}</span>
-              <span id="produtoFornecedor" class="text-muted">{{ ('— ' + rma.produto.fornecedor.nome) if rma and rma.produto and rma.produto.fornecedor else '' }}</span>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+              <div class="input-group" style="max-width:340px;">
+                <select id="tipoBusca" class="form-select" style="max-width:90px;">
+                  <option value="codigo">Código</option>
+                  <option value="ean">EAN</option>
+                </select>
+                <input type="text" id="valorBusca" class="form-control" placeholder="Código do produto..."
+                       value="{{ rma.produto.codigo if rma and rma.produto else '' }}">
+                <button type="button" id="btnBuscar" class="btn btn-outline-secondary">
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
+              </div>
+              <div id="produtoResultado" class="p-2 bg-light rounded small d-flex align-items-center gap-2"
+                   {% if not (rma and rma.produto) %}style="display:none;"{% endif %}>
+                <i class="fa-solid fa-check-circle text-success"></i>
+                <span id="produtoDescricao" class="fw-bold">{{ rma.produto.descricao if rma and rma.produto else '' }}</span>
+                <span id="produtoFornecedor" class="text-muted">{{ ('— ' + rma.produto.fornecedor.nome) if rma and rma.produto and rma.produto.fornecedor else '' }}</span>
+              </div>
             </div>
             <div id="produtoErro" class="text-danger small mt-1" style="display:none;"></div>
             <input type="hidden" name="produto_id" id="produtoId" value="{{ rma.produto_id if rma else '' }}">
