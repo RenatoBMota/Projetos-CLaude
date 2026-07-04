@@ -1,0 +1,14 @@
+{$DOMAIN} {
+	encode gzip
+
+	@api path /auth* /unidades* /usuarios* /transferencias* /dashboard* /empresas* /health
+	handle @api {
+		reverse_proxy backend:3333
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
