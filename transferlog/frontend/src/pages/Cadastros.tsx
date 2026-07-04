@@ -9,6 +9,12 @@ interface RotaSla {
   destino: Unidade;
 }
 
+interface Empresa {
+  id: string;
+  razaoSocial: string;
+  cnpjMatriz: string;
+}
+
 const PERFIS: Perfil[] = [
   "ADMINISTRADOR",
   "SUPERVISOR",
@@ -21,15 +27,18 @@ const PERFIS: Perfil[] = [
 ];
 
 export function Cadastros() {
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [rotas, setRotas] = useState<RotaSla[]>([]);
   const [erro, setErro] = useState<string | null>(null);
 
   async function carregar() {
-    const [u, r] = await Promise.all([
+    const [e, u, r] = await Promise.all([
+      api.get<Empresa[]>("/empresas"),
       api.get<Unidade[]>("/unidades"),
       api.get<RotaSla[]>("/unidades/rotas-sla"),
     ]);
+    setEmpresas(e);
     setUnidades(u);
     setRotas(r);
   }
@@ -43,11 +52,74 @@ export function Cadastros() {
       <h1>Cadastros</h1>
       {erro && <div className="error-box">{erro}</div>}
 
-      <NovaUnidade onCriada={carregar} onErro={setErro} />
+      <NovaEmpresa onCriada={carregar} onErro={setErro} />
+      <ListaEmpresas empresas={empresas} />
+      <NovaUnidade empresas={empresas} onCriada={carregar} onErro={setErro} />
       <ListaUnidades unidades={unidades} />
       <NovaRotaSla unidades={unidades} onCriada={carregar} onErro={setErro} />
       <ListaRotas rotas={rotas} />
       <NovoUsuario unidades={unidades} onErro={setErro} />
+    </div>
+  );
+}
+
+function ListaEmpresas({ empresas }: { empresas: Empresa[] }) {
+  return (
+    <div className="card">
+      <h2>Empresas</h2>
+      {empresas.length === 0 ? (
+        <p style={{ color: "var(--text-muted)" }}>Nenhuma empresa cadastrada ainda.</p>
+      ) : (
+        <table>
+          <thead><tr><th>Razão social</th><th>CNPJ matriz</th></tr></thead>
+          <tbody>
+            {empresas.map((e) => (
+              <tr key={e.id}>
+                <td>{e.razaoSocial}</td>
+                <td>{e.cnpjMatriz}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+function NovaEmpresa({ onCriada, onErro }: { onCriada: () => void; onErro: (e: string) => void }) {
+  const [razaoSocial, setRazaoSocial] = useState("");
+  const [cnpjMatriz, setCnpjMatriz] = useState("");
+  const [enviando, setEnviando] = useState(false);
+
+  async function salvar() {
+    setEnviando(true);
+    try {
+      await api.post("/empresas", { razaoSocial, cnpjMatriz });
+      setRazaoSocial(""); setCnpjMatriz("");
+      onCriada();
+    } catch (err) {
+      onErro(err instanceof ApiError ? err.message : "Erro ao criar empresa");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div className="card">
+      <h2>Nova empresa (Matriz)</h2>
+      <div className="form-row">
+        <div className="field">
+          <label>Razão social</label>
+          <input value={razaoSocial} onChange={(e) => setRazaoSocial(e.target.value)} />
+        </div>
+        <div className="field">
+          <label>CNPJ da matriz</label>
+          <input value={cnpjMatriz} onChange={(e) => setCnpjMatriz(e.target.value)} />
+        </div>
+      </div>
+      <button className="primary" disabled={enviando || !razaoSocial || !cnpjMatriz} onClick={salvar}>
+        Salvar empresa
+      </button>
     </div>
   );
 }
@@ -74,7 +146,15 @@ function ListaUnidades({ unidades }: { unidades: Unidade[] }) {
   );
 }
 
-function NovaUnidade({ onCriada, onErro }: { onCriada: () => void; onErro: (e: string) => void }) {
+function NovaUnidade({
+  empresas,
+  onCriada,
+  onErro,
+}: {
+  empresas: Empresa[];
+  onCriada: () => void;
+  onErro: (e: string) => void;
+}) {
   const [nome, setNome] = useState("");
   const [cnpj, setCnpj] = useState("");
   const [cidade, setCidade] = useState("");
@@ -82,6 +162,10 @@ function NovaUnidade({ onCriada, onErro }: { onCriada: () => void; onErro: (e: s
   const [tipo, setTipo] = useState<"CD" | "LOJA">("LOJA");
   const [empresaId, setEmpresaId] = useState("");
   const [enviando, setEnviando] = useState(false);
+
+  useEffect(() => {
+    if (!empresaId && empresas.length > 0) setEmpresaId(empresas[0].id);
+  }, [empresas, empresaId]);
 
   async function salvar() {
     setEnviando(true);
@@ -98,22 +182,33 @@ function NovaUnidade({ onCriada, onErro }: { onCriada: () => void; onErro: (e: s
 
   return (
     <div className="card">
-      <h2>Nova unidade</h2>
-      <div className="form-row">
-        <div className="field"><label>Empresa ID</label><input value={empresaId} onChange={(e) => setEmpresaId(e.target.value)} /></div>
-        <div className="field"><label>Nome</label><input value={nome} onChange={(e) => setNome(e.target.value)} /></div>
-        <div className="field"><label>CNPJ</label><input value={cnpj} onChange={(e) => setCnpj(e.target.value)} /></div>
-        <div className="field"><label>Cidade</label><input value={cidade} onChange={(e) => setCidade(e.target.value)} /></div>
-        <div className="field"><label>UF</label><input maxLength={2} value={uf} onChange={(e) => setUf(e.target.value.toUpperCase())} /></div>
-        <div className="field">
-          <label>Tipo</label>
-          <select value={tipo} onChange={(e) => setTipo(e.target.value as "CD" | "LOJA")}>
-            <option value="LOJA">Loja</option>
-            <option value="CD">Centro de Distribuição</option>
-          </select>
-        </div>
-      </div>
-      <button className="primary" disabled={enviando} onClick={salvar}>Salvar unidade</button>
+      <h2>Nova unidade (Matriz, CD ou Loja)</h2>
+      {empresas.length === 0 ? (
+        <p style={{ color: "var(--text-muted)" }}>Cadastre uma empresa primeiro.</p>
+      ) : (
+        <>
+          <div className="form-row">
+            <div className="field">
+              <label>Empresa</label>
+              <select value={empresaId} onChange={(e) => setEmpresaId(e.target.value)}>
+                {empresas.map((e) => <option key={e.id} value={e.id}>{e.razaoSocial}</option>)}
+              </select>
+            </div>
+            <div className="field"><label>Nome (ex: Matriz, Loja 03)</label><input value={nome} onChange={(e) => setNome(e.target.value)} /></div>
+            <div className="field"><label>CNPJ</label><input value={cnpj} onChange={(e) => setCnpj(e.target.value)} /></div>
+            <div className="field"><label>Cidade</label><input value={cidade} onChange={(e) => setCidade(e.target.value)} /></div>
+            <div className="field"><label>UF</label><input maxLength={2} value={uf} onChange={(e) => setUf(e.target.value.toUpperCase())} /></div>
+            <div className="field">
+              <label>Tipo</label>
+              <select value={tipo} onChange={(e) => setTipo(e.target.value as "CD" | "LOJA")}>
+                <option value="LOJA">Loja</option>
+                <option value="CD">Centro de Distribuição</option>
+              </select>
+            </div>
+          </div>
+          <button className="primary" disabled={enviando || !nome || !cnpj} onClick={salvar}>Salvar unidade</button>
+        </>
+      )}
     </div>
   );
 }
