@@ -5,7 +5,8 @@ import { z } from "zod";
 import { Perfil, StatusTransferencia, TipoDivergencia } from "@prisma/client";
 import { prisma } from "../prisma";
 import { authenticate, podeAcessarUnidade, requirePerfil } from "../middlewares/auth";
-import { parseNfeXml } from "../services/nfeParser";
+import { NfeParsed, parseNfeXml } from "../services/nfeParser";
+import { parseDanfePdf } from "../services/danfeParser";
 import {
   concluirSeparacao,
   confirmarRecebimento,
@@ -29,11 +30,14 @@ const upload = multer({
   }),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    const permitido = file.mimetype === "text/xml" || file.mimetype === "application/xml";
+    const permitido =
+      file.mimetype === "text/xml" ||
+      file.mimetype === "application/xml" ||
+      file.mimetype === "application/pdf";
     if (permitido) {
       cb(null, true);
     } else {
-      cb(new Error("Somente arquivos XML de NF-e são aceitos nesta versão"));
+      cb(new Error("Somente arquivos XML ou PDF (DANFE) de NF-e são aceitos"));
     }
   },
 });
@@ -46,35 +50,74 @@ const fotosUpload = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
 });
 
-/** Faz o parse do XML e devolve o resumo da NF sem persistir nada (Tela "Resumo da NF"). */
+type FonteNfe = "XML" | "PDF_OCR";
+
+async function lerNfeDoArquivo(file: Express.Multer.File): Promise<{ nfe: NfeParsed; fonte: FonteNfe }> {
+  if (file.mimetype === "application/pdf") {
+    const fs = await import("node:fs/promises");
+    const buffer = await fs.readFile(file.path);
+    return { nfe: await parseDanfePdf(buffer), fonte: "PDF_OCR" };
+  }
+  const fs = await import("node:fs/promises");
+  const xml = await fs.readFile(file.path, "utf-8");
+  return { nfe: parseNfeXml(xml), fonte: "XML" };
+}
+
+/**
+ * Lê o XML ou PDF (DANFE, via OCR) e devolve o resumo da NF sem persistir nada
+ * (Tela "Resumo da NF"). Quando a fonte é PDF, os dados vêm de OCR e devem ser
+ * revisados/corrigidos pelo analista antes de confirmar a criação da transferência.
+ */
 transferenciasRouter.post("/resumo", requirePerfil(Perfil.ANALISTA), upload.single("arquivo"), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "Nenhum arquivo enviado" });
   }
 
   try {
-    const xml = await import("node:fs/promises").then((fs) => fs.readFile(req.file!.path, "utf-8"));
-    const nfe = parseNfeXml(xml);
+    const { nfe, fonte } = await lerNfeDoArquivo(req.file);
     const previa = await montarPreviaTransferencia(nfe);
-    res.json({ ...previa, arquivoPath: req.file.path });
+    res.json({ ...previa, arquivoPath: req.file.path, fonte });
   } catch (err) {
     res.status(422).json({ error: (err as Error).message });
   }
 });
 
-/** Cria a transferência a partir de um XML já lido (Tela "Resumo da NF" -> "Criar Transferência"). */
+const nfeItemSchema = z.object({
+  codigoInterno: z.string().min(1),
+  descricao: z.string().min(1),
+  ncm: z.string().min(1),
+  cfop: z.string().min(1),
+  quantidade: z.number().int().positive(),
+});
+
+const criarTransferenciaSchema = z.object({
+  arquivoPath: z.string(),
+  numeroNF: z.string().min(1),
+  serie: z.string().min(1),
+  numeroPedido: z.string(),
+  emitenteCnpj: z.string().min(11),
+  destinatarioCnpj: z.string().min(11),
+  dataEmissao: z.coerce.date(),
+  valorTotal: z.number().nonnegative(),
+  qtdVolumes: z.number().int().nonnegative(),
+  pesoBruto: z.number().nonnegative(),
+  itens: z.array(nfeItemSchema).min(1),
+});
+
+/**
+ * Cria a transferência a partir dos dados da NF já lidos e eventualmente
+ * corrigidos pelo analista na tela de Resumo (obrigatório revisar quando a
+ * fonte for PDF/OCR, já que a extração por imagem é menos confiável que o XML).
+ */
 transferenciasRouter.post("/", requirePerfil(Perfil.ANALISTA), async (req, res) => {
-  const schema = z.object({ arquivoPath: z.string() });
-  const parsed = schema.safeParse(req.body);
+  const parsed = criarTransferenciaSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: parsed.error.flatten() });
   }
 
   try {
-    const fs = await import("node:fs/promises");
-    const xml = await fs.readFile(parsed.data.arquivoPath, "utf-8");
-    const nfe = parseNfeXml(xml);
-    const transferencia = await criarTransferencia(nfe, req.auth!.sub, parsed.data.arquivoPath);
+    const { arquivoPath, ...nfe } = parsed.data;
+    const transferencia = await criarTransferencia(nfe, req.auth!.sub, arquivoPath);
     res.status(201).json(transferencia);
   } catch (err) {
     res.status(422).json({ error: (err as Error).message });

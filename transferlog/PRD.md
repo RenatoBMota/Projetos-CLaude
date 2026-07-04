@@ -65,6 +65,22 @@ Campos a extrair automaticamente no upload:
 A origem e o destino são resolvidos **automaticamente pelo CNPJ** contra o
 cadastro de unidades — o usuário nunca escolhe manualmente origem/destino.
 
+### 3.1 XML vs. PDF (DANFE)
+
+- **XML da NF-e**: estruturado, sempre disponível (é o que a Sefaz recebe), 100%
+  confiável. Fonte preferencial.
+- **PDF (DANFE)**: é apenas a representação impressa da nota — não tem garantia
+  de camada de texto. Em testes com um DANFE real, o PDF era inteiramente
+  vetorial (cada caractere desenhado como contorno, sem operadores de texto),
+  então a extração exige **renderizar a página como imagem e aplicar OCR**
+  (Tesseract). OCR acerta bem os campos numéricos críticos (CNPJ, NF, série,
+  pedido, NCM/CFOP, quantidades) mas pode errar texto descritivo (ex.: "A55"
+  lido como "ASS"). Por isso, ao subir PDF, os campos extraídos vêm em uma
+  tela de "Resumo da NF" **totalmente editável**, com aviso de que a fonte é
+  OCR, e o analista deve revisar/corrigir antes de confirmar a criação da
+  transferência. O XML não exige esse cuidado extra, mas os campos também são
+  editáveis por consistência.
+
 ## 4. Telas
 
 ### 4.1 Upload de Nota
@@ -163,11 +179,8 @@ permite auditoria completa e histórico ponta a ponta por transferência.
 
 ## 12. Em aberto / decisões pendentes
 
-- Stack tecnológica (backend, frontend, banco de dados, storage de fotos)
-- Formato de entrada prioritário: XML da NFe (schema padrão, mais confiável) vs.
-  PDF (requer OCR/parse menos confiável) — recomendação: priorizar XML
-- Modelo de dados detalhado (entidades: Unidade, Usuário, Transferência, Item,
-  EventoAuditoria, RotaSLA)
-- Escopo do MVP (qual fatia entregar primeiro)
 - Detalhes da integração com Systock (API disponível? banco compartilhado?)
 - Notificações (e-mail, push, WhatsApp?) para alertas de atraso
+- Cancelamento de transferência (endpoint/tela dedicados)
+- Melhorar a extração de itens via OCR para DANFEs com muitos produtos (tabela
+  maior aumenta o risco de quebra de linha/coluna mal reconhecida)

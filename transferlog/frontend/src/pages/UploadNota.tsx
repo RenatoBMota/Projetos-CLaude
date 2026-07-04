@@ -3,20 +3,26 @@ import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import type { Unidade } from "../api/types";
 
-interface NfeItem {
+interface NfeItemEditavel {
   codigoInterno: string;
   descricao: string;
+  ncm: string;
+  cfop: string;
   quantidade: number;
 }
 
 interface ResumoResponse {
   nfe: {
     numeroNF: string;
+    serie: string;
     numeroPedido: string;
+    emitenteCnpj: string;
+    destinatarioCnpj: string;
+    dataEmissao: string;
     valorTotal: number;
     qtdVolumes: number;
     pesoBruto: number;
-    itens: NfeItem[];
+    itens: NfeItemEditavel[];
   };
   origem: Unidade;
   destino: Unidade;
@@ -24,6 +30,7 @@ interface ResumoResponse {
   qtdSku: number;
   qtdItensTotal: number;
   arquivoPath: string;
+  fonte: "XML" | "PDF_OCR";
 }
 
 export function UploadNota() {
@@ -31,6 +38,8 @@ export function UploadNota() {
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [resumo, setResumo] = useState<ResumoResponse | null>(null);
+  const [campos, setCampos] = useState({ numeroNF: "", serie: "", numeroPedido: "", valorTotal: 0, qtdVolumes: 0, pesoBruto: 0 });
+  const [itens, setItens] = useState<NfeItemEditavel[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
 
@@ -42,6 +51,15 @@ export function UploadNota() {
       formData.append("arquivo", file);
       const dados = await api.upload<ResumoResponse>("/transferencias/resumo", formData);
       setResumo(dados);
+      setCampos({
+        numeroNF: dados.nfe.numeroNF,
+        serie: dados.nfe.serie,
+        numeroPedido: dados.nfe.numeroPedido,
+        valorTotal: dados.nfe.valorTotal,
+        qtdVolumes: dados.nfe.qtdVolumes,
+        pesoBruto: dados.nfe.pesoBruto,
+      });
+      setItens(dados.nfe.itens);
     } catch (err) {
       setErro(err instanceof ApiError ? err.message : "Não foi possível ler o arquivo");
     } finally {
@@ -59,6 +77,10 @@ export function UploadNota() {
     }
   }
 
+  function atualizarItem(index: number, patch: Partial<NfeItemEditavel>) {
+    setItens((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+  }
+
   async function criarTransferencia() {
     if (!resumo) return;
     setErro(null);
@@ -66,6 +88,16 @@ export function UploadNota() {
     try {
       const transferencia = await api.post<{ id: string }>("/transferencias", {
         arquivoPath: resumo.arquivoPath,
+        numeroNF: campos.numeroNF,
+        serie: campos.serie,
+        numeroPedido: campos.numeroPedido,
+        emitenteCnpj: resumo.nfe.emitenteCnpj,
+        destinatarioCnpj: resumo.nfe.destinatarioCnpj,
+        dataEmissao: resumo.nfe.dataEmissao,
+        valorTotal: campos.valorTotal,
+        qtdVolumes: campos.qtdVolumes,
+        pesoBruto: campos.pesoBruto,
+        itens,
       });
       navigate(`/transferencias/${transferencia.id}`);
     } catch (err) {
@@ -76,23 +108,63 @@ export function UploadNota() {
   }
 
   if (resumo) {
+    const isOcr = resumo.fonte === "PDF_OCR";
     return (
       <div>
         <h1>Resumo da NF</h1>
         {erro && <div className="error-box">{erro}</div>}
+        {isOcr && (
+          <div className="error-box" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>
+            Dados extraídos de PDF por OCR — menos confiável que o XML. Revise e corrija os campos
+            abaixo antes de confirmar.
+          </div>
+        )}
         <div className="card">
           <div className="form-row">
-            <div className="field"><label>NF</label><strong>{resumo.nfe.numeroNF}</strong></div>
-            <div className="field"><label>Pedido</label><strong>{resumo.nfe.numeroPedido}</strong></div>
+            <div className="field">
+              <label>NF</label>
+              <input value={campos.numeroNF} onChange={(e) => setCampos((c) => ({ ...c, numeroNF: e.target.value }))} />
+            </div>
+            <div className="field">
+              <label>Série</label>
+              <input value={campos.serie} onChange={(e) => setCampos((c) => ({ ...c, serie: e.target.value }))} />
+            </div>
+            <div className="field">
+              <label>Pedido</label>
+              <input value={campos.numeroPedido} onChange={(e) => setCampos((c) => ({ ...c, numeroPedido: e.target.value }))} />
+            </div>
             <div className="field"><label>Origem</label><strong>{resumo.origem.nome}</strong></div>
             <div className="field"><label>Destino</label><strong>{resumo.destino.nome}</strong></div>
           </div>
           <div className="form-row">
-            <div className="field"><label>Valor</label><strong>{resumo.nfe.valorTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong></div>
-            <div className="field"><label>Volumes</label><strong>{resumo.nfe.qtdVolumes}</strong></div>
-            <div className="field"><label>Peso</label><strong>{resumo.nfe.pesoBruto} kg</strong></div>
-            <div className="field"><label>SKUs</label><strong>{resumo.qtdSku}</strong></div>
-            <div className="field"><label>Itens totais</label><strong>{resumo.qtdItensTotal}</strong></div>
+            <div className="field">
+              <label>Valor</label>
+              <input
+                type="number"
+                step="0.01"
+                value={campos.valorTotal}
+                onChange={(e) => setCampos((c) => ({ ...c, valorTotal: Number(e.target.value) }))}
+              />
+            </div>
+            <div className="field">
+              <label>Volumes</label>
+              <input
+                type="number"
+                value={campos.qtdVolumes}
+                onChange={(e) => setCampos((c) => ({ ...c, qtdVolumes: Number(e.target.value) }))}
+              />
+            </div>
+            <div className="field">
+              <label>Peso (kg)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={campos.pesoBruto}
+                onChange={(e) => setCampos((c) => ({ ...c, pesoBruto: Number(e.target.value) }))}
+              />
+            </div>
+            <div className="field"><label>SKUs</label><strong>{itens.length}</strong></div>
+            <div className="field"><label>Itens totais</label><strong>{itens.reduce((a, i) => a + i.quantidade, 0)}</strong></div>
           </div>
           <div className="field">
             <label>Prazo previsto (SLA da rota)</label>
@@ -103,14 +175,16 @@ export function UploadNota() {
           <h2>Produtos</h2>
           <table>
             <thead>
-              <tr><th>Código</th><th>Descrição</th><th>Qtd</th></tr>
+              <tr><th>Código</th><th>Descrição</th><th>NCM</th><th>CFOP</th><th>Qtd</th></tr>
             </thead>
             <tbody>
-              {resumo.nfe.itens.map((item) => (
-                <tr key={item.codigoInterno}>
-                  <td>{item.codigoInterno}</td>
-                  <td>{item.descricao}</td>
-                  <td>{item.quantidade}</td>
+              {itens.map((item, index) => (
+                <tr key={index}>
+                  <td><input style={{ width: 90 }} value={item.codigoInterno} onChange={(e) => atualizarItem(index, { codigoInterno: e.target.value })} /></td>
+                  <td><input style={{ width: 220 }} value={item.descricao} onChange={(e) => atualizarItem(index, { descricao: e.target.value })} /></td>
+                  <td><input style={{ width: 90 }} value={item.ncm} onChange={(e) => atualizarItem(index, { ncm: e.target.value })} /></td>
+                  <td><input style={{ width: 70 }} value={item.cfop} onChange={(e) => atualizarItem(index, { cfop: e.target.value })} /></td>
+                  <td><input style={{ width: 70 }} type="number" value={item.quantidade} onChange={(e) => atualizarItem(index, { quantidade: Number(e.target.value) })} /></td>
                 </tr>
               ))}
             </tbody>
@@ -120,7 +194,7 @@ export function UploadNota() {
           <button className="primary" disabled={carregando} onClick={criarTransferencia}>
             {carregando ? "Criando..." : "Criar Transferência"}
           </button>
-          <button onClick={() => setResumo(null)}>Cancelar</button>
+          <button onClick={() => { setResumo(null); setArquivo(null); }}>Cancelar</button>
         </div>
       </div>
     );
@@ -136,11 +210,11 @@ export function UploadNota() {
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
       >
-        <p>Arraste o XML da NF-e aqui</p>
+        <p>Arraste o XML ou PDF da NF-e aqui</p>
         <p style={{ margin: "12px 0" }}>ou</p>
         <input
           type="file"
-          accept=".xml,text/xml,application/xml"
+          accept=".xml,.pdf,text/xml,application/xml,application/pdf"
           onChange={(e) => {
             const file = e.target.files?.[0] ?? null;
             setArquivo(file);
@@ -149,7 +223,7 @@ export function UploadNota() {
         />
         {arquivo && <p style={{ marginTop: 12 }}>{arquivo.name}</p>}
       </div>
-      {carregando && <p style={{ marginTop: 12 }}>Lendo NF...</p>}
+      {carregando && <p style={{ marginTop: 12 }}>Lendo NF... (PDFs podem levar alguns segundos, pois usam OCR)</p>}
     </div>
   );
 }

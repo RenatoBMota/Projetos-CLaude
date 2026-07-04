@@ -5,19 +5,19 @@ const prisma = new PrismaClient();
 
 async function main() {
   const empresa = await prisma.empresa.upsert({
-    where: { cnpjMatriz: "03554020000000" },
-    create: { razaoSocial: "Paragominas Home Center Ltda", cnpjMatriz: "03554020000000" },
+    where: { cnpjMatriz: "03555402000655" },
+    create: { razaoSocial: "Paragominas Home Center Ltda", cnpjMatriz: "03555402000655" },
     update: {},
   });
 
   const matriz = await prisma.unidade.upsert({
-    where: { cnpj: "03554020006550" },
+    where: { cnpj: "03555402000655" },
     create: {
       empresaId: empresa.id,
       nome: "CD Matriz",
-      cnpj: "03554020006550",
-      cidade: "Paragominas",
-      uf: "PA",
+      cnpj: "03555402000655",
+      cidade: "Maceió",
+      uf: "AL",
       tipo: TipoUnidade.CD,
     },
     update: {},
@@ -29,8 +29,8 @@ async function main() {
       empresaId: empresa.id,
       nome: "Loja 03",
       cnpj: "03555402000140",
-      cidade: "Paragominas",
-      uf: "PA",
+      cidade: "Maceió",
+      uf: "AL",
       tipo: TipoUnidade.LOJA,
     },
     update: {},

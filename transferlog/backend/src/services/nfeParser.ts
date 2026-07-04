@@ -13,9 +13,10 @@ export interface NfeParsed {
   serie: string;
   numeroPedido: string;
   emitenteCnpj: string;
-  emitenteNome: string;
+  /** Nem sempre disponível (ex: extração via OCR de PDF) — apenas informativo, não é usado para resolver a unidade. */
+  emitenteNome?: string;
   destinatarioCnpj: string;
-  destinatarioNome: string;
+  destinatarioNome?: string;
   dataEmissao: Date;
   valorTotal: number;
   qtdVolumes: number;
