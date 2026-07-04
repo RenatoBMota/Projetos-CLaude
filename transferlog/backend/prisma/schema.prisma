@@ -1,0 +1,191 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TipoUnidade {
+  CD
+  LOJA
+}
+
+enum Perfil {
+  ADMINISTRADOR
+  SUPERVISOR
+  LIDER_LOJA
+  OPERADOR
+  SEPARADOR
+  CONFERENTE
+  ANALISTA
+  AUDITORIA
+}
+
+enum StatusTransferencia {
+  PENDENTE_SEPARACAO
+  EM_SEPARACAO
+  CARREGADO
+  EM_TRANSITO
+  RECEBIDO
+  CONFERIDO_OK
+  CONFERIDO_DIVERGENTE
+  FINALIZADO
+  CANCELADO
+}
+
+enum TipoDivergencia {
+  FALTOU
+  SOBROU
+  QUEBRADO
+  PRODUTO_ERRADO
+}
+
+enum TipoEvento {
+  UPLOAD
+  SEPARACAO
+  CARREGAMENTO
+  RECEBIMENTO
+  CONFERENCIA
+  CANCELAMENTO
+}
+
+model Empresa {
+  id          String    @id @default(cuid())
+  razaoSocial String
+  cnpjMatriz  String    @unique
+  unidades    Unidade[]
+  createdAt   DateTime  @default(now())
+}
+
+model Unidade {
+  id        String      @id @default(cuid())
+  empresaId String
+  empresa   Empresa     @relation(fields: [empresaId], references: [id])
+  nome      String
+  cnpj      String      @unique
+  cidade    String
+  uf        String
+  tipo      TipoUnidade
+  ativa     Boolean     @default(true)
+
+  usuarios              UsuarioUnidade[]
+  rotasOrigem           RotaSLA[]        @relation("RotaOrigem")
+  rotasDestino          RotaSLA[]        @relation("RotaDestino")
+  transferenciasOrigem  Transferencia[]  @relation("TransferenciaOrigem")
+  transferenciasDestino Transferencia[]  @relation("TransferenciaDestino")
+
+  createdAt DateTime @default(now())
+
+  @@index([empresaId])
+}
+
+model Usuario {
+  id        String            @id @default(cuid())
+  nome      String
+  email     String            @unique
+  senhaHash String
+  perfil    Perfil
+  ativo     Boolean           @default(true)
+  unidades  UsuarioUnidade[]
+  eventos   EventoAuditoria[]
+  createdAt DateTime          @default(now())
+}
+
+model UsuarioUnidade {
+  usuarioId String
+  unidadeId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+  unidade   Unidade @relation(fields: [unidadeId], references: [id])
+
+  @@id([usuarioId, unidadeId])
+  @@index([unidadeId])
+}
+
+model RotaSLA {
+  id         String  @id @default(cuid())
+  origemId   String
+  destinoId  String
+  origem     Unidade @relation("RotaOrigem", fields: [origemId], references: [id])
+  destino    Unidade @relation("RotaDestino", fields: [destinoId], references: [id])
+  prazoHoras Int
+
+  @@unique([origemId, destinoId])
+}
+
+model Transferencia {
+  id            String              @id @default(cuid())
+  numeroNF      String
+  serie         String
+  numeroPedido  String
+  origemId      String
+  destinoId     String
+  origem        Unidade             @relation("TransferenciaOrigem", fields: [origemId], references: [id])
+  destino       Unidade             @relation("TransferenciaDestino", fields: [destinoId], references: [id])
+  dataEmissao   DateTime
+  valorTotal    Decimal             @db.Decimal(14, 2)
+  qtdVolumes    Int
+  pesoBruto     Decimal             @db.Decimal(12, 3)
+  qtdSku        Int
+  qtdItensTotal Int
+  status        StatusTransferencia @default(PENDENTE_SEPARACAO)
+
+  transportadora String?
+  veiculo        String?
+  motorista      String?
+  prazoPrevisto  DateTime
+
+  dataSeparacaoConcluida DateTime?
+  dataCarregamento       DateTime?
+  dataRecebimento        DateTime?
+  dataConferencia        DateTime?
+  dataFinalizacao        DateTime?
+
+  xmlOriginal String?
+
+  itens   ItemTransferencia[]
+  eventos EventoAuditoria[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([numeroNF, serie, origemId])
+  @@index([origemId, status])
+  @@index([destinoId, status])
+}
+
+model ItemTransferencia {
+  id              String        @id @default(cuid())
+  transferenciaId String
+  transferencia   Transferencia @relation(fields: [transferenciaId], references: [id])
+  codigoInterno   String
+  descricao       String
+  ncm             String
+  cfop            String
+  quantidade      Int
+
+  separado Boolean @default(false)
+
+  quantidadeConferida Int?
+  divergenciaTipo     TipoDivergencia?
+  divergenciaQtd      Int?
+  divergenciaObs      String?
+  divergenciaFotos    String[]
+
+  @@index([transferenciaId])
+}
+
+model EventoAuditoria {
+  id              String        @id @default(cuid())
+  transferenciaId String
+  transferencia   Transferencia @relation(fields: [transferenciaId], references: [id])
+  tipo            TipoEvento
+  usuarioId       String
+  usuario         Usuario       @relation(fields: [usuarioId], references: [id])
+  dataHora        DateTime      @default(now())
+  observacao      String?
+  fotos           String[]
+
+  @@index([transferenciaId])
+}

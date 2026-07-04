@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe11111111111111111111111111111111111111111111" versao="4.00">
+      <ide>
+        <cUF>15</cUF>
+        <nNF>2249</nNF>
+        <serie>1</serie>
+        <dhEmi>2026-07-04T10:00:00-03:00</dhEmi>
+      </ide>
+      <emit>
+        <CNPJ>03554020006550</CNPJ>
+        <xNome>Paragominas Home Center Ltda</xNome>
+      </emit>
+      <dest>
+        <CNPJ>03555402000140</CNPJ>
+        <xNome>Paragominas Home Center Ltda</xNome>
+      </dest>
+      <det nItem="1">
+        <prod>
+          <cProd>361034</cProd>
+          <xProd>Lampada Halogena</xProd>
+          <NCM>85392990</NCM>
+          <CFOP>6152</CFOP>
+          <qCom>20</qCom>
+          <uCom>UN</uCom>
+          <xPed>1493516</xPed>
+        </prod>
+      </det>
+      <det nItem="2">
+        <prod>
+          <cProd>377399</cProd>
+          <xProd>Lampada Halogena</xProd>
+          <NCM>85392990</NCM>
+          <CFOP>6152</CFOP>
+          <qCom>20</qCom>
+          <uCom>UN</uCom>
+          <xPed>1493516</xPed>
+        </prod>
+      </det>
+      <total>
+        <ICMSTot>
+          <vNF>151.06</vNF>
+        </ICMSTot>
+      </total>
+      <transp>
+        <vol>
+          <qVol>40</qVol>
+          <pesoB>40.000</pesoB>
+        </vol>
+      </transp>
+    </infNFe>
+  </NFe>
+</nfeProc>
