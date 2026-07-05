@@ -24,7 +24,7 @@ async function request<T>(
     headers.set("Content-Type", "application/json");
   }
 
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  const res = await fetch(`${API_URL}/api${path}`, { ...options, headers });
 
   if (res.status === 204) {
     return undefined as T;

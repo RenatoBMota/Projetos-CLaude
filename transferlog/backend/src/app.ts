@@ -12,13 +12,16 @@ export function createApp() {
   app.use(cors());
   app.use(express.json());
 
-  app.get("/health", (_req, res) => res.json({ status: "ok" }));
+  // Tudo sob /api/* — evita qualquer colisão entre rotas da API e rotas do
+  // frontend (ex: /api/dashboard/* vs /dashboard-gerencial, /api/transferencias
+  // vs /transferencias) quando o Caddy decide o que proxiar pro backend.
+  app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 
-  app.use("/auth", authRouter);
-  app.use("/unidades", unidadesRouter);
-  app.use("/usuarios", usuariosRouter);
-  app.use("/transferencias", transferenciasRouter);
-  app.use("/dashboard", dashboardRouter);
+  app.use("/api/auth", authRouter);
+  app.use("/api/unidades", unidadesRouter);
+  app.use("/api/usuarios", usuariosRouter);
+  app.use("/api/transferencias", transferenciasRouter);
+  app.use("/api/dashboard", dashboardRouter);
 
   app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     res.status(500).json({ error: err.message });
