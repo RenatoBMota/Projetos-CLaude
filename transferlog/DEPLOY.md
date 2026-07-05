@@ -90,6 +90,20 @@ docker compose build
 docker compose up -d
 ```
 
+**Importante:** sempre que o container `web` for reconstruído/recriado (mudou
+o Dockerfile, o Caddyfile ou o frontend), ele ganha um novo IP interno na rede
+`n8n_default`. O Traefik às vezes fica com o IP antigo em cache e passa a
+retornar **504 Gateway Timeout** até ser reiniciado. Se isso acontecer depois
+de um `docker compose up -d`, rode:
+
+```bash
+docker restart n8n-traefik-1
+```
+
+(reinicia rápido, mas derruba por alguns segundos o roteamento de outros
+projetos que também passam pelo Traefik — n8n, wms-rma, logtrack,
+evolution-api)
+
 ## Comandos úteis
 
 ```bash
