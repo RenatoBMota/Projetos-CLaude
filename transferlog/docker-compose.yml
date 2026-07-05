@@ -28,28 +28,32 @@ services:
       db:
         condition: service_healthy
 
+  # Não expõe portas para o host: o Traefik já existente no VPS (rede
+  # "proxy" abaixo) é quem recebe tráfego externo nas portas 80/443, termina
+  # o TLS e encaminha para este container via rede Docker interna.
   web:
     build:
       context: ./frontend
       args:
         VITE_API_URL: ""
     restart: unless-stopped
-    environment:
-      DOMAIN: ${DOMAIN}
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - caddy-data:/data
-      - caddy-config:/config
+    networks:
+      - default
+      - proxy
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.transferlog.entrypoints: websecure
+      traefik.http.routers.transferlog.rule: Host(`${DOMAIN}`)
+      traefik.http.routers.transferlog.tls.certresolver: mytlschallenge
+      traefik.http.services.transferlog.loadbalancer.server.port: "80"
     depends_on:
       - backend
+
+networks:
+  proxy:
+    external: true
+    name: n8n_default
 
 volumes:
   db-data:
   backend-uploads:
-  caddy-data:
-  caddy-config:

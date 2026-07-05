@@ -1,7 +1,19 @@
 # Deploy no VPS (Docker) — transferlog.renatomota.online
 
 Stack: PostgreSQL + API (Node) + Caddy servindo o frontend e fazendo proxy
-reverso para a API, com HTTPS automático (Let's Encrypt) no mesmo domínio.
+reverso interno para a API.
+
+Este deploy assume que o VPS **já tem um Traefik rodando** (é o caso do VPS
+Hostinger em uso, que já roteia `wms-rma`, `logtrack`, `n8n` etc.), atrelado à
+rede Docker `n8n_default` e com um certificate resolver chamado
+`mytlschallenge`. É o Traefik quem recebe as portas 80/443, termina o TLS e
+encaminha para o container `web` deste projeto por dentro da rede Docker — o
+Caddy aqui só escuta HTTP simples internamente, sem tentar emitir certificado
+próprio.
+
+Se algum dia isso for rodar num VPS **sem** Traefik (do zero), me avise que eu
+adapto o `docker-compose.yml` de volta para o Caddy assumir as portas 80/443
+diretamente com HTTPS automático.
 
 ## 1. DNS
 
@@ -17,25 +29,16 @@ TTL: padrão
 Confirme que propagou antes de seguir (`dig transferlog.renatomota.online` ou
 `nslookup transferlog.renatomota.online` deve retornar o IP do VPS).
 
-## 2. Portas
-
-O Caddy precisa das portas **80** e **443** livres no VPS (ele usa a 80 para
-o desafio HTTP do Let's Encrypt e a 443 para HTTPS). Se você já tem outro
-proxy (Nginx, Traefik, Nginx Proxy Manager, Coolify etc.) ocupando essas
-portas, me avise antes de subir — nesse caso o certo é configurar um site
-apontando para os containers deste projeto em vez de expor o Caddy
-diretamente nas portas 80/443.
-
-## 3. Copiar o projeto para o VPS
+## 2. Copiar o projeto para o VPS
 
 ```bash
-git clone <url-do-seu-repositorio> transferlog
-cd transferlog/transferlog   # pasta do projeto dentro do repo
+git clone --branch claude/transferlog-project-a9ez5s https://github.com/RenatoBMota/Projetos-CLaude.git
+cd Projetos-CLaude/transferlog
 ```
 
 (ou `git pull` se já tiver clonado antes)
 
-## 4. Configurar variáveis de ambiente
+## 3. Configurar variáveis de ambiente
 
 ```bash
 cp .env.example .env
@@ -47,7 +50,7 @@ Preencha:
 - `POSTGRES_PASSWORD=` uma senha forte (gere com `openssl rand -hex 24`)
 - `JWT_SECRET=` um segredo longo aleatório (gere com `openssl rand -hex 32`)
 
-## 5. Subir a stack
+## 4. Subir a stack
 
 ```bash
 docker compose build
@@ -56,9 +59,11 @@ docker compose logs -f
 ```
 
 O backend roda `prisma migrate deploy` automaticamente ao iniciar. Aguarde os
-logs mostrarem `TransferLog API rodando na porta 3333`.
+logs mostrarem `TransferLog API rodando na porta 3333`. O container `web` não
+expõe porta nenhuma pro host — ele só é alcançado pelo Traefik através da rede
+`n8n_default`.
 
-## 6. Criar o usuário administrador inicial
+## 5. Criar o usuário administrador inicial
 
 ```bash
 docker compose exec backend npx tsx prisma/seed.ts
@@ -72,9 +77,9 @@ Se preferir não usar os dados de exemplo, edite `prisma/seed.ts` antes de
 rodar, ou cadastre a empresa/unidades pela tela de Cadastros e crie o usuário
 admin manualmente.
 
-## 7. Acessar
+## 6. Acessar
 
-`https://transferlog.renatomota.online` — o Caddy emite o certificado
+`https://transferlog.renatomota.online` — o Traefik emite o certificado
 automaticamente no primeiro acesso (pode levar alguns segundos).
 
 ## Atualizando depois de mudanças no código
@@ -90,6 +95,7 @@ docker compose up -d
 ```bash
 docker compose ps                 # status dos containers
 docker compose logs -f backend    # logs da API
-docker compose logs -f web        # logs do Caddy (certificado, proxy)
+docker compose logs -f web        # logs do Caddy (proxy interno)
+docker logs n8n-traefik-1 --tail 50   # logs do Traefik (certificado, roteamento)
 docker compose exec db psql -U transferlog transferlog   # acessar o banco
 ```
