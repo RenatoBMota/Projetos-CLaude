@@ -1,7 +1,7 @@
 import { useState, type DragEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../api/client";
-import type { Unidade } from "../api/types";
+import { nomeUnidade, type Unidade } from "../api/types";
 
 interface NfeItemEditavel {
   codigoInterno: string;
@@ -133,8 +133,8 @@ export function UploadNota() {
               <label>Pedido</label>
               <input value={campos.numeroPedido} onChange={(e) => setCampos((c) => ({ ...c, numeroPedido: e.target.value }))} />
             </div>
-            <div className="field"><label>Origem</label><strong>{resumo.origem.nome}</strong></div>
-            <div className="field"><label>Destino</label><strong>{resumo.destino.nome}</strong></div>
+            <div className="field"><label>Origem</label><strong>{nomeUnidade(resumo.origem)}</strong></div>
+            <div className="field"><label>Destino</label><strong>{nomeUnidade(resumo.destino)}</strong></div>
           </div>
           <div className="form-row">
             <div className="field">

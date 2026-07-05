@@ -4,21 +4,13 @@ import { hashSenha } from "../src/services/authService";
 const prisma = new PrismaClient();
 
 async function main() {
-  const empresa = await prisma.empresa.upsert({
-    where: { cnpjMatriz: "03555402000655" },
-    create: { razaoSocial: "Paragominas Home Center Ltda", cnpjMatriz: "03555402000655" },
-    update: {},
-  });
-
   const matriz = await prisma.unidade.upsert({
     where: { cnpj: "03555402000655" },
     create: {
-      empresaId: empresa.id,
-      nome: "CD Matriz",
+      razaoSocial: "Paragominas Home Center Ltda",
+      nomeFantasia: "CD Matriz",
       cnpj: "03555402000655",
-      cidade: "Maceió",
-      uf: "AL",
-      tipo: TipoUnidade.CD,
+      tipo: TipoUnidade.MATRIZ,
     },
     update: {},
   });
@@ -26,12 +18,10 @@ async function main() {
   const loja03 = await prisma.unidade.upsert({
     where: { cnpj: "03555402000140" },
     create: {
-      empresaId: empresa.id,
-      nome: "Loja 03",
+      razaoSocial: "Paragominas Home Center Ltda",
+      nomeFantasia: "Loja 03",
       cnpj: "03555402000140",
-      cidade: "Maceió",
-      uf: "AL",
-      tipo: TipoUnidade.LOJA,
+      tipo: TipoUnidade.FILIAL,
     },
     update: {},
   });
@@ -54,7 +44,7 @@ async function main() {
     update: {},
   });
 
-  console.log("Seed concluído: empresa, unidades, rota SLA e usuário admin criados.");
+  console.log("Seed concluído: unidades, rota SLA e usuário admin criados.");
 }
 
 main()

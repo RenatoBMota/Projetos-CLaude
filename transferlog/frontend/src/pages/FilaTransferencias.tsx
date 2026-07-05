@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { StatusBadge } from "../components/StatusBadge";
-import type { Transferencia } from "../api/types";
+import { nomeUnidade, type Transferencia } from "../api/types";
 
 export function FilaTransferencias() {
   const [transferencias, setTransferencias] = useState<Transferencia[] | null>(null);
@@ -40,8 +40,8 @@ export function FilaTransferencias() {
               <tr key={t.id}>
                 <td>{t.numeroPedido}</td>
                 <td>{t.numeroNF}</td>
-                <td>{t.origem.nome}</td>
-                <td>{t.destino.nome}</td>
+                <td>{nomeUnidade(t.origem)}</td>
+                <td>{nomeUnidade(t.destino)}</td>
                 <td>{new Date(t.createdAt).toLocaleDateString("pt-BR")}</td>
                 <td>{new Date(t.prazoPrevisto).toLocaleDateString("pt-BR")}</td>
                 <td><StatusBadge status={t.status} /></td>

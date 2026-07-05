@@ -8,16 +8,19 @@ export const unidadesRouter = Router();
 unidadesRouter.use(authenticate);
 
 unidadesRouter.get("/", async (_req, res) => {
-  const unidades = await prisma.unidade.findMany({ orderBy: { nome: "asc" } });
+  const unidades = await prisma.unidade.findMany({ orderBy: { razaoSocial: "asc" } });
   res.json(unidades);
 });
 
+const cnpjSchema = z
+  .string()
+  .transform((v) => v.replace(/\D/g, ""))
+  .refine((v) => v.length === 14, "CNPJ deve ter 14 dígitos");
+
 const unidadeSchema = z.object({
-  empresaId: z.string(),
-  nome: z.string().min(1),
-  cnpj: z.string().min(11),
-  cidade: z.string().min(1),
-  uf: z.string().length(2),
+  razaoSocial: z.string().min(1),
+  nomeFantasia: z.string().optional(),
+  cnpj: cnpjSchema,
   tipo: z.nativeEnum(TipoUnidade),
   ativa: z.boolean().optional(),
 });
@@ -28,8 +31,12 @@ unidadesRouter.post("/", requirePerfil(Perfil.ADMINISTRADOR), async (req, res) =
     return res.status(400).json({ error: parsed.error.flatten() });
   }
 
-  const unidade = await prisma.unidade.create({ data: parsed.data });
-  res.status(201).json(unidade);
+  try {
+    const unidade = await prisma.unidade.create({ data: parsed.data });
+    res.status(201).json(unidade);
+  } catch (err) {
+    res.status(422).json({ error: (err as Error).message });
+  }
 });
 
 unidadesRouter.patch("/:id", requirePerfil(Perfil.ADMINISTRADOR), async (req, res) => {

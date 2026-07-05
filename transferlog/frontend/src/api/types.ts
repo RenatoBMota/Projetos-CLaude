@@ -23,12 +23,15 @@ export type TipoDivergencia = "FALTOU" | "SOBROU" | "QUEBRADO" | "PRODUTO_ERRADO
 
 export interface Unidade {
   id: string;
-  nome: string;
+  razaoSocial: string;
+  nomeFantasia: string | null;
   cnpj: string;
-  cidade: string;
-  uf: string;
-  tipo: "CD" | "LOJA";
+  tipo: "MATRIZ" | "FILIAL";
   ativa: boolean;
+}
+
+export function nomeUnidade(unidade: Pick<Unidade, "razaoSocial" | "nomeFantasia">): string {
+  return unidade.nomeFantasia || unidade.razaoSocial;
 }
 
 export interface ItemTransferencia {

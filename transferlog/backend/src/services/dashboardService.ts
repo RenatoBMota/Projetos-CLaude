@@ -1,6 +1,7 @@
 import { Prisma, StatusTransferencia } from "@prisma/client";
 import { prisma } from "../prisma";
 import { calcularOtif } from "./otifService";
+import { nomeUnidade } from "./unidadeService";
 
 const STATUS_EM_ABERTO: StatusTransferencia[] = [
   StatusTransferencia.PENDENTE_SEPARACAO,
@@ -72,8 +73,8 @@ export async function dashboardGerencial() {
   const emAberto = todas.filter((t) => STATUS_EM_ABERTO.includes(t.status));
   const atrasadas = emAberto.filter((t) => t.prazoPrevisto.getTime() < agora.getTime());
 
-  const atrasadasPorOrigem = agrupar(atrasadas, (t) => t.origem.nome);
-  const atrasadasPorDestino = agrupar(atrasadas, (t) => t.destino.nome);
+  const atrasadasPorOrigem = agrupar(atrasadas, (t) => nomeUnidade(t.origem));
+  const atrasadasPorDestino = agrupar(atrasadas, (t) => nomeUnidade(t.destino));
 
   const tempoMedioFaturamentoCarregamento = mediaHoras(
     todas.map((t) => [t.dataEmissao, t.dataCarregamento]),
@@ -97,16 +98,16 @@ export async function dashboardGerencial() {
     ? (otifValidos.filter((o) => o.otif.otif).length / otifValidos.length) * 100
     : null;
 
-  const otifPorFilial = percentualPorGrupo(otifValidos, (o) => o.transferencia.destino.nome, (o) => !!o.otif.otif);
+  const otifPorFilial = percentualPorGrupo(otifValidos, (o) => nomeUnidade(o.transferencia.destino), (o) => !!o.otif.otif);
   const otifPorRota = percentualPorGrupo(
     otifValidos,
-    (o) => `${o.transferencia.origem.nome} → ${o.transferencia.destino.nome}`,
+    (o) => `${nomeUnidade(o.transferencia.origem)} → ${nomeUnidade(o.transferencia.destino)}`,
     (o) => !!o.otif.otif,
   );
 
   const rankingDivergenciasPorFilial = agrupar(
     todas.filter((t) => t.status === StatusTransferencia.CONFERIDO_DIVERGENTE || t.status === StatusTransferencia.FINALIZADO),
-    (t) => t.destino.nome,
+    (t) => nomeUnidade(t.destino),
     (t) => t.itens.some((i) => i.divergenciaTipo !== null),
   );
 
@@ -189,12 +190,14 @@ function percentualPorGrupo<T>(
   }));
 }
 
+type UnidadeNome = { razaoSocial: string; nomeFantasia: string | null };
+
 function agruparAtrasoPorRota(
-  atrasadas: Array<{ origem: { nome: string }; destino: { nome: string }; prazoPrevisto: Date }>,
+  atrasadas: Array<{ origem: UnidadeNome; destino: UnidadeNome; prazoPrevisto: Date }>,
 ): Array<{ rota: string; quantidadeAtrasos: number }> {
   const contagem: Record<string, number> = {};
   for (const t of atrasadas) {
-    const rota = `${t.origem.nome} → ${t.destino.nome}`;
+    const rota = `${nomeUnidade(t.origem)} → ${nomeUnidade(t.destino)}`;
     contagem[rota] = (contagem[rota] ?? 0) + 1;
   }
   return Object.entries(contagem)

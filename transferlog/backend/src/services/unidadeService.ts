@@ -2,13 +2,17 @@ import { prisma } from "../prisma";
 
 const SLA_PADRAO_HORAS = 24;
 
+export function nomeUnidade(unidade: { razaoSocial: string; nomeFantasia: string | null }): string {
+  return unidade.nomeFantasia || unidade.razaoSocial;
+}
+
 export async function resolverUnidadePorCnpj(cnpj: string) {
   const unidade = await prisma.unidade.findUnique({ where: { cnpj } });
   if (!unidade) {
     throw new Error(`Nenhuma unidade cadastrada com o CNPJ ${cnpj}`);
   }
   if (!unidade.ativa) {
-    throw new Error(`Unidade ${unidade.nome} está inativa`);
+    throw new Error(`Unidade ${nomeUnidade(unidade)} está inativa`);
   }
   return unidade;
 }

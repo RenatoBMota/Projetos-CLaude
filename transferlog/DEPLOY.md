@@ -69,13 +69,13 @@ expõe porta nenhuma pro host — ele só é alcançado pelo Traefik através da
 docker compose exec backend npx tsx prisma/seed.ts
 ```
 
-Isso cria a empresa/unidades de exemplo e o usuário
+Isso cria as unidades de exemplo e o usuário
 `admin@transferlog.com` / `transferlog123` — **troque a senha depois de
 logar** (ainda não há tela de troca de senha; se quiser, eu adiciono).
 
 Se preferir não usar os dados de exemplo, edite `prisma/seed.ts` antes de
-rodar, ou cadastre a empresa/unidades pela tela de Cadastros e crie o usuário
-admin manualmente.
+rodar, ou cadastre as unidades pela tela de Cadastros e crie o usuário admin
+manualmente.
 
 ## 6. Acessar
 

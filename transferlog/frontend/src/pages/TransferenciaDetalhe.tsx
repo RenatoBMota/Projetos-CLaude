@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import { StatusBadge } from "../components/StatusBadge";
-import type { Transferencia, TipoDivergencia } from "../api/types";
+import { nomeUnidade, type Transferencia, type TipoDivergencia } from "../api/types";
 
 interface ConferenciaLinha {
   itemId: string;
@@ -55,8 +55,8 @@ export function TransferenciaDetalhe() {
 
       <div className="card">
         <div className="form-row">
-          <div className="field"><label>Origem</label><strong>{t.origem.nome}</strong></div>
-          <div className="field"><label>Destino</label><strong>{t.destino.nome}</strong></div>
+          <div className="field"><label>Origem</label><strong>{nomeUnidade(t.origem)}</strong></div>
+          <div className="field"><label>Destino</label><strong>{nomeUnidade(t.destino)}</strong></div>
           <div className="field"><label>Prazo previsto</label><strong>{new Date(t.prazoPrevisto).toLocaleString("pt-BR")}</strong></div>
         </div>
         {t.otif && t.otif.otif !== null && (

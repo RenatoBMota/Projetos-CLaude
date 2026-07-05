@@ -8,8 +8,8 @@ datasource db {
 }
 
 enum TipoUnidade {
-  CD
-  LOJA
+  MATRIZ
+  FILIAL
 }
 
 enum Perfil {
@@ -51,24 +51,13 @@ enum TipoEvento {
   CANCELAMENTO
 }
 
-model Empresa {
-  id          String    @id @default(cuid())
-  razaoSocial String
-  cnpjMatriz  String    @unique
-  unidades    Unidade[]
-  createdAt   DateTime  @default(now())
-}
-
 model Unidade {
-  id        String      @id @default(cuid())
-  empresaId String
-  empresa   Empresa     @relation(fields: [empresaId], references: [id])
-  nome      String
-  cnpj      String      @unique
-  cidade    String
-  uf        String
-  tipo      TipoUnidade
-  ativa     Boolean     @default(true)
+  id           String      @id @default(cuid())
+  razaoSocial  String
+  nomeFantasia String?
+  cnpj         String      @unique
+  tipo         TipoUnidade
+  ativa        Boolean     @default(true)
 
   usuarios              UsuarioUnidade[]
   rotasOrigem           RotaSLA[]        @relation("RotaOrigem")
@@ -77,8 +66,6 @@ model Unidade {
   transferenciasDestino Transferencia[]  @relation("TransferenciaDestino")
 
   createdAt DateTime @default(now())
-
-  @@index([empresaId])
 }
 
 model Usuario {

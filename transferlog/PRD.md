@@ -116,10 +116,14 @@ cadastro de unidades — o usuário nunca escolhe manualmente origem/destino.
 
 ## 5. Cadastro de Unidades
 
-- Empresa (razão social, CNPJ matriz)
-- Filiais: nome, CNPJ, cidade, UF, tipo (Centro de Distribuição / Loja), ativa
-- O CNPJ de cada filial é o que permite ao sistema identificar automaticamente
-  origem/destino ao ler a NF
+Cadastro simplificado em uma única tela — cada unidade (matriz ou filial) tem:
+- Razão social
+- Nome fantasia (opcional)
+- CNPJ
+- Tipo: Matriz ou Filial
+
+O CNPJ de cada unidade é o que permite ao sistema identificar automaticamente
+origem/destino ao ler a NF.
 
 ## 6. Cadastro de Usuários e Permissões
 
