@@ -1,4 +1,4 @@
-import { Prisma, StatusTransferencia } from "@prisma/client";
+import { StatusTransferencia } from "@prisma/client";
 import { prisma } from "../prisma";
 import { calcularOtif } from "./otifService";
 import { nomeUnidade } from "./unidadeService";
@@ -19,12 +19,17 @@ function mediaHoras(pares: Array<[Date | null, Date | null]>): number | null {
   return diffs.reduce((a, b) => a + b, 0) / diffs.length;
 }
 
-/** Painel inicial: números da unidade do usuário (origem ou destino). */
+/**
+ * Painel inicial: números da unidade do usuário.
+ *
+ * Uma transferência pertence ao acompanhamento de uma única unidade por vez,
+ * nunca das duas ao mesmo tempo: enquanto está sendo separada/carregada, é
+ * responsabilidade da ORIGEM; a partir do momento em que sai (em trânsito),
+ * a responsabilidade passa a ser do DESTINO (recebimento e conferência). O
+ * OTIF é atribuído à origem — quem envia é responsável por cumprir o prazo
+ * (On Time) e mandar tudo certo (In Full).
+ */
 export async function dashboardOperacional(unidadeIds: string[]) {
-  const escopo: Prisma.TransferenciaWhereInput = {
-    OR: [{ origemId: { in: unidadeIds } }, { destinoId: { in: unidadeIds } }],
-  };
-
   const [
     aguardandoSeparacao,
     carregadas,
@@ -34,15 +39,15 @@ export async function dashboardOperacional(unidadeIds: string[]) {
     conferidas,
   ] = await Promise.all([
     prisma.transferencia.count({
-      where: { ...escopo, status: { in: [StatusTransferencia.PENDENTE_SEPARACAO, StatusTransferencia.EM_SEPARACAO] } },
+      where: { origemId: { in: unidadeIds }, status: { in: [StatusTransferencia.PENDENTE_SEPARACAO, StatusTransferencia.EM_SEPARACAO] } },
     }),
-    prisma.transferencia.count({ where: { ...escopo, status: StatusTransferencia.CARREGADO } }),
-    prisma.transferencia.count({ where: { ...escopo, status: StatusTransferencia.EM_TRANSITO } }),
-    prisma.transferencia.count({ where: { ...escopo, status: StatusTransferencia.RECEBIDO } }),
-    prisma.transferencia.count({ where: { ...escopo, status: StatusTransferencia.CONFERIDO_DIVERGENTE } }),
+    prisma.transferencia.count({ where: { origemId: { in: unidadeIds }, status: StatusTransferencia.CARREGADO } }),
+    prisma.transferencia.count({ where: { destinoId: { in: unidadeIds }, status: StatusTransferencia.EM_TRANSITO } }),
+    prisma.transferencia.count({ where: { destinoId: { in: unidadeIds }, status: StatusTransferencia.RECEBIDO } }),
+    prisma.transferencia.count({ where: { destinoId: { in: unidadeIds }, status: StatusTransferencia.CONFERIDO_DIVERGENTE } }),
     prisma.transferencia.findMany({
       where: {
-        ...escopo,
+        origemId: { in: unidadeIds },
         status: { in: [StatusTransferencia.CONFERIDO_OK, StatusTransferencia.CONFERIDO_DIVERGENTE, StatusTransferencia.FINALIZADO] },
       },
       include: { itens: true },
@@ -119,7 +124,8 @@ export async function dashboardGerencial() {
     ? (otifValidos.filter((o) => o.otif.otif).length / otifValidos.length) * 100
     : null;
 
-  const otifPorFilial = percentualPorGrupo(otifValidos, (o) => nomeUnidade(o.transferencia.destino), (o) => !!o.otif.otif);
+  // OTIF é atribuído à origem: quem envia é responsável por On Time e In Full.
+  const otifPorFilial = percentualPorGrupo(otifValidos, (o) => nomeUnidade(o.transferencia.origem), (o) => !!o.otif.otif);
   const otifPorRota = percentualPorGrupo(
     otifValidos,
     (o) => `${nomeUnidade(o.transferencia.origem)} → ${nomeUnidade(o.transferencia.destino)}`,
