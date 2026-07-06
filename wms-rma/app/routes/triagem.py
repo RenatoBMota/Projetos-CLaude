@@ -7,142 +7,92 @@ from app.models import RMA, EstadoRMA, HistoricoRMA, ListaOpcao, TipoLista, Apar
 bp = Blueprint('triagem', __name__, url_prefix='/triagem')
 
 
-def _filtrar_rmas_ativos(query, rma, filtros, join_produto=False):
+# Quantidade máxima de RMAs ativos por apartamento antes de abrir novo endereço
+_CAPACIDADE_APT = 10
+
+
+def _apt_ids_com_grupo(filtros, rma, join_produto=False):
+    """IDs de apartamentos que já têm RMAs ativos correspondendo aos filtros."""
+    q = db.session.query(Apartamento.id).join(
+        RMA, RMA.apartamento_id == Apartamento.id
+    )
     if join_produto:
-        query = query.join(Produto, RMA.produto_id == Produto.id)
-    return query.filter(
+        q = q.join(Produto, RMA.produto_id == Produto.id)
+    return [row[0] for row in q.filter(
         RMA.estado.notin_([EstadoRMA.FINALIZADO, EstadoRMA.CANCELADO]),
         RMA.id != rma.id,
         *filtros,
-    ).distinct()
+    ).distinct().order_by(Apartamento.id).all()]
 
 
-def _ruas_ocupadas_por(filtros, rma, join_produto=False):
-    """Ids das ruas que já têm RMAs ativos atendendo aos filtros."""
-    from app.models import Numero, Rua
-    q = db.session.query(Rua.id).join(
-        Numero, Numero.rua_id == Rua.id
-    ).join(
-        Apartamento, Apartamento.numero_id == Numero.id
-    ).join(
-        RMA, RMA.apartamento_id == Apartamento.id
-    )
-    return [row[0] for row in _filtrar_rmas_ativos(q, rma, filtros, join_produto).all()]
-
-
-def _modulos_ocupados_por(filtros, rma, join_produto=False):
-    """Ids dos módulos que já têm RMAs ativos atendendo aos filtros."""
-    from app.models import Numero, Rua, Modulo
-    q = db.session.query(Modulo.id).join(
-        Rua, Rua.modulo_id == Modulo.id
-    ).join(
-        Numero, Numero.rua_id == Rua.id
-    ).join(
-        Apartamento, Apartamento.numero_id == Numero.id
-    ).join(
-        RMA, RMA.apartamento_id == Apartamento.id
-    )
-    return [row[0] for row in _filtrar_rmas_ativos(q, rma, filtros, join_produto).all()]
-
-
-def _apartamento_livre_em_ruas(rua_ids):
-    from app.models import Numero
-    if not rua_ids:
+def _apt_com_espaco_em(apt_ids):
+    """Dentre os apartamentos informados, retorna o primeiro que ainda não atingiu a capacidade."""
+    if not apt_ids:
         return None
-    return Apartamento.query.join(
-        Numero, Apartamento.numero_id == Numero.id
-    ).filter(
-        Numero.rua_id.in_(rua_ids),
-        Apartamento.ocupado != True,
-    ).first()
-
-
-def _apartamento_livre_em(modulo_ids):
-    from app.models import Numero, Rua
-    if not modulo_ids:
-        return None
-    return Apartamento.query.join(
-        Numero, Apartamento.numero_id == Numero.id
-    ).join(
-        Rua, Numero.rua_id == Rua.id
-    ).filter(
-        Rua.modulo_id.in_(modulo_ids),
-        Apartamento.ocupado != True,
-    ).first()
-
-
-def _primeira_rua_vazia():
-    """Primeira rua sem nenhum RMA ativo — ponto de partida para novo fornecedor."""
-    from app.models import Numero, Rua
-    rua_ids_com_rma = [row[0] for row in db.session.query(Rua.id).join(
-        Numero, Numero.rua_id == Rua.id
-    ).join(
-        Apartamento, Apartamento.numero_id == Numero.id
-    ).join(
-        RMA, RMA.apartamento_id == Apartamento.id
+    contagem = dict(db.session.query(
+        RMA.apartamento_id,
+        func.count(RMA.id),
     ).filter(
         RMA.estado.notin_([EstadoRMA.FINALIZADO, EstadoRMA.CANCELADO]),
-    ).distinct().all()]
+        RMA.apartamento_id.in_(apt_ids),
+    ).group_by(RMA.apartamento_id).all())
 
-    rua_vazia = (
-        Rua.query.filter(Rua.id.notin_(rua_ids_com_rma)).first()
-        if rua_ids_com_rma else Rua.query.first()
-    )
-    if not rua_vazia:
-        return None
-    return Apartamento.query.join(
-        Numero, Apartamento.numero_id == Numero.id
-    ).filter(
-        Numero.rua_id == rua_vazia.id,
-        Apartamento.ocupado != True,
-    ).first()
+    for apt_id in apt_ids:
+        if contagem.get(apt_id, 0) < _CAPACIDADE_APT:
+            return Apartamento.query.filter_by(id=apt_id).first()
+    return None
+
+
+def _apt_sem_rmas_ativos():
+    """Primeiro apartamento sem nenhum RMA ativo — ponto de partida limpo para novo grupo."""
+    em_uso = [row[0] for row in db.session.query(RMA.apartamento_id).filter(
+        RMA.estado.notin_([EstadoRMA.FINALIZADO, EstadoRMA.CANCELADO]),
+        RMA.apartamento_id.isnot(None),
+    ).distinct().all()]
+    if em_uso:
+        return Apartamento.query.filter(Apartamento.id.notin_(em_uso)).first()
+    return Apartamento.query.first()
 
 
 def _alocar_apartamento(rma):
-    """Aloca apartamento agrupando por fornecedor → departamento → rua vazia → qualquer.
-    Dentro de cada critério tenta mesma rua primeiro (compacto); só amplia para
-    o módulo inteiro se a rua estiver cheia. Novos fornecedores recebem uma rua
-    totalmente vazia para evitar mistura desde o início."""
+    """Agrupa RMAs no mesmo endereço até _CAPACIDADE_APT itens ativos.
+    Quando o endereço lota, abre o próximo endereço do mesmo grupo.
+    Critério: 1° mesmo fornecedor, 2° mesmo departamento, 3° endereço novo."""
     apt = None
 
-    def _tentar_por(filtros, join_produto=False):
-        nonlocal apt
-        if apt:
-            return
-        # Mesma rua → mais compacto
-        rua_ids = _ruas_ocupadas_por(filtros, rma, join_produto=join_produto)
-        apt = _apartamento_livre_em_ruas(rua_ids)
-        # Mesmo módulo → rua cheia, mas módulo tem espaço
-        if not apt:
-            modulo_ids = _modulos_ocupados_por(filtros, rma, join_produto=join_produto)
-            apt = _apartamento_livre_em(modulo_ids)
-
-    # 1. Agrupar por fornecedor
+    # 1. Mesmo fornecedor com espaço disponível no endereço
     if rma.fornecedor_id:
-        _tentar_por([RMA.fornecedor_id == rma.fornecedor_id])
+        apt_ids = _apt_ids_com_grupo([RMA.fornecedor_id == rma.fornecedor_id], rma)
+        apt = _apt_com_espaco_em(apt_ids)
 
-    # 2. Agrupar por departamento (categoria do produto)
+    # 2. Mesmo departamento com espaço disponível
     if not apt and rma.produto_id:
         departamento = db.session.query(Produto.categoria).filter(
             Produto.id == rma.produto_id).scalar()
         if departamento and departamento.strip():
             dep_norm = departamento.strip().lower()
-            _tentar_por(
+            apt_ids = _apt_ids_com_grupo(
                 [func.lower(func.trim(Produto.categoria)) == dep_norm],
-                join_produto=True,
+                rma, join_produto=True,
             )
+            apt = _apt_com_espaco_em(apt_ids)
 
-    # 3. Rua completamente vazia (novo fornecedor começa num espaço limpo)
+    # 3. Endereço vazio para novo grupo (começa limpo, sem mistura)
     if not apt:
-        apt = _primeira_rua_vazia()
+        apt = _apt_sem_rmas_ativos()
 
-    # 4. Qualquer endereço livre
+    # 4. Qualquer endereço ainda não marcado como cheio (último recurso)
     if not apt:
         apt = Apartamento.query.filter(Apartamento.ocupado != True).first()
 
     if apt:
         rma.apartamento_id = apt.id
-        apt.ocupado = True
+        # Atualiza flag de capacidade
+        n_ativos = db.session.query(func.count(RMA.id)).filter(
+            RMA.apartamento_id == apt.id,
+            RMA.estado.notin_([EstadoRMA.FINALIZADO, EstadoRMA.CANCELADO]),
+        ).scalar() or 0
+        apt.ocupado = (n_ativos + 1 >= _CAPACIDADE_APT)
 
 
 @bp.route('/')
