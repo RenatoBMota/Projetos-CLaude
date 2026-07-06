@@ -62,6 +62,27 @@ export async function dashboardOperacional(unidadeIds: string[]) {
   };
 }
 
+/**
+ * Painel para Administrador/Supervisor: números de cada filial separadamente
+ * (em vez do agregado de "minhas unidades", que não se aplica a quem não
+ * está vinculado a uma unidade específica). Quando `unidadeIds` é omitido,
+ * traz todas as unidades ativas (uso do Administrador); quando informado,
+ * restringe às unidades do Supervisor.
+ */
+export async function dashboardOperacionalPorFilial(unidadeIds?: string[]) {
+  const unidades = await prisma.unidade.findMany({
+    where: { ativa: true, ...(unidadeIds ? { id: { in: unidadeIds } } : {}) },
+    orderBy: { razaoSocial: "asc" },
+  });
+
+  return Promise.all(
+    unidades.map(async (unidade) => ({
+      unidade,
+      ...(await dashboardOperacional([unidade.id])),
+    })),
+  );
+}
+
 /** Painel executivo: indicadores agregados de toda a operação. */
 export async function dashboardGerencial() {
   const agora = new Date();
