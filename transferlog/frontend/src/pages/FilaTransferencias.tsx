@@ -2,12 +2,15 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { StatusBadge } from "../components/StatusBadge";
+import { useAuth } from "../context/AuthContext";
 import { nomeUnidade, type Transferencia } from "../api/types";
 import { formatarDataHora } from "../utils/formatar";
 
 export function FilaTransferencias() {
+  const { usuario } = useAuth();
   const [transferencias, setTransferencias] = useState<Transferencia[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const isAdmin = usuario?.perfil === "ADMINISTRADOR";
 
   useEffect(() => {
     api
@@ -15,6 +18,18 @@ export function FilaTransferencias() {
       .then(setTransferencias)
       .catch((err) => setErro(err.message));
   }, []);
+
+  async function excluir(t: Transferencia) {
+    if (!window.confirm(`Excluir a transferência do pedido ${t.numeroPedido} (NF ${t.numeroNF})? Essa ação não pode ser desfeita.`)) {
+      return;
+    }
+    try {
+      await api.delete(`/transferencias/${t.id}`);
+      setTransferencias((prev) => prev?.filter((x) => x.id !== t.id) ?? null);
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Não foi possível excluir a transferência");
+    }
+  }
 
   if (erro) return <div className="error-box">{erro}</div>;
   if (!transferencias) return <p>Carregando...</p>;
@@ -34,6 +49,7 @@ export function FilaTransferencias() {
               <th>Prazo</th>
               <th>Status</th>
               <th></th>
+              {isAdmin && <th></th>}
             </tr>
           </thead>
           <tbody>
@@ -47,10 +63,13 @@ export function FilaTransferencias() {
                 <td>{formatarDataHora(t.prazoPrevisto)}</td>
                 <td><StatusBadge status={t.status} /></td>
                 <td><Link to={`/transferencias/${t.id}`}>Ver</Link></td>
+                {isAdmin && (
+                  <td><button className="danger" onClick={() => excluir(t)}>Excluir</button></td>
+                )}
               </tr>
             ))}
             {transferencias.length === 0 && (
-              <tr><td colSpan={8} style={{ color: "var(--text-muted)" }}>Nenhuma transferência encontrada.</td></tr>
+              <tr><td colSpan={isAdmin ? 9 : 8} style={{ color: "var(--text-muted)" }}>Nenhuma transferência encontrada.</td></tr>
             )}
           </tbody>
         </table>

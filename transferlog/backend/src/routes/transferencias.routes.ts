@@ -312,3 +312,19 @@ transferenciasRouter.post(
     }
   },
 );
+
+/** Exclui uma transferência (ex.: registro de teste), removendo itens e eventos vinculados. */
+transferenciasRouter.delete("/:id", requirePerfil(Perfil.ADMINISTRADOR), async (req, res) => {
+  const transferencia = await prisma.transferencia.findUnique({ where: { id: req.params.id } });
+  if (!transferencia) {
+    return res.status(404).json({ error: "Transferência não encontrada" });
+  }
+
+  await prisma.$transaction([
+    prisma.eventoAuditoria.deleteMany({ where: { transferenciaId: req.params.id } }),
+    prisma.itemTransferencia.deleteMany({ where: { transferenciaId: req.params.id } }),
+    prisma.transferencia.delete({ where: { id: req.params.id } }),
+  ]);
+
+  res.status(204).send();
+});
