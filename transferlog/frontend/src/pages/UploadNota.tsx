@@ -82,8 +82,40 @@ export function UploadNota() {
     setItens((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   }
 
+  function adicionarItem() {
+    setItens((prev) => [...prev, { codigoInterno: "", descricao: "", ncm: "", cfop: "", quantidade: 1 }]);
+  }
+
+  function removerItem(index: number) {
+    setItens((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function validarItens(): string | null {
+    if (itens.length === 0) {
+      return "Adicione ao menos um item antes de criar a transferência.";
+    }
+    const itemInvalido = itens.some(
+      (item) =>
+        !item.codigoInterno.trim() ||
+        !item.descricao.trim() ||
+        !item.ncm.trim() ||
+        !item.cfop.trim() ||
+        !Number.isInteger(item.quantidade) ||
+        item.quantidade <= 0,
+    );
+    if (itemInvalido) {
+      return "Preencha código, descrição, NCM, CFOP e uma quantidade válida (inteiro maior que zero) em todos os itens.";
+    }
+    return null;
+  }
+
   async function criarTransferencia() {
     if (!resumo) return;
+    const erroValidacao = validarItens();
+    if (erroValidacao) {
+      setErro(erroValidacao);
+      return;
+    }
     setErro(null);
     setCarregando(true);
     try {
@@ -174,9 +206,14 @@ export function UploadNota() {
         </div>
         <div className="card">
           <h2>Produtos</h2>
+          {itens.length === 0 && (
+            <p style={{ color: "var(--text-muted)" }}>
+              Nenhum item foi identificado automaticamente. Adicione manualmente abaixo.
+            </p>
+          )}
           <table>
             <thead>
-              <tr><th>Código</th><th>Descrição</th><th>NCM</th><th>CFOP</th><th>Qtd</th></tr>
+              <tr><th>Código</th><th>Descrição</th><th>NCM</th><th>CFOP</th><th>Qtd</th><th></th></tr>
             </thead>
             <tbody>
               {itens.map((item, index) => (
@@ -186,13 +223,15 @@ export function UploadNota() {
                   <td><input style={{ width: 90 }} value={item.ncm} onChange={(e) => atualizarItem(index, { ncm: e.target.value })} /></td>
                   <td><input style={{ width: 70 }} value={item.cfop} onChange={(e) => atualizarItem(index, { cfop: e.target.value })} /></td>
                   <td><input style={{ width: 70 }} type="number" value={item.quantidade} onChange={(e) => atualizarItem(index, { quantidade: Number(e.target.value) })} /></td>
+                  <td><button className="danger" onClick={() => removerItem(index)}>Remover</button></td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <button style={{ marginTop: 12 }} onClick={adicionarItem}>+ Adicionar item</button>
         </div>
         <div className="actions">
-          <button className="primary" disabled={carregando} onClick={criarTransferencia}>
+          <button className="primary" disabled={carregando || itens.length === 0} onClick={criarTransferencia}>
             {carregando ? "Criando..." : "Criar Transferência"}
           </button>
           <button onClick={() => { setResumo(null); setArquivo(null); }}>Cancelar</button>
