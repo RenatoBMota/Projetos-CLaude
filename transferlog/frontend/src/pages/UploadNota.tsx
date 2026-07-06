@@ -2,6 +2,7 @@ import { useState, type DragEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import { nomeUnidade, type Unidade } from "../api/types";
+import { formatarDataHora } from "../utils/formatar";
 
 interface NfeItemEditavel {
   codigoInterno: string;
@@ -168,7 +169,7 @@ export function UploadNota() {
           </div>
           <div className="field">
             <label>Prazo previsto (SLA da rota)</label>
-            <strong>{new Date(resumo.prazoPrevisto).toLocaleString("pt-BR")}</strong>
+            <strong>{formatarDataHora(resumo.prazoPrevisto)}</strong>
           </div>
         </div>
         <div className="card">

@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import { StatusBadge } from "../components/StatusBadge";
 import { nomeUnidade, type Transferencia, type TipoDivergencia } from "../api/types";
+import { formatarDataHora } from "../utils/formatar";
 
 interface ConferenciaLinha {
   itemId: string;
@@ -57,7 +58,7 @@ export function TransferenciaDetalhe() {
         <div className="form-row">
           <div className="field"><label>Origem</label><strong>{nomeUnidade(t.origem)}</strong></div>
           <div className="field"><label>Destino</label><strong>{nomeUnidade(t.destino)}</strong></div>
-          <div className="field"><label>Prazo previsto</label><strong>{new Date(t.prazoPrevisto).toLocaleString("pt-BR")}</strong></div>
+          <div className="field"><label>Prazo previsto</label><strong>{formatarDataHora(t.prazoPrevisto)}</strong></div>
         </div>
         {t.otif && t.otif.otif !== null && (
           <p>

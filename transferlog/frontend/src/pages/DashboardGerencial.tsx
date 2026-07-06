@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { formatarDuracao } from "../utils/formatar";
 
 interface DashboardGerencialData {
   transferenciasEmAberto: number;
@@ -17,10 +18,6 @@ interface DashboardGerencialData {
   rankingTransportadoras: Array<{ transportadora: string; quantidade: number }>;
   valorFinanceiroTransferenciasPendentes: number;
   heatmapRotasCriticas: Array<{ rota: string; quantidadeAtrasos: number }>;
-}
-
-function horas(valor: number | null): string {
-  return valor === null ? "—" : `${valor.toFixed(1)}h`;
 }
 
 function Ranking({ titulo, itens }: { titulo: string; itens: Array<{ label: string; valor: string | number }> }) {
@@ -72,19 +69,19 @@ export function DashboardGerencial() {
           <div className="label">OTIF geral</div>
         </div>
         <div className="kpi">
-          <div className="value">{horas(dados.tempoMedioFaturamentoCarregamentoHoras)}</div>
+          <div className="value">{formatarDuracao(dados.tempoMedioFaturamentoCarregamentoHoras)}</div>
           <div className="label">Faturamento → carregamento</div>
         </div>
         <div className="kpi">
-          <div className="value">{horas(dados.tempoMedioTransitoHoras)}</div>
+          <div className="value">{formatarDuracao(dados.tempoMedioTransitoHoras)}</div>
           <div className="label">Tempo em trânsito</div>
         </div>
         <div className="kpi">
-          <div className="value">{horas(dados.tempoMedioSeparacaoHoras)}</div>
+          <div className="value">{formatarDuracao(dados.tempoMedioSeparacaoHoras)}</div>
           <div className="label">Tempo de separação</div>
         </div>
         <div className="kpi">
-          <div className="value">{horas(dados.tempoMedioConferenciaHoras)}</div>
+          <div className="value">{formatarDuracao(dados.tempoMedioConferenciaHoras)}</div>
           <div className="label">Tempo de conferência</div>
         </div>
         <div className="kpi">
