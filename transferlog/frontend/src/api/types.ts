@@ -82,6 +82,15 @@ export interface UsuarioAutenticado {
   unidadeIds: string[];
 }
 
+export interface UsuarioListado {
+  id: string;
+  nome: string;
+  email: string;
+  perfil: Perfil;
+  ativo: boolean;
+  unidades: Array<{ unidadeId: string; unidade: Unidade }>;
+}
+
 export interface DashboardOperacional {
   aguardandoSeparacao: number;
   carregadas: number;

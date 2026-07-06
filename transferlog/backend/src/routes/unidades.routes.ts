@@ -45,11 +45,26 @@ unidadesRouter.patch("/:id", requirePerfil(Perfil.ADMINISTRADOR), async (req, re
     return res.status(400).json({ error: parsed.error.flatten() });
   }
 
-  const unidade = await prisma.unidade.update({
-    where: { id: req.params.id },
-    data: parsed.data,
-  });
-  res.json(unidade);
+  try {
+    const unidade = await prisma.unidade.update({
+      where: { id: req.params.id },
+      data: parsed.data,
+    });
+    res.json(unidade);
+  } catch (err) {
+    res.status(422).json({ error: (err as Error).message });
+  }
+});
+
+unidadesRouter.delete("/:id", requirePerfil(Perfil.ADMINISTRADOR), async (req, res) => {
+  try {
+    await prisma.unidade.delete({ where: { id: req.params.id } });
+    res.status(204).send();
+  } catch {
+    res.status(409).json({
+      error: "Não é possível excluir: existem transferências ou vínculos associados a esta unidade. Marque como inativa em vez de excluir.",
+    });
+  }
 });
 
 const rotaSlaSchema = z.object({
@@ -83,3 +98,29 @@ unidadesRouter.get("/rotas-sla", async (_req, res) => {
   });
   res.json(rotas);
 });
+
+unidadesRouter.patch(
+  "/rotas-sla/:id",
+  requirePerfil(Perfil.ADMINISTRADOR, Perfil.SUPERVISOR),
+  async (req, res) => {
+    const parsed = z.object({ prazoHoras: z.number().int().positive() }).safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.flatten() });
+    }
+
+    const rota = await prisma.rotaSLA.update({
+      where: { id: req.params.id },
+      data: parsed.data,
+    });
+    res.json(rota);
+  },
+);
+
+unidadesRouter.delete(
+  "/rotas-sla/:id",
+  requirePerfil(Perfil.ADMINISTRADOR, Perfil.SUPERVISOR),
+  async (req, res) => {
+    await prisma.rotaSLA.delete({ where: { id: req.params.id } });
+    res.status(204).send();
+  },
+);
