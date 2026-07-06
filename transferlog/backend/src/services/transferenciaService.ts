@@ -6,7 +6,7 @@ import { calcularPrazoPrevisto, resolverUnidadePorCnpj } from "./unidadeService"
 export async function montarPreviaTransferencia(nfe: NfeParsed) {
   const origem = await resolverUnidadePorCnpj(nfe.emitenteCnpj);
   const destino = await resolverUnidadePorCnpj(nfe.destinatarioCnpj);
-  const prazoPrevisto = await calcularPrazoPrevisto(origem.id, destino.id, nfe.dataEmissao);
+  const prazoPrevisto = await calcularPrazoPrevisto(origem.id, destino.id, new Date());
 
   return {
     nfe,
@@ -25,7 +25,7 @@ export async function criarTransferencia(
 ) {
   const origem = await resolverUnidadePorCnpj(nfe.emitenteCnpj);
   const destino = await resolverUnidadePorCnpj(nfe.destinatarioCnpj);
-  const prazoPrevisto = await calcularPrazoPrevisto(origem.id, destino.id, nfe.dataEmissao);
+  const prazoPrevisto = await calcularPrazoPrevisto(origem.id, destino.id, new Date());
 
   const existente = await prisma.transferencia.findUnique({
     where: {

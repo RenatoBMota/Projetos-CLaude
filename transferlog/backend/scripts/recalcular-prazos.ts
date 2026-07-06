@@ -24,7 +24,7 @@ async function main() {
 
   let atualizadas = 0;
   for (const t of abertas) {
-    const novoPrazo = await calcularPrazoPrevisto(t.origemId, t.destinoId, t.dataEmissao);
+    const novoPrazo = await calcularPrazoPrevisto(t.origemId, t.destinoId, t.createdAt);
     if (novoPrazo.getTime() !== t.prazoPrevisto.getTime()) {
       await prisma.transferencia.update({
         where: { id: t.id },
