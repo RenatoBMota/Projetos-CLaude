@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import { StatusBadge } from "../components/StatusBadge";
 import { nomeUnidade, type Transferencia, type TipoDivergencia } from "../api/types";
-import { formatarDataHora } from "../utils/formatar";
+import { formatarDataHora, formatarMoeda } from "../utils/formatar";
 
 interface ConferenciaLinha {
   itemId: string;
@@ -50,7 +50,7 @@ export function TransferenciaDetalhe() {
   return (
     <div>
       <h1>
-        NF {t.numeroNF} — Pedido {t.numeroPedido} <StatusBadge status={t.status} />
+        NF {t.numeroNF} — Pedido {t.numeroPedido} <StatusBadge status={t.status} itens={t.itens} />
       </h1>
       {erro && <div className="error-box">{erro}</div>}
 
@@ -58,8 +58,24 @@ export function TransferenciaDetalhe() {
         <div className="form-row">
           <div className="field"><label>Origem</label><strong>{nomeUnidade(t.origem)}</strong></div>
           <div className="field"><label>Destino</label><strong>{nomeUnidade(t.destino)}</strong></div>
+          <div className="field"><label>Série</label><strong>{t.serie}</strong></div>
+          <div className="field"><label>Data de emissão</label><strong>{formatarDataHora(t.dataEmissao)}</strong></div>
           <div className="field"><label>Prazo previsto</label><strong>{formatarDataHora(t.prazoPrevisto)}</strong></div>
         </div>
+        <div className="form-row">
+          <div className="field"><label>Valor</label><strong>{formatarMoeda(t.valorTotal)}</strong></div>
+          <div className="field"><label>Volumes</label><strong>{t.qtdVolumes}</strong></div>
+          <div className="field"><label>Peso (kg)</label><strong>{t.pesoBruto}</strong></div>
+          <div className="field"><label>SKUs</label><strong>{t.qtdSku}</strong></div>
+          <div className="field"><label>Itens totais</label><strong>{t.qtdItensTotal}</strong></div>
+        </div>
+        {(t.transportadora || t.veiculo || t.motorista) && (
+          <div className="form-row">
+            <div className="field"><label>Transportadora</label><strong>{t.transportadora ?? "—"}</strong></div>
+            <div className="field"><label>Veículo</label><strong>{t.veiculo ?? "—"}</strong></div>
+            <div className="field"><label>Motorista</label><strong>{t.motorista ?? "—"}</strong></div>
+          </div>
+        )}
         {t.otif && t.otif.otif !== null && (
           <p>
             OTIF:{" "}
@@ -69,6 +85,11 @@ export function TransferenciaDetalhe() {
             (On Time: {t.otif.onTime ? "sim" : "não"}, In Full: {t.otif.inFull ? "sim" : "não"})
           </p>
         )}
+      </div>
+
+      <div className="card">
+        <h2>Produtos</h2>
+        <ItensTabela transferencia={t} />
       </div>
 
       {(t.status === "PENDENTE_SEPARACAO" || t.status === "EM_SEPARACAO") && (
@@ -82,7 +103,6 @@ export function TransferenciaDetalhe() {
       {t.status === "EM_TRANSITO" && (
         <div className="card">
           <h2>Em trânsito</h2>
-          <p>Transportadora: {t.transportadora ?? "—"} · Veículo: {t.veiculo ?? "—"} · Motorista: {t.motorista ?? "—"}</p>
           <button
             className="primary"
             disabled={carregando}
@@ -100,22 +120,13 @@ export function TransferenciaDetalhe() {
       {(t.status === "CONFERIDO_OK" || t.status === "CONFERIDO_DIVERGENTE") && (
         <div className="card">
           <h2>{t.status === "CONFERIDO_OK" ? "Recebido OK" : "Recebido com divergência"}</h2>
-          <ItensTabela transferencia={t} />
           <button
             className="primary"
             disabled={carregando}
-            style={{ marginTop: 12 }}
             onClick={() => acao(() => api.post(`/transferencias/${t.id}/finalizar`))}
           >
             Finalizar transferência
           </button>
-        </div>
-      )}
-
-      {t.status === "FINALIZADO" && (
-        <div className="card">
-          <h2>Transferência finalizada</h2>
-          <ItensTabela transferencia={t} />
         </div>
       )}
     </div>

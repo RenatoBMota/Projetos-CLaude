@@ -23,3 +23,8 @@ export function formatarDuracao(horasDecimais: number | null): string {
   const s = totalSegundos % 60;
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
 }
+
+/** Formata um valor numérico (ou string decimal) como moeda BRL. */
+export function formatarMoeda(valor: string | number): string {
+  return Number(valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}

@@ -15,6 +15,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <NavLink to="/" end>Painel</NavLink>
           <NavLink to="/transferencias">Transferências</NavLink>
           <NavLink to="/upload">Upload de Nota</NavLink>
+          <NavLink to="/relatorio">Relatório</NavLink>
           {isGerencial && <NavLink to="/dashboard-gerencial">Dashboard gerencial</NavLink>}
           {isAdmin && <NavLink to="/cadastros">Cadastros</NavLink>}
         </nav>

@@ -61,7 +61,7 @@ export function FilaTransferencias() {
                 <td>{nomeUnidade(t.destino)}</td>
                 <td>{formatarDataHora(t.createdAt)}</td>
                 <td>{formatarDataHora(t.prazoPrevisto)}</td>
-                <td><StatusBadge status={t.status} /></td>
+                <td><StatusBadge status={t.status} itens={t.itens} /></td>
                 <td><Link to={`/transferencias/${t.id}`}>Ver</Link></td>
                 {isAdmin && (
                   <td><button className="danger" onClick={() => excluir(t)}>Excluir</button></td>

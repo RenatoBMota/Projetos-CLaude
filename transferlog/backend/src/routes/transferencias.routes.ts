@@ -149,6 +149,59 @@ transferenciasRouter.get("/", async (req, res) => {
   res.json(transferencias);
 });
 
+/**
+ * Relatório de transferências pesquisável por código de produto, status e
+ * período (baseado na data de criação da transferência no sistema).
+ */
+const relatorioQuerySchema = z.object({
+  codigoProduto: z.string().trim().min(1).optional(),
+  status: z.nativeEnum(StatusTransferencia).optional(),
+  dataInicio: z.coerce.date().optional(),
+  dataFim: z.coerce.date().optional(),
+});
+
+transferenciasRouter.get("/relatorio", async (req, res) => {
+  const parsed = relatorioQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.flatten() });
+  }
+  const { codigoProduto, status, dataInicio, dataFim } = parsed.data;
+  const auth = req.auth!;
+  const isAdmin = auth.perfil === Perfil.ADMINISTRADOR;
+
+  const dataFimFimDoDia = dataFim ? new Date(dataFim.getTime() + 24 * 60 * 60 * 1000 - 1) : undefined;
+
+  const transferencias = await prisma.transferencia.findMany({
+    where: {
+      ...(status ? { status } : {}),
+      ...(dataInicio || dataFimFimDoDia
+        ? {
+            createdAt: {
+              ...(dataInicio ? { gte: dataInicio } : {}),
+              ...(dataFimFimDoDia ? { lte: dataFimFimDoDia } : {}),
+            },
+          }
+        : {}),
+      ...(codigoProduto
+        ? { itens: { some: { codigoInterno: { contains: codigoProduto, mode: "insensitive" } } } }
+        : {}),
+      ...(isAdmin
+        ? {}
+        : {
+            OR: [
+              { origemId: { in: auth.unidadeIds } },
+              { destinoId: { in: auth.unidadeIds } },
+            ],
+          }),
+    },
+    include: { origem: true, destino: true, itens: true },
+    orderBy: { createdAt: "desc" },
+    take: 500,
+  });
+
+  res.json(transferencias);
+});
+
 async function carregarTransferenciaAutorizada(req: any, res: any) {
   const transferencia = await prisma.transferencia.findUnique({
     where: { id: req.params.id },

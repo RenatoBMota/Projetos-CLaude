@@ -8,6 +8,7 @@ import { UploadNota } from "./pages/UploadNota";
 import { FilaTransferencias } from "./pages/FilaTransferencias";
 import { TransferenciaDetalhe } from "./pages/TransferenciaDetalhe";
 import { Cadastros } from "./pages/Cadastros";
+import { Relatorio } from "./pages/Relatorio";
 
 function Rotas() {
   const { usuario } = useAuth();
@@ -27,6 +28,7 @@ function Rotas() {
         <Route path="/transferencias" element={<FilaTransferencias />} />
         <Route path="/transferencias/:id" element={<TransferenciaDetalhe />} />
         <Route path="/upload" element={<UploadNota />} />
+        <Route path="/relatorio" element={<Relatorio />} />
         <Route path="/dashboard-gerencial" element={<DashboardGerencial />} />
         <Route path="/cadastros" element={<Cadastros />} />
         <Route path="*" element={<Navigate to="/" replace />} />

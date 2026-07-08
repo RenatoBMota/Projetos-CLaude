@@ -1,4 +1,4 @@
-import type { StatusTransferencia } from "../api/types";
+import type { ItemTransferencia, StatusTransferencia } from "../api/types";
 
 const LABELS: Record<StatusTransferencia, string> = {
   PENDENTE_SEPARACAO: "Pendente de separação",
@@ -24,6 +24,21 @@ const TONES: Record<StatusTransferencia, "neutral" | "ok" | "warn" | "danger"> =
   CANCELADO: "danger",
 };
 
-export function StatusBadge({ status }: { status: StatusTransferencia }) {
-  return <span className={`badge ${TONES[status]}`}>{LABELS[status]}</span>;
+export function temDivergencia(itens: ItemTransferencia[]): boolean {
+  return itens.some(
+    (i) => i.divergenciaTipo !== null || (i.quantidadeConferida !== null && i.quantidadeConferida !== i.quantidade),
+  );
+}
+
+export function StatusBadge({
+  status,
+  itens,
+}: {
+  status: StatusTransferencia;
+  itens?: ItemTransferencia[];
+}) {
+  const finalizadoComDivergencia = status === "FINALIZADO" && !!itens && temDivergencia(itens);
+  const label = finalizadoComDivergencia ? "Finalizado com divergência" : LABELS[status];
+  const tone = finalizadoComDivergencia ? "danger" : TONES[status];
+  return <span className={`badge ${tone}`}>{label}</span>;
 }
