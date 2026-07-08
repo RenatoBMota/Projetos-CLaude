@@ -17,14 +17,18 @@ export async function resolverUnidadePorCnpj(cnpj: string) {
   return unidade;
 }
 
+export async function obterPrazoHoras(origemId: string, destinoId: string): Promise<number> {
+  const rota = await prisma.rotaSLA.findUnique({
+    where: { origemId_destinoId: { origemId, destinoId } },
+  });
+  return rota?.prazoHoras ?? SLA_PADRAO_HORAS;
+}
+
 export async function calcularPrazoPrevisto(
   origemId: string,
   destinoId: string,
   dataBase: Date,
 ): Promise<Date> {
-  const rota = await prisma.rotaSLA.findUnique({
-    where: { origemId_destinoId: { origemId, destinoId } },
-  });
-  const prazoHoras = rota?.prazoHoras ?? SLA_PADRAO_HORAS;
+  const prazoHoras = await obterPrazoHoras(origemId, destinoId);
   return new Date(dataBase.getTime() + prazoHoras * 60 * 60 * 1000);
 }

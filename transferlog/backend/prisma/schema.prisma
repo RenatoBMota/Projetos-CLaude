@@ -110,6 +110,7 @@ model Transferencia {
   destinoId     String
   origem        Unidade             @relation("TransferenciaOrigem", fields: [origemId], references: [id])
   destino       Unidade             @relation("TransferenciaDestino", fields: [destinoId], references: [id])
+  dataPedido    DateTime
   dataEmissao   DateTime
   valorTotal    Decimal             @db.Decimal(14, 2)
   qtdVolumes    Int

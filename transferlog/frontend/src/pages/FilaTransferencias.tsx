@@ -45,7 +45,7 @@ export function FilaTransferencias() {
               <th>NF</th>
               <th>Origem</th>
               <th>Destino</th>
-              <th>Criada</th>
+              <th>Data pedido</th>
               <th>Prazo</th>
               <th>Status</th>
               <th></th>
@@ -59,7 +59,7 @@ export function FilaTransferencias() {
                 <td>{t.numeroNF}</td>
                 <td>{nomeUnidade(t.origem)}</td>
                 <td>{nomeUnidade(t.destino)}</td>
-                <td>{formatarDataHora(t.createdAt)}</td>
+                <td>{formatarDataHora(t.dataPedido)}</td>
                 <td>{formatarDataHora(t.prazoPrevisto)}</td>
                 <td><StatusBadge status={t.status} itens={t.itens} /></td>
                 <td><Link to={`/transferencias/${t.id}`}>Ver</Link></td>

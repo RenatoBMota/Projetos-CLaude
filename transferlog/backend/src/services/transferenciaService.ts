@@ -1,18 +1,18 @@
 import { StatusTransferencia, TipoDivergencia, TipoEvento } from "@prisma/client";
 import { prisma } from "../prisma";
 import { NfeParsed, contarItensTotal, contarSkusDistintos } from "./nfeParser";
-import { calcularPrazoPrevisto, resolverUnidadePorCnpj } from "./unidadeService";
+import { calcularPrazoPrevisto, obterPrazoHoras, resolverUnidadePorCnpj } from "./unidadeService";
 
 export async function montarPreviaTransferencia(nfe: NfeParsed) {
   const origem = await resolverUnidadePorCnpj(nfe.emitenteCnpj);
   const destino = await resolverUnidadePorCnpj(nfe.destinatarioCnpj);
-  const prazoPrevisto = await calcularPrazoPrevisto(origem.id, destino.id, new Date());
+  const prazoHoras = await obterPrazoHoras(origem.id, destino.id);
 
   return {
     nfe,
     origem,
     destino,
-    prazoPrevisto,
+    prazoHoras,
     qtdSku: contarSkusDistintos(nfe.itens),
     qtdItensTotal: contarItensTotal(nfe.itens),
   };
@@ -21,11 +21,12 @@ export async function montarPreviaTransferencia(nfe: NfeParsed) {
 export async function criarTransferencia(
   nfe: NfeParsed,
   usuarioId: string,
+  dataPedido: Date,
   xmlOriginal?: string,
 ) {
   const origem = await resolverUnidadePorCnpj(nfe.emitenteCnpj);
   const destino = await resolverUnidadePorCnpj(nfe.destinatarioCnpj);
-  const prazoPrevisto = await calcularPrazoPrevisto(origem.id, destino.id, new Date());
+  const prazoPrevisto = await calcularPrazoPrevisto(origem.id, destino.id, dataPedido);
 
   const existente = await prisma.transferencia.findUnique({
     where: {
@@ -47,6 +48,7 @@ export async function criarTransferencia(
       numeroPedido: nfe.numeroPedido,
       origemId: origem.id,
       destinoId: destino.id,
+      dataPedido,
       dataEmissao: nfe.dataEmissao,
       valorTotal: nfe.valorTotal,
       qtdVolumes: nfe.qtdVolumes,

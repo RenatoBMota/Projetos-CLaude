@@ -106,7 +106,7 @@ export async function dashboardGerencial() {
     todas.map((t) => [t.dataEmissao, t.dataCarregamento]),
   );
   const tempoMedioTransito = mediaHoras(todas.map((t) => [t.dataCarregamento, t.dataRecebimento]));
-  const tempoMedioSeparacao = mediaHoras(todas.map((t) => [t.createdAt, t.dataSeparacaoConcluida]));
+  const tempoMedioSeparacao = mediaHoras(todas.map((t) => [t.dataPedido, t.dataSeparacaoConcluida]));
   const tempoMedioConferencia = mediaHoras(todas.map((t) => [t.dataRecebimento, t.dataConferencia]));
 
   const statusConferidas: StatusTransferencia[] = [

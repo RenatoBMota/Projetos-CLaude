@@ -58,6 +58,7 @@ export interface Transferencia {
   destinoId: string;
   origem: Unidade;
   destino: Unidade;
+  dataPedido: string;
   dataEmissao: string;
   valorTotal: string;
   qtdVolumes: number;

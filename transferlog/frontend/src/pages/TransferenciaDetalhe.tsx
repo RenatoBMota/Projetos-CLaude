@@ -59,7 +59,7 @@ export function TransferenciaDetalhe() {
           <div className="field"><label>Origem</label><strong>{nomeUnidade(t.origem)}</strong></div>
           <div className="field"><label>Destino</label><strong>{nomeUnidade(t.destino)}</strong></div>
           <div className="field"><label>Série</label><strong>{t.serie}</strong></div>
-          <div className="field"><label>Data de emissão</label><strong>{formatarDataHora(t.dataEmissao)}</strong></div>
+          <div className="field"><label>Data do pedido</label><strong>{formatarDataHora(t.dataPedido)}</strong></div>
           <div className="field"><label>Prazo previsto</label><strong>{formatarDataHora(t.prazoPrevisto)}</strong></div>
         </div>
         <div className="form-row">
@@ -68,6 +68,10 @@ export function TransferenciaDetalhe() {
           <div className="field"><label>Peso (kg)</label><strong>{t.pesoBruto}</strong></div>
           <div className="field"><label>SKUs</label><strong>{t.qtdSku}</strong></div>
           <div className="field"><label>Itens totais</label><strong>{t.qtdItensTotal}</strong></div>
+        </div>
+        <div className="form-row">
+          <div className="field"><label>Data de emissão da NF</label><strong>{formatarDataHora(t.dataEmissao)}</strong></div>
+          <div className="field"><label>Enviado ao sistema em</label><strong>{formatarDataHora(t.createdAt)}</strong></div>
         </div>
         {(t.transportadora || t.veiculo || t.motorista) && (
           <div className="form-row">

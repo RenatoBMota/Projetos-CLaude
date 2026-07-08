@@ -97,6 +97,7 @@ const criarTransferenciaSchema = z.object({
   numeroPedido: z.string(),
   emitenteCnpj: z.string().min(11),
   destinatarioCnpj: z.string().min(11),
+  dataPedido: z.coerce.date(),
   dataEmissao: z.coerce.date(),
   valorTotal: z.number().nonnegative(),
   qtdVolumes: z.number().int().nonnegative(),
@@ -108,6 +109,8 @@ const criarTransferenciaSchema = z.object({
  * Cria a transferência a partir dos dados da NF já lidos e eventualmente
  * corrigidos pelo analista na tela de Resumo (obrigatório revisar quando a
  * fonte for PDF/OCR, já que a extração por imagem é menos confiável que o XML).
+ * A data do pedido (informada manualmente) é a base de todos os cálculos de
+ * prazo/lead time — a data/hora de upload fica registrada só como referência.
  */
 transferenciasRouter.post("/", requirePerfil(Perfil.ANALISTA), async (req, res) => {
   const parsed = criarTransferenciaSchema.safeParse(req.body);
@@ -116,8 +119,8 @@ transferenciasRouter.post("/", requirePerfil(Perfil.ANALISTA), async (req, res) 
   }
 
   try {
-    const { arquivoPath, ...nfe } = parsed.data;
-    const transferencia = await criarTransferencia(nfe, req.auth!.sub, arquivoPath);
+    const { arquivoPath, dataPedido, ...nfe } = parsed.data;
+    const transferencia = await criarTransferencia(nfe, req.auth!.sub, dataPedido, arquivoPath);
     res.status(201).json(transferencia);
   } catch (err) {
     res.status(422).json({ error: (err as Error).message });
@@ -151,7 +154,7 @@ transferenciasRouter.get("/", async (req, res) => {
 
 /**
  * Relatório de transferências pesquisável por código de produto, status e
- * período (baseado na data de criação da transferência no sistema).
+ * período (baseado na data do pedido, não na data de upload da NF).
  */
 const relatorioQuerySchema = z.object({
   codigoProduto: z.string().trim().min(1).optional(),
@@ -176,7 +179,7 @@ transferenciasRouter.get("/relatorio", async (req, res) => {
       ...(status ? { status } : {}),
       ...(dataInicio || dataFimFimDoDia
         ? {
-            createdAt: {
+            dataPedido: {
               ...(dataInicio ? { gte: dataInicio } : {}),
               ...(dataFimFimDoDia ? { lte: dataFimFimDoDia } : {}),
             },

@@ -70,11 +70,11 @@ export function Relatorio() {
             </select>
           </div>
           <div className="field">
-            <label>Data de</label>
+            <label>Data do pedido de</label>
             <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
           </div>
           <div className="field">
-            <label>Data até</label>
+            <label>Data do pedido até</label>
             <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
           </div>
         </div>
@@ -92,7 +92,7 @@ export function Relatorio() {
                 <th>NF</th>
                 <th>Origem</th>
                 <th>Destino</th>
-                <th>Criada</th>
+                <th>Data pedido</th>
                 <th>Status</th>
                 <th>Produtos correspondentes</th>
                 <th></th>
@@ -111,7 +111,7 @@ export function Relatorio() {
                     <td>{t.numeroNF}</td>
                     <td>{nomeUnidade(t.origem)}</td>
                     <td>{nomeUnidade(t.destino)}</td>
-                    <td>{formatarDataHora(t.createdAt)}</td>
+                    <td>{formatarDataHora(t.dataPedido)}</td>
                     <td><StatusBadge status={t.status} itens={t.itens} /></td>
                     <td>
                       {itensCorrespondentes

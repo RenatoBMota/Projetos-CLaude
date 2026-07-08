@@ -27,7 +27,7 @@ interface ResumoResponse {
   };
   origem: Unidade;
   destino: Unidade;
-  prazoPrevisto: string;
+  prazoHoras: number;
   qtdSku: number;
   qtdItensTotal: number;
   arquivoPath: string;
@@ -40,6 +40,7 @@ export function UploadNota() {
   const [dragOver, setDragOver] = useState(false);
   const [resumo, setResumo] = useState<ResumoResponse | null>(null);
   const [campos, setCampos] = useState({ numeroNF: "", serie: "", numeroPedido: "", valorTotal: 0, qtdVolumes: 0, pesoBruto: 0 });
+  const [dataPedido, setDataPedido] = useState("");
   const [itens, setItens] = useState<NfeItemEditavel[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
@@ -60,6 +61,7 @@ export function UploadNota() {
         qtdVolumes: dados.nfe.qtdVolumes,
         pesoBruto: dados.nfe.pesoBruto,
       });
+      setDataPedido("");
       setItens(dados.nfe.itens);
     } catch (err) {
       setErro(err instanceof ApiError ? err.message : "Não foi possível ler o arquivo");
@@ -90,7 +92,10 @@ export function UploadNota() {
     setItens((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function validarItens(): string | null {
+  function validarFormulario(): string | null {
+    if (!dataPedido) {
+      return "Informe a data do pedido antes de criar a transferência.";
+    }
     if (itens.length === 0) {
       return "Adicione ao menos um item antes de criar a transferência.";
     }
@@ -109,9 +114,14 @@ export function UploadNota() {
     return null;
   }
 
+  function prazoPrevistoPreview(): Date | null {
+    if (!dataPedido || !resumo) return null;
+    return new Date(new Date(dataPedido).getTime() + resumo.prazoHoras * 60 * 60 * 1000);
+  }
+
   async function criarTransferencia() {
     if (!resumo) return;
-    const erroValidacao = validarItens();
+    const erroValidacao = validarFormulario();
     if (erroValidacao) {
       setErro(erroValidacao);
       return;
@@ -126,6 +136,7 @@ export function UploadNota() {
         numeroPedido: campos.numeroPedido,
         emitenteCnpj: resumo.nfe.emitenteCnpj,
         destinatarioCnpj: resumo.nfe.destinatarioCnpj,
+        dataPedido: new Date(dataPedido).toISOString(),
         dataEmissao: resumo.nfe.dataEmissao,
         valorTotal: campos.valorTotal,
         qtdVolumes: campos.qtdVolumes,
@@ -171,6 +182,25 @@ export function UploadNota() {
           </div>
           <div className="form-row">
             <div className="field">
+              <label>Data do Pedido *</label>
+              <input
+                type="datetime-local"
+                value={dataPedido}
+                onChange={(e) => setDataPedido(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label>Prazo previsto (SLA: {resumo.prazoHoras}h a partir do pedido)</label>
+              <strong>
+                {(() => {
+                  const preview = prazoPrevistoPreview();
+                  return preview ? formatarDataHora(preview) : "Informe a data do pedido";
+                })()}
+              </strong>
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="field">
               <label>Valor</label>
               <input
                 type="number"
@@ -198,10 +228,6 @@ export function UploadNota() {
             </div>
             <div className="field"><label>SKUs</label><strong>{itens.length}</strong></div>
             <div className="field"><label>Itens totais</label><strong>{itens.reduce((a, i) => a + i.quantidade, 0)}</strong></div>
-          </div>
-          <div className="field">
-            <label>Prazo previsto (SLA da rota)</label>
-            <strong>{formatarDataHora(resumo.prazoPrevisto)}</strong>
           </div>
         </div>
         <div className="card">
@@ -231,7 +257,7 @@ export function UploadNota() {
           <button style={{ marginTop: 12 }} onClick={adicionarItem}>+ Adicionar item</button>
         </div>
         <div className="actions">
-          <button className="primary" disabled={carregando || itens.length === 0} onClick={criarTransferencia}>
+          <button className="primary" disabled={carregando || itens.length === 0 || !dataPedido} onClick={criarTransferencia}>
             {carregando ? "Criando..." : "Criar Transferência"}
           </button>
           <button onClick={() => { setResumo(null); setArquivo(null); }}>Cancelar</button>
