@@ -183,6 +183,7 @@ export async function registrarConferencia(
   transferenciaId: string,
   usuarioId: string,
   itensConferidos: ConferenciaItemInput[],
+  numeroBonus: string,
 ) {
   const transferencia = await prisma.transferencia.findUniqueOrThrow({
     where: { id: transferenciaId },
@@ -218,11 +219,12 @@ export async function registrarConferencia(
         ? StatusTransferencia.CONFERIDO_DIVERGENTE
         : StatusTransferencia.CONFERIDO_OK,
       dataConferencia: new Date(),
+      numeroBonus,
       eventos: {
         create: {
           tipo: TipoEvento.CONFERENCIA,
           usuarioId,
-          observacao: temDivergencia ? "Recebido com divergência" : "Recebido OK",
+          observacao: `${temDivergencia ? "Recebido com divergência" : "Recebido OK"} — Bônus nº ${numeroBonus}`,
         },
       },
     },

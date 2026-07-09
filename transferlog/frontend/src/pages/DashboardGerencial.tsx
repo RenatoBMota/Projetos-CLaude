@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
-import { formatarDuracao } from "../utils/formatar";
+import { formatarDuracao, formatarMoeda } from "../utils/formatar";
 import { KpiTile } from "../components/KpiTile";
 import { Meter } from "../components/charts/Meter";
 import { BarraHorizontal, type ItemBarra } from "../components/charts/BarraHorizontal";
@@ -30,6 +30,24 @@ interface DashboardGerencialData {
   rankingTransportadoras: Array<{ transportadora: string; quantidade: number }>;
   valorFinanceiroTransferenciasPendentes: number;
   heatmapRotasCriticas: Array<{ rota: string; quantidadeAtrasos: number }>;
+  valorPorRota: Array<{ rota: string; valor: number }>;
+}
+
+function paraInputDate(d: Date): string {
+  const ano = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  const dia = String(d.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
+
+function primeiroDiaMesAtual(): string {
+  const hoje = new Date();
+  return paraInputDate(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+}
+
+function ultimoDiaMesAtual(): string {
+  const hoje = new Date();
+  return paraInputDate(new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0));
 }
 
 function tomOtif(percentual: number): "ok" | "warn" | "danger" {
@@ -50,15 +68,20 @@ function RankingCard({ titulo, itens, tomPadrao, vazio }: { titulo: string; iten
 }
 
 export function DashboardGerencial() {
+  const [dataInicio, setDataInicio] = useState(primeiroDiaMesAtual);
+  const [dataFim, setDataFim] = useState(ultimoDiaMesAtual);
   const [dados, setDados] = useState<DashboardGerencialData | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
+    const params = new URLSearchParams();
+    if (dataInicio) params.set("dataInicio", dataInicio);
+    if (dataFim) params.set("dataFim", dataFim);
     api
-      .get<DashboardGerencialData>("/dashboard/gerencial")
+      .get<DashboardGerencialData>(`/dashboard/gerencial?${params.toString()}`)
       .then(setDados)
       .catch((err) => setErro(err.message));
-  }, []);
+  }, [dataInicio, dataFim]);
 
   if (erro) return <div className="error-box">{erro}</div>;
   if (!dados) return <p>Carregando...</p>;
@@ -66,77 +89,106 @@ export function DashboardGerencial() {
   return (
     <div>
       <h1>Dashboard gerencial</h1>
-      <div className="kpi-row">
-        <KpiTile icone={<IconLayers />} tom="accent" valor={dados.transferenciasEmAberto} label="Em aberto" />
-        <KpiTile
-          icone={<IconTarget />}
-          tom={dados.otifGeralPercentual === null ? "warn" : tomOtif(dados.otifGeralPercentual)}
-          valor={dados.otifGeralPercentual === null ? "—" : `${dados.otifGeralPercentual.toFixed(1)}%`}
-          label="OTIF geral"
-        >
-          <Meter percentual={dados.otifGeralPercentual} />
-        </KpiTile>
-        <KpiTile icone={<IconClock />} tom="accent" valor={formatarDuracao(dados.tempoMedioFaturamentoCarregamentoHoras)} label="Faturamento → carregamento" />
-        <KpiTile icone={<IconTruck />} tom="accent" valor={formatarDuracao(dados.tempoMedioTransitoHoras)} label="Tempo em trânsito" />
-        <KpiTile icone={<IconClipboard />} tom="accent" valor={formatarDuracao(dados.tempoMedioSeparacaoHoras)} label="Tempo de separação" />
-        <KpiTile icone={<IconClipboardCheck />} tom="accent" valor={formatarDuracao(dados.tempoMedioConferenciaHoras)} label="Tempo de conferência" />
-        <KpiTile
-          icone={<IconDollar />}
-          tom="accent"
-          valor={dados.valorFinanceiroTransferenciasPendentes.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-          label="Valor pendente"
-        />
+
+      <div className="card">
+        <div className="form-row">
+          <div className="field">
+            <label>Data do pedido de</label>
+            <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
+          </div>
+          <div className="field">
+            <label>Data do pedido até</label>
+            <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
+          </div>
+        </div>
       </div>
 
-      <div className="rankings-grid">
-        <RankingCard
-          titulo="OTIF por filial"
-          itens={dados.otifPorFilial.map((f) => ({
-            label: f.nome,
-            valor: f.percentual,
-            valorExibido: `${f.percentual.toFixed(0)}% (${f.total})`,
-            tom: tomOtif(f.percentual),
-          }))}
-        />
-        <RankingCard
-          titulo="OTIF por rota"
-          itens={dados.otifPorRota.map((f) => ({
-            label: f.nome,
-            valor: f.percentual,
-            valorExibido: `${f.percentual.toFixed(0)}% (${f.total})`,
-            tom: tomOtif(f.percentual),
-          }))}
-        />
-        <RankingCard
-          titulo="Atrasadas por origem"
-          tomPadrao="danger"
-          itens={dados.atrasadasPorOrigem.map((f) => ({ label: f.nome, valor: f.quantidade }))}
-        />
-        <RankingCard
-          titulo="Atrasadas por destino"
-          tomPadrao="danger"
-          itens={dados.atrasadasPorDestino.map((f) => ({ label: f.nome, valor: f.quantidade }))}
-        />
-        <RankingCard
-          titulo="Filiais com mais divergências"
-          tomPadrao="danger"
-          itens={dados.rankingDivergenciasPorFilial.map((f) => ({ label: f.nome, valor: f.quantidade }))}
-        />
-        <RankingCard
-          titulo="Produtos mais divergentes"
-          tomPadrao="danger"
-          itens={dados.rankingProdutosMaisDivergentes.map((f) => ({ label: f.produto, valor: f.quantidade }))}
-        />
-        <RankingCard
-          titulo="Transportadoras mais usadas"
-          tomPadrao="accent"
-          itens={dados.rankingTransportadoras.map((f) => ({ label: f.transportadora, valor: f.quantidade }))}
-        />
-        <RankingCard
-          titulo="Rotas críticas (mais atrasos)"
-          tomPadrao="danger"
-          itens={dados.heatmapRotasCriticas.map((f) => ({ label: f.rota, valor: f.quantidadeAtrasos }))}
-        />
+      <div className="dashboard-gerencial-layout">
+        <div>
+          <div className="kpi-row">
+            <KpiTile icone={<IconLayers />} tom="accent" valor={dados.transferenciasEmAberto} label="Em aberto" />
+            <KpiTile
+              icone={<IconTarget />}
+              tom={dados.otifGeralPercentual === null ? "warn" : tomOtif(dados.otifGeralPercentual)}
+              valor={dados.otifGeralPercentual === null ? "—" : `${dados.otifGeralPercentual.toFixed(1)}%`}
+              label="OTIF geral"
+            >
+              <Meter percentual={dados.otifGeralPercentual} />
+            </KpiTile>
+            <KpiTile icone={<IconClock />} tom="accent" valor={formatarDuracao(dados.tempoMedioFaturamentoCarregamentoHoras)} label="Faturamento → carregamento" />
+            <KpiTile icone={<IconTruck />} tom="accent" valor={formatarDuracao(dados.tempoMedioTransitoHoras)} label="Tempo em trânsito" />
+            <KpiTile icone={<IconClipboard />} tom="accent" valor={formatarDuracao(dados.tempoMedioSeparacaoHoras)} label="Tempo de separação" />
+            <KpiTile icone={<IconClipboardCheck />} tom="accent" valor={formatarDuracao(dados.tempoMedioConferenciaHoras)} label="Tempo de conferência" />
+            <KpiTile
+              icone={<IconDollar />}
+              tom="accent"
+              valor={dados.valorFinanceiroTransferenciasPendentes.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              label="Valor pendente"
+            />
+          </div>
+
+          <div className="rankings-grid">
+            <RankingCard
+              titulo="OTIF por filial"
+              itens={dados.otifPorFilial.map((f) => ({
+                label: f.nome,
+                valor: f.percentual,
+                valorExibido: `${f.percentual.toFixed(0)}% (${f.total})`,
+                tom: tomOtif(f.percentual),
+              }))}
+            />
+            <RankingCard
+              titulo="OTIF por rota"
+              itens={dados.otifPorRota.map((f) => ({
+                label: f.nome,
+                valor: f.percentual,
+                valorExibido: `${f.percentual.toFixed(0)}% (${f.total})`,
+                tom: tomOtif(f.percentual),
+              }))}
+            />
+            <RankingCard
+              titulo="Atrasadas por origem"
+              tomPadrao="danger"
+              itens={dados.atrasadasPorOrigem.map((f) => ({ label: f.nome, valor: f.quantidade }))}
+            />
+            <RankingCard
+              titulo="Atrasadas por destino"
+              tomPadrao="danger"
+              itens={dados.atrasadasPorDestino.map((f) => ({ label: f.nome, valor: f.quantidade }))}
+            />
+            <RankingCard
+              titulo="Filiais com mais divergências"
+              tomPadrao="danger"
+              itens={dados.rankingDivergenciasPorFilial.map((f) => ({ label: f.nome, valor: f.quantidade }))}
+            />
+            <RankingCard
+              titulo="Produtos mais divergentes"
+              tomPadrao="danger"
+              itens={dados.rankingProdutosMaisDivergentes.map((f) => ({ label: f.produto, valor: f.quantidade }))}
+            />
+            <RankingCard
+              titulo="Transportadoras mais usadas"
+              tomPadrao="accent"
+              itens={dados.rankingTransportadoras.map((f) => ({ label: f.transportadora, valor: f.quantidade }))}
+            />
+            <RankingCard
+              titulo="Rotas críticas (mais atrasos)"
+              tomPadrao="danger"
+              itens={dados.heatmapRotasCriticas.map((f) => ({ label: f.rota, valor: f.quantidadeAtrasos }))}
+            />
+          </div>
+        </div>
+
+        <aside className="dashboard-gerencial-sidebar">
+          <h2>Valor por rota</h2>
+          {dados.valorPorRota.length === 0 ? (
+            <p style={{ color: "var(--text-muted)" }}>Sem dados no período.</p>
+          ) : (
+            dados.valorPorRota.map((r) => (
+              <KpiTile key={r.rota} icone={<IconDollar />} tom="accent" valor={formatarMoeda(r.valor)} label={r.rota} />
+            ))
+          )}
+        </aside>
       </div>
     </div>
   );

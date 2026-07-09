@@ -21,6 +21,16 @@ export type StatusTransferencia =
 
 export type TipoDivergencia = "FALTOU" | "SOBROU" | "QUEBRADO" | "PRODUTO_ERRADO";
 
+export type TipoEvento = "UPLOAD" | "SEPARACAO" | "CARREGAMENTO" | "RECEBIMENTO" | "CONFERENCIA" | "CANCELAMENTO";
+
+export interface EventoAuditoria {
+  id: string;
+  tipo: TipoEvento;
+  dataHora: string;
+  observacao: string | null;
+  usuario: { nome: string };
+}
+
 export interface Unidade {
   id: string;
   razaoSocial: string;
@@ -70,8 +80,10 @@ export interface Transferencia {
   transportadora: string | null;
   veiculo: string | null;
   motorista: string | null;
+  numeroBonus: string | null;
   prazoPrevisto: string;
   itens: ItemTransferencia[];
+  eventos: EventoAuditoria[];
   createdAt: string;
   otif?: { onTime: boolean | null; inFull: boolean | null; otif: boolean | null };
 }

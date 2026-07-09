@@ -290,6 +290,27 @@ th {
   gap: 16px;
 }
 
+.dashboard-gerencial-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 16px;
+  align-items: start;
+}
+.dashboard-gerencial-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dashboard-gerencial-sidebar h2 {
+  margin: 0 0 4px;
+}
+
+@media (max-width: 900px) {
+  .dashboard-gerencial-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 640px) {
   .barra-linha {
     grid-template-columns: 1fr auto;

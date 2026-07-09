@@ -88,11 +88,12 @@ export async function dashboardOperacionalPorFilial(unidadeIds?: string[]) {
   );
 }
 
-/** Painel executivo: indicadores agregados de toda a operação. */
-export async function dashboardGerencial() {
+/** Painel executivo: indicadores agregados da operação no período informado (base: dataPedido). */
+export async function dashboardGerencial(dataInicio: Date, dataFim: Date) {
   const agora = new Date();
 
   const todas = await prisma.transferencia.findMany({
+    where: { dataPedido: { gte: dataInicio, lte: dataFim } },
     include: { itens: true, origem: true, destino: true },
   });
 
@@ -132,9 +133,11 @@ export async function dashboardGerencial() {
     (o) => !!o.otif.otif,
   );
 
+  // Creditada à origem: o OTIF (In Full) também é atribuído a quem envia, então
+  // a responsabilidade pela divergência acompanha a mesma unidade.
   const rankingDivergenciasPorFilial = agrupar(
     todas.filter((t) => t.status === StatusTransferencia.CONFERIDO_DIVERGENTE || t.status === StatusTransferencia.FINALIZADO),
-    (t) => nomeUnidade(t.destino),
+    (t) => nomeUnidade(t.origem),
     (t) => t.itens.some((i) => i.divergenciaTipo !== null),
   );
 
@@ -158,6 +161,7 @@ export async function dashboardGerencial() {
   const valorPendente = emAberto.reduce((acc, t) => acc + Number(t.valorTotal), 0);
 
   const heatmapRotas = agruparAtrasoPorRota(atrasadas);
+  const valorPorRota = agruparValorPorRota(todas);
 
   return {
     transferenciasEmAberto: emAberto.length,
@@ -179,6 +183,7 @@ export async function dashboardGerencial() {
       .sort((a, b) => b.quantidade - a.quantidade),
     valorFinanceiroTransferenciasPendentes: valorPendente,
     heatmapRotasCriticas: heatmapRotas,
+    valorPorRota,
   };
 }
 
@@ -230,4 +235,17 @@ function agruparAtrasoPorRota(
   return Object.entries(contagem)
     .map(([rota, quantidadeAtrasos]) => ({ rota, quantidadeAtrasos }))
     .sort((a, b) => b.quantidadeAtrasos - a.quantidadeAtrasos);
+}
+
+function agruparValorPorRota(
+  transferencias: Array<{ origem: UnidadeNome; destino: UnidadeNome; valorTotal: unknown }>,
+): Array<{ rota: string; valor: number }> {
+  const somas: Record<string, number> = {};
+  for (const t of transferencias) {
+    const rota = `${nomeUnidade(t.origem)} → ${nomeUnidade(t.destino)}`;
+    somas[rota] = (somas[rota] ?? 0) + Number(t.valorTotal);
+  }
+  return Object.entries(somas)
+    .map(([rota, valor]) => ({ rota, valor }))
+    .sort((a, b) => b.valor - a.valor);
 }

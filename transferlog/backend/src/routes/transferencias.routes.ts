@@ -128,15 +128,39 @@ transferenciasRouter.post("/", requirePerfil(Perfil.ANALISTA), async (req, res) 
   }
 });
 
+const filaQuerySchema = z.object({
+  status: z.nativeEnum(StatusTransferencia).optional(),
+  origemId: z.string().optional(),
+  destinoId: z.string().optional(),
+  dataInicio: z.coerce.date().optional(),
+  dataFim: z.coerce.date().optional(),
+});
+
 /** Fila de transferências visíveis para o usuário autenticado (origem ou destino). */
 transferenciasRouter.get("/", async (req, res) => {
+  const parsed = filaQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.flatten() });
+  }
+  const { status, origemId, destinoId, dataInicio, dataFim } = parsed.data;
   const auth = req.auth!;
-  const status = req.query.status as StatusTransferencia | undefined;
   const isAdmin = auth.perfil === Perfil.ADMINISTRADOR;
+
+  const dataFimFimDoDia = dataFim ? new Date(dataFim.getTime() + 24 * 60 * 60 * 1000 - 1) : undefined;
 
   const transferencias = await prisma.transferencia.findMany({
     where: {
       ...(status ? { status } : {}),
+      ...(origemId ? { origemId } : {}),
+      ...(destinoId ? { destinoId } : {}),
+      ...(dataInicio || dataFimFimDoDia
+        ? {
+            dataPedido: {
+              ...(dataInicio ? { gte: dataInicio } : {}),
+              ...(dataFimFimDoDia ? { lte: dataFimFimDoDia } : {}),
+            },
+          }
+        : {}),
       ...(isAdmin
         ? {}
         : {
@@ -209,7 +233,15 @@ transferenciasRouter.get("/relatorio", async (req, res) => {
 async function carregarTransferenciaAutorizada(req: any, res: any) {
   const transferencia = await prisma.transferencia.findUnique({
     where: { id: req.params.id },
-    include: { itens: true, origem: true, destino: true },
+    include: {
+      itens: true,
+      origem: true,
+      destino: true,
+      eventos: {
+        include: { usuario: { select: { nome: true } } },
+        orderBy: { dataHora: "asc" },
+      },
+    },
   });
   if (!transferencia) {
     res.status(404).json({ error: "Transferência não encontrada" });
@@ -317,6 +349,7 @@ transferenciasRouter.post(
 );
 
 const conferenciaSchema = z.object({
+  numeroBonus: z.string().regex(/^\d+$/, "Número do Bônus deve conter apenas números"),
   itens: z.array(
     z.object({
       itemId: z.string(),
@@ -346,6 +379,7 @@ transferenciasRouter.post(
         req.params.id,
         req.auth!.sub,
         parsed.data.itens,
+        parsed.data.numeroBonus,
       );
       res.json(atualizada);
     } catch (err) {

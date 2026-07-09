@@ -2,8 +2,17 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import { StatusBadge } from "../components/StatusBadge";
-import { nomeUnidade, type Transferencia, type TipoDivergencia } from "../api/types";
+import { nomeUnidade, type Transferencia, type TipoDivergencia, type TipoEvento } from "../api/types";
 import { formatarData, formatarDataHora, formatarMoeda } from "../utils/formatar";
+
+const LABEL_EVENTO: Record<TipoEvento, string> = {
+  UPLOAD: "Nota enviada / transferência criada",
+  SEPARACAO: "Separação concluída",
+  CARREGAMENTO: "Carregamento confirmado",
+  RECEBIMENTO: "Recebimento confirmado",
+  CONFERENCIA: "Conferência registrada",
+  CANCELAMENTO: "Cancelada",
+};
 
 interface ConferenciaLinha {
   itemId: string;
@@ -51,6 +60,7 @@ export function TransferenciaDetalhe() {
     <div>
       <h1>
         NF {t.numeroNF} — Pedido {t.numeroPedido} <StatusBadge status={t.status} itens={t.itens} />
+        {t.numeroBonus && <span className="badge neutral" style={{ marginLeft: 8 }}>Bônus nº {t.numeroBonus}</span>}
       </h1>
       {erro && <div className="error-box">{erro}</div>}
 
@@ -97,6 +107,29 @@ export function TransferenciaDetalhe() {
       <div className="card">
         <h2>Produtos</h2>
         <ItensTabela transferencia={t} />
+      </div>
+
+      <div className="card">
+        <h2>Histórico</h2>
+        {t.eventos.length === 0 ? (
+          <p style={{ color: "var(--text-muted)" }}>Nenhum evento registrado ainda.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr><th>Data e hora</th><th>Etapa</th><th>Usuário</th><th>Observação</th></tr>
+            </thead>
+            <tbody>
+              {t.eventos.map((evento) => (
+                <tr key={evento.id}>
+                  <td>{formatarDataHora(evento.dataHora)}</td>
+                  <td>{LABEL_EVENTO[evento.tipo]}</td>
+                  <td>{evento.usuario.nome}</td>
+                  <td>{evento.observacao ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {(t.status === "PENDENTE_SEPARACAO" || t.status === "EM_SEPARACAO") && (
@@ -281,12 +314,19 @@ function ConferenciaBloco({
       ]),
     ),
   );
+  const [numeroBonus, setNumeroBonus] = useState("");
+  const [erroLocal, setErroLocal] = useState<string | null>(null);
 
   function atualizar(itemId: string, patch: Partial<ConferenciaLinha>) {
     setLinhas((prev) => ({ ...prev, [itemId]: { ...prev[itemId], ...patch } }));
   }
 
   async function enviar() {
+    if (!/^\d+$/.test(numeroBonus)) {
+      setErroLocal("Informe o número do Bônus (apenas números) antes de registrar a conferência.");
+      return;
+    }
+    setErroLocal(null);
     const itens = Object.values(linhas).map((linha) => ({
       itemId: linha.itemId,
       quantidadeConferida: linha.quantidadeConferida,
@@ -298,12 +338,22 @@ function ConferenciaBloco({
           }
         : {}),
     }));
-    await acao(() => api.post(`/transferencias/${transferencia.id}/conferencia`, { itens }));
+    await acao(() => api.post(`/transferencias/${transferencia.id}/conferencia`, { itens, numeroBonus }));
   }
 
   return (
     <div className="card">
       <h2>Recebimento / Conferência</h2>
+      {erroLocal && <div className="error-box">{erroLocal}</div>}
+      <div className="field" style={{ maxWidth: 220 }}>
+        <label>Número do Bônus *</label>
+        <input
+          inputMode="numeric"
+          value={numeroBonus}
+          onChange={(e) => setNumeroBonus(e.target.value.replace(/\D/g, ""))}
+          placeholder="Somente números"
+        />
+      </div>
       <p>SKUs na NF: {transferencia.qtdSku}</p>
       <table>
         <thead>
@@ -361,7 +411,12 @@ function ConferenciaBloco({
           })}
         </tbody>
       </table>
-      <button className="primary" style={{ marginTop: 12 }} disabled={carregando} onClick={enviar}>
+      <button
+        className="primary"
+        style={{ marginTop: 12 }}
+        disabled={carregando || !/^\d+$/.test(numeroBonus)}
+        onClick={enviar}
+      >
         Registrar conferência
       </button>
     </div>

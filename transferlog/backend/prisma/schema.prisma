@@ -125,6 +125,7 @@ model Transferencia {
   transportadora String?
   veiculo        String?
   motorista      String?
+  numeroBonus    String?
   prazoPrevisto  DateTime
 
   dataSeparacaoConcluida DateTime?

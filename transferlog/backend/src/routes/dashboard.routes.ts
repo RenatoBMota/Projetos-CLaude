@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { z } from "zod";
 import { Perfil } from "@prisma/client";
 import { authenticate, requirePerfil } from "../middlewares/auth";
 import {
@@ -26,11 +27,29 @@ dashboardRouter.get(
   },
 );
 
+const dashboardGerencialQuerySchema = z.object({
+  dataInicio: z.coerce.date().optional(),
+  dataFim: z.coerce.date().optional(),
+});
+
 dashboardRouter.get(
   "/gerencial",
   requirePerfil(Perfil.SUPERVISOR, Perfil.AUDITORIA),
-  async (_req, res) => {
-    const dados = await dashboardGerencial();
+  async (req, res) => {
+    const parsed = dashboardGerencialQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.flatten() });
+    }
+
+    const agora = new Date();
+    const primeiroDiaMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
+    const ultimoDiaMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 0);
+
+    const dataInicio = parsed.data.dataInicio ?? primeiroDiaMes;
+    const dataFimBase = parsed.data.dataFim ?? ultimoDiaMes;
+    const dataFim = new Date(dataFimBase.getTime() + 24 * 60 * 60 * 1000 - 1);
+
+    const dados = await dashboardGerencial(dataInicio, dataFim);
     res.json(dados);
   },
 );
