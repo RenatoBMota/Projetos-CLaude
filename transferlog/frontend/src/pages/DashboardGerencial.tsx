@@ -88,17 +88,16 @@ export function DashboardGerencial() {
 
   return (
     <div>
-      <h1>Dashboard gerencial</h1>
-
-      <div className="card">
-        <div className="form-row">
-          <div className="field">
-            <label>Data do pedido de</label>
-            <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
+      <div className="dashboard-toolbar">
+        <h1>Dashboard gerencial</h1>
+        <div className="dashboard-toolbar__filtros">
+          <div className="field-inline">
+            <label htmlFor="dataInicio">De</label>
+            <input id="dataInicio" type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
           </div>
-          <div className="field">
-            <label>Data do pedido até</label>
-            <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
+          <div className="field-inline">
+            <label htmlFor="dataFim">Até</label>
+            <input id="dataFim" type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
           </div>
         </div>
       </div>
