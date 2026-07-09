@@ -88,7 +88,7 @@ export function DashboardGerencial() {
         />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      <div className="rankings-grid">
         <RankingCard
           titulo="OTIF por filial"
           itens={dados.otifPorFilial.map((f) => ({
