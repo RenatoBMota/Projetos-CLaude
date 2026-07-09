@@ -268,6 +268,7 @@ def seed_banco():
         (TipoLista.DESTINACAO, 'SUBSTITUICAO',          'Substituição',              4),
         (TipoLista.DESTINACAO, 'CREDITO',               'Crédito ao Cliente',        5),
         (TipoLista.DESTINACAO, 'SUCATA',                'Sucata / Descarte',         6),
+        (TipoLista.DESTINACAO, 'RECUPERACAO',           'Recuperação de Item',        7),
     ]
     for tipo, valor, label, ordem in listas_padrao:
         if not ListaOpcao.query.filter_by(tipo=tipo, valor=valor).first():

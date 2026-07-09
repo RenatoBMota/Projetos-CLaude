@@ -38,6 +38,7 @@ class EstadoRMA:
     AGUARDANDO_DEST      = 'AGUARDANDO_DESTINACAO'
     AGUARDANDO_COLETA    = 'AGUARDANDO_COLETA'
     COLETADO             = 'COLETADO'
+    RECUPERACAO          = 'RECUPERACAO'
     FINALIZADO           = 'FINALIZADO'
     CANCELADO            = 'CANCELADO'
     SUCATA               = 'SUCATA'
@@ -53,6 +54,7 @@ class EstadoRMA:
         'AGUARDANDO_DESTINACAO':('Ag. Destinação',     'primary'),
         'AGUARDANDO_COLETA':    ('Ag. Coleta',         'warning'),
         'COLETADO':             ('Coletado',           'success'),
+        'RECUPERACAO':          ('Recuperação',        'teal'),
         'FINALIZADO':           ('Finalizado',         'success'),
         'CANCELADO':            ('Cancelado',          'danger'),
         'SUCATA':               ('Sucata',             'dark'),
@@ -443,9 +445,10 @@ class RMA(db.Model):
             EstadoRMA.AGUARDANDO_APROVACAO:[EstadoRMA.AGUARDANDO_TRIAGEM, EstadoRMA.ABERTO, EstadoRMA.CANCELADO],
             EstadoRMA.AGUARDANDO_TRIAGEM:[EstadoRMA.EM_ANALISE, EstadoRMA.CANCELADO],
             EstadoRMA.EM_ANALISE:        [EstadoRMA.AGUARDANDO_DEST, EstadoRMA.CANCELADO],
-            EstadoRMA.AGUARDANDO_DEST:   [EstadoRMA.AGUARDANDO_COLETA, EstadoRMA.SUCATA, EstadoRMA.CANCELADO],
+            EstadoRMA.AGUARDANDO_DEST:   [EstadoRMA.AGUARDANDO_COLETA, EstadoRMA.SUCATA, EstadoRMA.RECUPERACAO, EstadoRMA.CANCELADO],
             EstadoRMA.AGUARDANDO_COLETA: [EstadoRMA.COLETADO, EstadoRMA.CANCELADO],
             EstadoRMA.COLETADO:          [EstadoRMA.FINALIZADO],
+            EstadoRMA.RECUPERACAO:       [EstadoRMA.FINALIZADO],
             EstadoRMA.SUCATA:            [EstadoRMA.FINALIZADO],
         }
         return novo_estado in transicoes.get(self.estado, [])
@@ -461,10 +464,12 @@ class RMA(db.Model):
             EstadoRMA.EM_ANALISE:        [('concluir_triagem', EstadoRMA.AGUARDANDO_DEST, 'Concluir Triagem', 'primary')],
             EstadoRMA.AGUARDANDO_DEST:   [
                 ('solicitar_coleta', EstadoRMA.AGUARDANDO_COLETA, 'Solicitar Coleta', 'warning'),
+                ('recuperar', EstadoRMA.RECUPERACAO, 'Recuperar Item', 'teal'),
                 ('sucatear', EstadoRMA.SUCATA, 'Enviar p/ Sucata', 'dark'),
             ],
             EstadoRMA.AGUARDANDO_COLETA: [('confirmar_coleta', EstadoRMA.COLETADO, 'Confirmar Coleta', 'success')],
             EstadoRMA.COLETADO:          [('finalizar', EstadoRMA.FINALIZADO, 'Finalizar', 'success')],
+            EstadoRMA.RECUPERACAO:       [('finalizar', EstadoRMA.FINALIZADO, 'Finalizar Recuperação', 'success')],
             EstadoRMA.SUCATA:            [('finalizar', EstadoRMA.FINALIZADO, 'Finalizar', 'success')],
         }
         transicoes = mapa.get(self.estado, [])

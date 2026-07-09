@@ -399,6 +399,7 @@
                 <option value="DEVOLVIDO_FORNECEDOR">Devolvido ao Fornecedor</option>
                 <option value="CREDITO_APROVADO">Crédito Aprovado</option>
                 <option value="REPARO_CONCLUIDO">Reparo Concluído</option>
+                <option value="RECUPERACAO_CONCLUIDA">Recuperação Concluída</option>
                 <option value="DESCARTE">Descarte</option>
               </select>
             </div>
@@ -487,6 +488,7 @@ modalEl.addEventListener('show.bs.modal', function(e) {
   // Mostrar campos extras conforme destino
   document.getElementById('camposTriagem').classList.add('d-none');
   document.getElementById('camposDestinacao').classList.add('d-none');
+  document.getElementById('camposFinalizar').classList.add('d-none');
 
   if (dest === 'AGUARDANDO_DESTINACAO') {
     document.getElementById('camposTriagem').classList.remove('d-none');

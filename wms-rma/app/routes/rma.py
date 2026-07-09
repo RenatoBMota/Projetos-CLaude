@@ -252,6 +252,10 @@ def transitar(rma_id):
         elif not rma.documentos.count():
             flash('Anexe ao menos um documento de evidência para finalizar.', 'warning')
             return redirect(url_for('rma.detalhe', rma_id=rma.id))
+    if novo_estado == EstadoRMA.RECUPERACAO and not disposicao:
+        rma.disposicao = 'RECUPERACAO'
+    if novo_estado == EstadoRMA.SUCATA and not disposicao:
+        rma.disposicao = 'SUCATA'
     if novo_estado in (EstadoRMA.EM_ANALISE, EstadoRMA.AGUARDANDO_DEST):
         if not rma.tecnico_id:
             rma.tecnico_id = current_user.id
