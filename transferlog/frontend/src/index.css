@@ -204,17 +204,13 @@ th {
   margin-top: 2px;
 }
 
-.kpi-tile--brand {
-  background: var(--accent-bg);
+/* Reusable icon + value/label row, for cards that embed a heading above
+   the metric (e.g. the "Transferências no período" card) instead of using
+   the standalone KpiTile component. */
+.card-icon-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-}
-.kpi-tile__brand-text {
-  font-size: 19px;
-  font-weight: 700;
-  color: var(--accent);
-  letter-spacing: 0.3px;
+  gap: 12px;
 }
 
 /* Meter: single ratio against a target (e.g. OTIF %) */
@@ -297,24 +293,6 @@ th {
   min-width: 48px;
 }
 
-/* Masonry: cards pack tightly by content height instead of being locked to a
-   shared row height (the CSS Grid default), which is what causes uneven,
-   misaligned-looking card bottoms when list lengths differ. */
-.rankings-grid {
-  column-count: 2;
-  column-gap: 16px;
-}
-.rankings-grid > .card {
-  break-inside: avoid;
-  margin-bottom: 16px;
-}
-
-@media (max-width: 900px) {
-  .rankings-grid {
-    column-count: 1;
-  }
-}
-
 .dashboard-toolbar {
   display: flex;
   align-items: center;
@@ -352,12 +330,27 @@ th {
   font-size: 13px;
 }
 
-.dashboard-gerencial-layout {
+/* Three aligned columns (two ranking columns + the route sidebar) instead of
+   CSS-column masonry: align-items:stretch makes all three the same height,
+   and every card inside grows (flex:1) to fill it — so the bottom edge of
+   every column's last card lines up, regardless of how much content each
+   column happens to have. */
+.dashboard-gerencial-columns {
   display: grid;
-  grid-template-columns: 1fr 300px;
+  grid-template-columns: 1fr 1fr 300px;
   gap: 16px;
   align-items: stretch;
 }
+.dashboard-gerencial-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.dashboard-gerencial-column > .card {
+  flex: 1;
+  margin-bottom: 0;
+}
+
 .dashboard-gerencial-sidebar {
   display: flex;
   flex-direction: column;
@@ -366,18 +359,22 @@ th {
 .dashboard-gerencial-sidebar h2 {
   margin: 0 0 4px;
 }
-/* Cards grow to fill the column's full height (matches the main content's
-   bottom edge) instead of stacking compactly and leaving dead space below. */
-.dashboard-gerencial-sidebar .kpi-tile {
+.dashboard-gerencial-sidebar__titulo-centralizado {
+  text-align: center;
+}
+.dashboard-gerencial-sidebar > .card,
+.dashboard-gerencial-sidebar > .kpi-tile {
   flex: 1;
   align-items: center;
 }
 
 @media (max-width: 900px) {
-  .dashboard-gerencial-layout {
+  .dashboard-gerencial-columns {
     grid-template-columns: 1fr;
   }
-  .dashboard-gerencial-sidebar .kpi-tile {
+  .dashboard-gerencial-column > .card,
+  .dashboard-gerencial-sidebar > .card,
+  .dashboard-gerencial-sidebar > .kpi-tile {
     flex: initial;
   }
 }

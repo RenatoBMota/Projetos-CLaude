@@ -24,6 +24,7 @@ interface DashboardGerencialData {
   tempoMedioTransitoHoras: number | null;
   tempoMedioSeparacaoHoras: number | null;
   tempoMedioConferenciaHoras: number | null;
+  tempoMedioPedidoFinalizacaoHoras: number | null;
   otifGeralPercentual: number | null;
   otifPorFilial: Array<{ nome: string; percentual: number; total: number }>;
   otifPorRota: Array<{ nome: string; percentual: number; total: number }>;
@@ -104,90 +105,97 @@ export function DashboardGerencial() {
         </div>
       </div>
 
-      <div className="dashboard-gerencial-layout">
-        <div>
-          <div className="kpi-row">
-            <KpiTile icone={<IconLayers />} tom="accent" valor={dados.transferenciasEmAberto} label="Em aberto" />
-            <KpiTile
-              icone={<IconTarget />}
-              tom={dados.otifGeralPercentual === null ? "warn" : tomOtif(dados.otifGeralPercentual)}
-              valor={dados.otifGeralPercentual === null ? "—" : `${dados.otifGeralPercentual.toFixed(1)}%`}
-              label="OTIF geral"
-            >
-              <Meter percentual={dados.otifGeralPercentual} />
-            </KpiTile>
-            <KpiTile icone={<IconClock />} tom="accent" valor={formatarDuracao(dados.tempoMedioFaturamentoCarregamentoHoras)} label="Faturamento → carregamento" />
-            <KpiTile icone={<IconTruck />} tom="accent" valor={formatarDuracao(dados.tempoMedioTransitoHoras)} label="Tempo em trânsito" />
-            <KpiTile icone={<IconClipboard />} tom="accent" valor={formatarDuracao(dados.tempoMedioSeparacaoHoras)} label="Tempo de separação" />
-            <KpiTile icone={<IconClipboardCheck />} tom="accent" valor={formatarDuracao(dados.tempoMedioConferenciaHoras)} label="Tempo de conferência" />
-            <KpiTile
-              icone={<IconDollar />}
-              tom="accent"
-              valor={dados.valorFinanceiroTransferenciasPendentes.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-              label="Valor pendente"
-            />
-            <div className="kpi-tile kpi-tile--brand">
-              <span className="kpi-tile__brand-text">TransferLog</span>
-            </div>
-          </div>
+      <div className="kpi-row">
+        <KpiTile icone={<IconLayers />} tom="accent" valor={dados.transferenciasEmAberto} label="Em aberto" />
+        <KpiTile
+          icone={<IconTarget />}
+          tom={dados.otifGeralPercentual === null ? "warn" : tomOtif(dados.otifGeralPercentual)}
+          valor={dados.otifGeralPercentual === null ? "—" : `${dados.otifGeralPercentual.toFixed(1)}%`}
+          label="OTIF geral"
+        >
+          <Meter percentual={dados.otifGeralPercentual} />
+        </KpiTile>
+        <KpiTile icone={<IconClock />} tom="accent" valor={formatarDuracao(dados.tempoMedioFaturamentoCarregamentoHoras)} label="Faturamento → carregamento" />
+        <KpiTile icone={<IconTruck />} tom="accent" valor={formatarDuracao(dados.tempoMedioTransitoHoras)} label="Tempo em trânsito" />
+        <KpiTile icone={<IconClipboard />} tom="accent" valor={formatarDuracao(dados.tempoMedioSeparacaoHoras)} label="Tempo de separação" />
+        <KpiTile icone={<IconClipboardCheck />} tom="accent" valor={formatarDuracao(dados.tempoMedioConferenciaHoras)} label="Tempo de conferência" />
+        <KpiTile
+          icone={<IconDollar />}
+          tom="accent"
+          valor={dados.valorFinanceiroTransferenciasPendentes.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+          label="Valor pendente"
+        />
+        <KpiTile icone={<IconClock />} tom="accent" valor={formatarDuracao(dados.tempoMedioPedidoFinalizacaoHoras)} label="Pedido → finalização" />
+      </div>
 
-          <div className="rankings-grid">
-            <RankingCard
-              titulo="OTIF por filial"
-              itens={dados.otifPorFilial.map((f) => ({
-                label: f.nome,
-                valor: f.percentual,
-                valorExibido: `${f.percentual.toFixed(0)}% (${f.total})`,
-                tom: tomOtif(f.percentual),
-              }))}
-            />
-            <RankingCard
-              titulo="OTIF por rota"
-              itens={dados.otifPorRota.map((f) => ({
-                label: f.nome,
-                valor: f.percentual,
-                valorExibido: `${f.percentual.toFixed(0)}% (${f.total})`,
-                tom: tomOtif(f.percentual),
-              }))}
-            />
-            <RankingCard
-              titulo="Atrasadas por origem"
-              tomPadrao="danger"
-              itens={dados.atrasadasPorOrigem.map((f) => ({ label: f.nome, valor: f.quantidade }))}
-            />
-            <RankingCard
-              titulo="Atrasadas por destino"
-              tomPadrao="danger"
-              itens={dados.atrasadasPorDestino.map((f) => ({ label: f.nome, valor: f.quantidade }))}
-            />
-            <RankingCard
-              titulo="Filiais com mais divergências"
-              tomPadrao="danger"
-              itens={dados.rankingDivergenciasPorFilial.map((f) => ({ label: f.nome, valor: f.quantidade }))}
-            />
-            <RankingCard
-              titulo="Produtos mais divergentes"
-              tomPadrao="danger"
-              itens={dados.rankingProdutosMaisDivergentes.map((f) => ({ label: f.produto, valor: f.quantidade }))}
-            />
-            <RankingCard
-              titulo="Transportadoras mais usadas"
-              tomPadrao="accent"
-              itens={dados.rankingTransportadoras.map((f) => ({ label: f.transportadora, valor: f.quantidade }))}
-            />
-            <RankingCard
-              titulo="Rotas críticas (mais atrasos)"
-              tomPadrao="danger"
-              itens={dados.heatmapRotasCriticas.map((f) => ({ label: f.rota, valor: f.quantidadeAtrasos }))}
-            />
-          </div>
+      <div className="dashboard-gerencial-columns">
+        <div className="dashboard-gerencial-column">
+          <RankingCard
+            titulo="OTIF por filial"
+            itens={dados.otifPorFilial.map((f) => ({
+              label: f.nome,
+              valor: f.percentual,
+              valorExibido: `${f.percentual.toFixed(0)}% (${f.total})`,
+              tom: tomOtif(f.percentual),
+            }))}
+          />
+          <RankingCard
+            titulo="OTIF por rota"
+            itens={dados.otifPorRota.map((f) => ({
+              label: f.nome,
+              valor: f.percentual,
+              valorExibido: `${f.percentual.toFixed(0)}% (${f.total})`,
+              tom: tomOtif(f.percentual),
+            }))}
+          />
+          <RankingCard
+            titulo="Atrasadas por origem"
+            tomPadrao="danger"
+            itens={dados.atrasadasPorOrigem.map((f) => ({ label: f.nome, valor: f.quantidade }))}
+          />
+          <RankingCard
+            titulo="Atrasadas por destino"
+            tomPadrao="danger"
+            itens={dados.atrasadasPorDestino.map((f) => ({ label: f.nome, valor: f.quantidade }))}
+          />
+        </div>
+
+        <div className="dashboard-gerencial-column">
+          <RankingCard
+            titulo="Filiais com mais divergências"
+            tomPadrao="danger"
+            itens={dados.rankingDivergenciasPorFilial.map((f) => ({ label: f.nome, valor: f.quantidade }))}
+          />
+          <RankingCard
+            titulo="Produtos mais divergentes"
+            tomPadrao="danger"
+            itens={dados.rankingProdutosMaisDivergentes.map((f) => ({ label: f.produto, valor: f.quantidade }))}
+          />
+          <RankingCard
+            titulo="Transportadoras mais usadas"
+            tomPadrao="accent"
+            itens={dados.rankingTransportadoras.map((f) => ({ label: f.transportadora, valor: f.quantidade }))}
+          />
+          <RankingCard
+            titulo="Rotas críticas (mais atrasos)"
+            tomPadrao="danger"
+            itens={dados.heatmapRotasCriticas.map((f) => ({ label: f.rota, valor: f.quantidadeAtrasos }))}
+          />
         </div>
 
         <aside className="dashboard-gerencial-sidebar">
-          <h2>Transferências no período</h2>
-          <KpiTile icone={<IconBox />} tom="accent" valor={dados.totalTransferenciasPeriodo} label="Todas as rotas" />
+          <div className="card kpi-tile--accent">
+            <h2>Transferências no período</h2>
+            <div className="card-icon-row">
+              <div className="kpi-tile__icon"><IconBox /></div>
+              <div>
+                <div className="kpi-tile__value">{dados.totalTransferenciasPeriodo}</div>
+                <div className="kpi-tile__label">Todas as rotas</div>
+              </div>
+            </div>
+          </div>
 
-          <h2>Valor por rota</h2>
+          <h2 className="dashboard-gerencial-sidebar__titulo-centralizado">Valor por rota</h2>
           {dados.valorPorRota.length === 0 ? (
             <p style={{ color: "var(--text-muted)" }}>Sem dados no período.</p>
           ) : (

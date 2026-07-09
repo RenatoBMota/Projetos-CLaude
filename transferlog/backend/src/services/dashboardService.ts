@@ -109,6 +109,7 @@ export async function dashboardGerencial(dataInicio: Date, dataFim: Date) {
   const tempoMedioTransito = mediaHoras(todas.map((t) => [t.dataCarregamento, t.dataRecebimento]));
   const tempoMedioSeparacao = mediaHoras(todas.map((t) => [t.dataPedido, t.dataSeparacaoConcluida]));
   const tempoMedioConferencia = mediaHoras(todas.map((t) => [t.dataRecebimento, t.dataConferencia]));
+  const tempoMedioPedidoFinalizacao = mediaHoras(todas.map((t) => [t.dataPedido, t.dataFinalizacao]));
 
   const statusConferidas: StatusTransferencia[] = [
     StatusTransferencia.CONFERIDO_OK,
@@ -172,6 +173,7 @@ export async function dashboardGerencial(dataInicio: Date, dataFim: Date) {
     tempoMedioTransitoHoras: tempoMedioTransito,
     tempoMedioSeparacaoHoras: tempoMedioSeparacao,
     tempoMedioConferenciaHoras: tempoMedioConferencia,
+    tempoMedioPedidoFinalizacaoHoras: tempoMedioPedidoFinalizacao,
     otifGeralPercentual: otifGeral,
     otifPorFilial,
     otifPorRota,
