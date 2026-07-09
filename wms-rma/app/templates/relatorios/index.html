@@ -78,9 +78,18 @@
       </select>
     </div>
     <div class="col-md-2">
-      <label class="form-label">Comprador</label>
-      <input type="text" name="comprador" class="form-control"
-             placeholder="Nome do comprador" value="{{ filtros.get('comprador','') }}">
+      <label class="form-label">Departamento</label>
+      <select name="departamento" class="form-select">
+        <option value="">Todos</option>
+        {% for d in departamentos %}
+        <option value="{{ d }}" {% if filtros.get('departamento') == d %}selected{% endif %}>{{ d }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Loja Origem</label>
+      <input type="text" name="loja_origem" class="form-control"
+             placeholder="Nome da loja..." value="{{ filtros.get('loja_origem','') }}">
     </div>
     <div class="col-md-2 d-flex gap-2">
       <button type="submit" class="btn btn-primary-custom flex-grow-1">
@@ -178,8 +187,11 @@
           <th>Número</th>
           <th>Estado</th>
           <th>Canal</th>
+          <th>Loja</th>
           <th>Cliente</th>
+          <th>Código</th>
           <th>Produto</th>
+          <th>Departamento</th>
           <th>Fornecedor</th>
           <th>Valor</th>
           <th>SLA</th>
@@ -196,9 +208,12 @@
           </td>
           <td><span class="badge bg-{{ r.estado_badge }} badge-estado">{{ r.estado_label }}</span></td>
           <td><span class="badge bg-light text-dark border">{{ r.canal or '—' }}</span></td>
-          <td class="text-truncate" style="max-width:130px;">{{ r.cliente_nome or '—' }}</td>
-          <td class="text-truncate" style="max-width:150px;">{{ r.produto.descricao if r.produto else '—' }}</td>
-          <td class="text-truncate" style="max-width:120px;">{{ r.fornecedor.nome if r.fornecedor else '—' }}</td>
+          <td class="text-truncate" style="max-width:90px;"><small class="text-muted">{{ r.loja_origem or '—' }}</small></td>
+          <td class="text-truncate" style="max-width:120px;">{{ r.cliente_nome or '—' }}</td>
+          <td><span class="font-monospace small text-muted">{{ r.produto.codigo if r.produto else '—' }}</span></td>
+          <td class="text-truncate" style="max-width:140px;">{{ r.produto.descricao if r.produto else '—' }}</td>
+          <td class="text-truncate" style="max-width:110px;"><small class="text-muted">{{ r.produto.categoria if r.produto else '—' }}</small></td>
+          <td class="text-truncate" style="max-width:110px;">{{ r.fornecedor.nome if r.fornecedor else '—' }}</td>
           <td>{{ r.valor_total|moeda }}</td>
           <td>
             {% if r.em_atraso %}
@@ -215,7 +230,7 @@
         {% endfor %}
         {% if rmas|length > 100 %}
         <tr>
-          <td colspan="10" class="text-center text-muted py-2 small">
+          <td colspan="13" class="text-center text-muted py-2 small">
             Exibindo 100 de {{ total }} registros. Exporte para ver todos.
           </td>
         </tr>

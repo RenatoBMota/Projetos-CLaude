@@ -17,12 +17,14 @@ bp = Blueprint('rma', __name__, url_prefix='/rma')
 @login_required
 def index():
     # Filtros
-    estado   = request.args.get('estado', '')
-    canal    = request.args.get('canal', '')
-    busca    = request.args.get('busca', '')
-    forn_id  = request.args.get('fornecedor_id', type=int)
-    atrasados= request.args.get('atrasados', '')
-    page     = request.args.get('page', 1, type=int)
+    estado        = request.args.get('estado', '')
+    canal         = request.args.get('canal', '')
+    busca         = request.args.get('busca', '')
+    forn_id       = request.args.get('fornecedor_id', type=int)
+    atrasados     = request.args.get('atrasados', '')
+    loja_origem   = request.args.get('loja_origem', '')
+    busca_produto = request.args.get('busca_produto', '')
+    page          = request.args.get('page', 1, type=int)
 
     q = RMA.query
 
@@ -40,6 +42,14 @@ def index():
         )
     if forn_id:
         q = q.filter_by(fornecedor_id=forn_id)
+    if loja_origem:
+        q = q.filter(RMA.loja_origem.ilike(f'%{loja_origem}%'))
+    if busca_produto:
+        q = q.join(Produto, RMA.produto_id == Produto.id)\
+              .filter(db.or_(
+                  Produto.codigo.ilike(f'%{busca_produto}%'),
+                  Produto.ean.ilike(f'%{busca_produto}%'),
+              ))
     if atrasados:
         from app.models import PrazoSLA
         q = q.join(PrazoSLA, RMA.prazo_sla_id == PrazoSLA.id)\
@@ -59,6 +69,8 @@ def index():
         filtro_busca=busca,
         filtro_forn=forn_id,
         filtro_atrasados=atrasados,
+        filtro_loja=loja_origem,
+        filtro_busca_produto=busca_produto,
     )
 
 

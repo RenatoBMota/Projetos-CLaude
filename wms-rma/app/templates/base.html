@@ -183,6 +183,14 @@
     .sla-bar { height: 6px; border-radius: 3px; background: #e2e8f0; }
     .sla-bar-fill { height: 100%; border-radius: 3px; }
 
+    /* ── Resizable columns ──────────────────────────────── */
+    .page-content table thead th { position: relative; }
+    .col-resizer {
+      position: absolute; right: 0; top: 0; bottom: 0; width: 5px;
+      cursor: col-resize; user-select: none; z-index: 1;
+    }
+    .col-resizer:hover, .col-resizer.dragging { background: var(--primary); opacity: .45; }
+
     /* ── Responsivo ─────────────────────────────────────── */
     @media (max-width: 768px) {
       #sidebar { width: 0; }
@@ -380,6 +388,29 @@
   }, 5000);
 </script>
 {% block scripts %}{% endblock %}
+<script>
+// ── Resizable table columns ───────────────────────────────────────────────
+document.querySelectorAll('.page-content table thead th').forEach(th => {
+  const handle = document.createElement('div');
+  handle.className = 'col-resizer';
+  th.appendChild(handle);
+  let startX, startW;
+  handle.addEventListener('mousedown', e => {
+    startX = e.pageX;
+    startW = th.offsetWidth;
+    handle.classList.add('dragging');
+    const onMove = ev => { th.style.width = Math.max(40, startW + ev.pageX - startX) + 'px'; };
+    const onUp   = () => {
+      handle.classList.remove('dragging');
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    e.preventDefault();
+  });
+});
+</script>
 <script>
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('{{ url_for("static", filename="sw.js") }}').catch(() => {});

@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block title %}Endereço {{ apt.endereco }}{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('armazem.index') }}">Armazém</a></li>
+<li class="breadcrumb-item active">{{ apt.endereco }}</li>
+{% endblock %}
+{% block content %}
+<div class="page-header d-flex align-items-start justify-content-between flex-wrap gap-2">
+  <div>
+    <h1><i class="fa-solid fa-location-dot me-2 text-primary"></i>Endereço {{ apt.endereco }}</h1>
+    <p class="subtitle">
+      {% if apt.numero and apt.numero.rua and apt.numero.rua.modulo %}
+      {% set num = apt.numero %}
+      {% set rua = num.rua %}
+      {% set mod = rua.modulo %}
+      Módulo {{ mod.codigo }}{% if mod.nome %} — {{ mod.nome }}{% endif %} ·
+      Rua {{ rua.codigo }} · Nº {{ num.codigo }}
+      {% if mod.zona %}
+      · {{ mod.zona.nome }}
+      {% endif %}
+      {% endif %}
+    </p>
+  </div>
+  <a href="javascript:history.back()" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i>Voltar
+  </a>
+</div>
+
+<!-- RMAs ativos neste endereço -->
+<div class="table-card mb-4">
+  <div class="table-header">
+    <i class="fa-solid fa-boxes-stacked text-primary"></i>
+    <span class="fw-bold">RMAs Ativos neste Endereço</span>
+    <span class="badge bg-primary ms-1">{{ rmas_ativos|length }}</span>
+  </div>
+  {% if rmas_ativos %}
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Número</th>
+          <th>Estado</th>
+          <th>Canal</th>
+          <th>Loja</th>
+          <th>Código</th>
+          <th>Produto</th>
+          <th>Fornecedor</th>
+          <th>Departamento</th>
+          <th>Valor</th>
+          <th>Dias</th>
+          <th>SLA</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rmas_ativos %}
+        <tr {% if r.em_atraso %}style="background:#fef2f2"{% endif %}>
+          <td>
+            <a href="{{ url_for('rma.detalhe', rma_id=r.id) }}"
+               class="fw-bold text-decoration-none text-primary">{{ r.numero }}</a>
+          </td>
+          <td><span class="badge bg-{{ r.estado_badge }} badge-estado">{{ r.estado_label }}</span></td>
+          <td><span class="badge bg-light text-dark border">{{ r.canal or '—' }}</span></td>
+          <td><small class="text-muted">{{ r.loja_origem or '—' }}</small></td>
+          <td><span class="font-monospace small text-muted">{{ r.produto.codigo if r.produto else '—' }}</span></td>
+          <td class="text-truncate" style="max-width:150px;">{{ r.produto.descricao if r.produto else '—' }}</td>
+          <td class="text-truncate" style="max-width:120px;">{{ r.fornecedor.nome if r.fornecedor else '—' }}</td>
+          <td><small class="text-muted">{{ r.produto.categoria if r.produto else '—' }}</small></td>
+          <td>{{ r.valor_total|moeda }}</td>
+          <td>
+            <span class="{% if r.dias_em_aberto > 15 %}text-danger fw-bold{% elif r.dias_em_aberto > 7 %}text-warning{% else %}text-muted{% endif %}">
+              {{ r.dias_em_aberto }}d
+            </span>
+          </td>
+          <td>
+            {% if r.em_atraso %}
+            <span class="badge bg-danger"><i class="fa-solid fa-clock me-1"></i>Atrasado</span>
+            {% else %}
+            <span class="badge bg-success-subtle text-success border">OK</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{{ url_for('rma.detalhe', rma_id=r.id) }}" class="btn btn-sm btn-outline-primary">
+              <i class="fa-solid fa-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="p-4 text-center text-muted">
+    <i class="fa-solid fa-check-circle fa-2x mb-2 d-block text-success"></i>
+    Nenhum RMA ativo neste endereço.
+  </div>
+  {% endif %}
+</div>
+
+<!-- Histórico -->
+{% if rmas_hist %}
+<div class="table-card">
+  <div class="table-header">
+    <i class="fa-solid fa-clock-rotate-left text-muted"></i>
+    <span class="fw-bold text-muted">Histórico (últimos {{ rmas_hist|length }})</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Número</th>
+          <th>Estado Final</th>
+          <th>Produto</th>
+          <th>Fornecedor</th>
+          <th>Valor</th>
+          <th>Finalizado em</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rmas_hist %}
+        <tr>
+          <td>
+            <a href="{{ url_for('rma.detalhe', rma_id=r.id) }}"
+               class="fw-bold text-decoration-none text-secondary">{{ r.numero }}</a>
+          </td>
+          <td><span class="badge bg-{{ r.estado_badge }} badge-estado">{{ r.estado_label }}</span></td>
+          <td class="text-truncate" style="max-width:150px;">{{ r.produto.descricao if r.produto else '—' }}</td>
+          <td class="text-truncate" style="max-width:120px;">{{ r.fornecedor.nome if r.fornecedor else '—' }}</td>
+          <td>{{ r.valor_total|moeda }}</td>
+          <td class="text-muted small">{{ r.finalizado_em|data if r.finalizado_em else '—' }}</td>
+          <td>
+            <a href="{{ url_for('rma.detalhe', rma_id=r.id) }}" class="btn btn-sm btn-outline-secondary">
+              <i class="fa-solid fa-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

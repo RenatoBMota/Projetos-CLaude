@@ -59,18 +59,25 @@
     <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
       <span class="badge bg-light text-dark border" style="min-width:60px;">Nº {{ num.codigo }}</span>
       {% for apt in num.apartamentos.all() %}
-      <span class="badge {% if apt.ocupado %}bg-danger{% else %}bg-success{% endif %} d-inline-flex align-items-center gap-1"
-            title="Endereço: {{ apt.endereco }}{% if apt.ocupado %} (Ocupado){% endif %}">
+      {% if apt.ocupado %}
+      <a href="{{ url_for('armazem.apt_rmas', apt_id=apt.id) }}"
+         class="badge bg-danger d-inline-flex align-items-center gap-1 text-decoration-none"
+         title="Ver RMAs no endereço {{ apt.endereco }}">
+        <i class="fa-solid fa-boxes-stacked" style="font-size:.65rem;"></i>
         {{ apt.endereco }}
-        {% if not apt.ocupado %}
+      </a>
+      {% else %}
+      <span class="badge bg-success d-inline-flex align-items-center gap-1"
+            title="Endereço: {{ apt.endereco }} (Livre)">
+        {{ apt.endereco }}
         <form method="POST" action="{{ url_for('armazem.apartamento_deletar', apartamento_id=apt.id) }}"
               onsubmit="return confirm('Excluir o endereço {{ apt.endereco }}?');" class="d-inline">
           <button type="submit" class="btn btn-link text-white p-0 ms-1" style="line-height:1;" title="Excluir endereço">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </form>
-        {% endif %}
       </span>
+      {% endif %}
       {% endfor %}
       <button type="button" class="btn btn-link p-0 small" style="font-size:.72rem;"
               data-bs-toggle="modal" data-bs-target="#modalNovoApartamento" data-numero-id="{{ num.id }}">

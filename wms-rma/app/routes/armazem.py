@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required
 from app.extensions import db
 from app.models import (Armazem, Zona, Modulo, Rua, Numero, Apartamento,
-                         TipoZona, RMA, ItemInventario)
+                         TipoZona, RMA, EstadoRMA, ItemInventario)
 from app.utils import role_required
 from app.models import Roles
 
@@ -397,6 +397,24 @@ def apartamento_deletar(apartamento_id):
     db.session.commit()
     flash(f'Endereço "{endereco}" excluído.', 'success')
     return redirect(url_for('armazem.zona_detalhe', zona_id=zona_id))
+
+
+# ── Apartamento: RMAs alocados ───────────────────────────────────────────────
+
+@bp.route('/apartamento/<int:apt_id>/rmas')
+@login_required
+def apt_rmas(apt_id):
+    apt = Apartamento.query.get_or_404(apt_id)
+    rmas_ativos = RMA.query.filter(
+        RMA.apartamento_id == apt_id,
+        RMA.estado.notin_([EstadoRMA.FINALIZADO, EstadoRMA.CANCELADO, EstadoRMA.SUCATA])
+    ).order_by(RMA.criado_em.desc()).all()
+    rmas_hist = RMA.query.filter(
+        RMA.apartamento_id == apt_id,
+        RMA.estado.in_([EstadoRMA.FINALIZADO, EstadoRMA.CANCELADO, EstadoRMA.SUCATA])
+    ).order_by(RMA.finalizado_em.desc()).limit(20).all()
+    return render_template('armazem/apt_rmas.html',
+        apt=apt, rmas_ativos=rmas_ativos, rmas_hist=rmas_hist)
 
 
 # ── API ───────────────────────────────────────────────────────────────────────

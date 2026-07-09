@@ -10,15 +10,29 @@
 {% endblock %}
 
 {% block content %}
-<div class="page-header d-flex align-items-center justify-content-between">
+<div class="page-header d-flex align-items-start justify-content-between flex-wrap gap-3">
   <div>
     <h1><i class="fa-solid fa-gauge-high me-2 text-primary"></i>Dashboard</h1>
     <p class="subtitle">Visão geral da operação de RMA</p>
   </div>
-  <span class="badge bg-light text-secondary border fs-6">
-    <i class="fa-regular fa-calendar me-1"></i>
-    {{ now.strftime('%d/%m/%Y') }}
-  </span>
+  <form method="GET" class="d-flex gap-2 align-items-end flex-wrap">
+    <div>
+      <label class="form-label mb-1" style="font-size:.72rem;">De</label>
+      <input type="date" name="data_ini" class="form-control form-control-sm"
+             value="{{ filtro_data_ini }}" style="width:130px;">
+    </div>
+    <div>
+      <label class="form-label mb-1" style="font-size:.72rem;">Até</label>
+      <input type="date" name="data_fim" class="form-control form-control-sm"
+             value="{{ filtro_data_fim }}" style="width:130px;">
+    </div>
+    <button type="submit" class="btn btn-sm btn-primary-custom">
+      <i class="fa-solid fa-filter me-1"></i>Filtrar
+    </button>
+    <a href="{{ url_for('dashboard.index') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="fa-solid fa-xmark"></i>
+    </a>
+  </form>
 </div>
 
 <!-- ── KPIs ────────────────────────────────────────────────────────────────── -->
@@ -28,10 +42,10 @@
       <div class="kpi-icon" style="background:#eff6ff;color:#2563eb;">
         <i class="fa-solid fa-rotate-left"></i>
       </div>
-      <div class="kpi-value">{{ total_rmas }}</div>
-      <div class="kpi-label">Total de RMAs</div>
+      <div class="kpi-value">{{ rmas_mes }}</div>
+      <div class="kpi-label">RMAs no Período</div>
       <div class="kpi-delta text-primary">
-        <i class="fa-solid fa-plus-circle"></i> {{ rmas_mes }} este mês
+        <i class="fa-solid fa-dollar-sign"></i> {{ valor_mes | moeda }}
       </div>
     </div>
   </div>
@@ -43,7 +57,7 @@
       <div class="kpi-value">{{ rmas_abertos }}</div>
       <div class="kpi-label">Em Aberto</div>
       <div class="kpi-delta text-warning">
-        <i class="fa-solid fa-clock"></i> {{ media_dias }} dias (média)
+        <i class="fa-solid fa-dollar-sign"></i> {{ valor_abertos | moeda }} · {{ media_dias }}d média
       </div>
     </div>
   </div>
@@ -53,7 +67,7 @@
         <i class="fa-solid fa-circle-check"></i>
       </div>
       <div class="kpi-value">{{ rmas_finalizados }}</div>
-      <div class="kpi-label">Finalizados</div>
+      <div class="kpi-label">Finalizados (total)</div>
       <div class="kpi-delta text-success">
         <i class="fa-solid fa-check"></i>
         {% if total_rmas %}{{ (rmas_finalizados / total_rmas * 100)|round(1) }}%{% else %}0%{% endif %}
@@ -120,13 +134,72 @@
   <!-- Top fornecedores -->
   <div class="col-md-5">
     <div class="table-card p-3 h-100">
-      <h6 class="mb-3 fw-bold">Top 5 Fornecedores por RMA</h6>
+      <h6 class="mb-3 fw-bold">Top 5 Fornecedores no Período</h6>
       <canvas id="chartFornecedor" height="160"></canvas>
     </div>
   </div>
 
-  <!-- Últimas RMAs -->
+  <!-- Por departamento -->
   <div class="col-md-7">
+    <div class="table-card p-3 h-100">
+      <h6 class="mb-3 fw-bold">RMAs por Departamento no Período</h6>
+      {% if por_dept %}
+      <canvas id="chartDept" height="130"></canvas>
+      {% else %}
+      <p class="text-muted text-center small py-4">Sem dados de categoria de produto no período.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Por loja de origem -->
+{% if por_loja %}
+<div class="row g-3 mb-4">
+  <div class="col-12">
+    <div class="table-card">
+      <div class="table-header">
+        <i class="fa-solid fa-store text-muted"></i>
+        <span class="fw-bold">RMAs por Loja de Origem no Período</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Loja</th>
+              <th class="text-center">Qtd</th>
+              <th>Participação</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% set total_loja = por_loja | sum(attribute=1) %}
+            {% for loja, cnt in por_loja %}
+            {% set pct = (cnt / total_loja * 100)|round(1) if total_loja else 0 %}
+            <tr>
+              <td class="text-muted">{{ loop.index }}</td>
+              <td class="fw-bold">{{ loja }}</td>
+              <td class="text-center"><span class="badge bg-primary">{{ cnt }}</span></td>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="sla-bar flex-grow-1" style="height:8px;">
+                    <div class="sla-bar-fill bg-primary" style="width:{{ pct }}%;height:8px;"></div>
+                  </div>
+                  <small class="fw-bold text-muted" style="min-width:35px;">{{ pct }}%</small>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+  <!-- Últimas RMAs -->
+  <div class="col-12">
     <div class="table-card h-100">
       <div class="table-header">
         <i class="fa-solid fa-clock-rotate-left text-muted"></i>
@@ -204,12 +277,12 @@ const estadoData = {{ por_estado | tojson }};
 const estadoCores = {
   'ABERTO':'#6b7280','AGUARDANDO_APROVACAO':'#eab308','AGUARDANDO_TRIAGEM':'#f59e0b','EM_ANALISE':'#3b82f6',
   'AGUARDANDO_DESTINACAO':'#8b5cf6','AGUARDANDO_COLETA':'#f97316',
-  'COLETADO':'#10b981','FINALIZADO':'#16a34a','CANCELADO':'#ef4444','SUCATA':'#374151'
+  'COLETADO':'#10b981','RECUPERACAO':'#0d9488','FINALIZADO':'#16a34a','CANCELADO':'#ef4444','SUCATA':'#374151'
 };
 const estadoLabels = {
   'ABERTO':'Aberto','AGUARDANDO_APROVACAO':'Ag. Aprovação','AGUARDANDO_TRIAGEM':'Ag. Triagem','EM_ANALISE':'Em Análise',
   'AGUARDANDO_DESTINACAO':'Ag. Destinação','AGUARDANDO_COLETA':'Ag. Coleta',
-  'COLETADO':'Coletado','FINALIZADO':'Finalizado','CANCELADO':'Cancelado','SUCATA':'Sucata'
+  'COLETADO':'Coletado','RECUPERACAO':'Recuperação','FINALIZADO':'Finalizado','CANCELADO':'Cancelado','SUCATA':'Sucata'
 };
 
 new Chart(document.getElementById('chartEstado'), {
@@ -259,5 +332,28 @@ new Chart(document.getElementById('chartFornecedor'), {
     scales: { x: { beginAtZero: true } }
   }
 });
+
+// ── Por departamento ────────────────────────────────────────────────────────
+{% if por_dept %}
+const deptData = {{ por_dept | tojson }};
+const deptCanvas = document.getElementById('chartDept');
+if (deptCanvas) {
+  new Chart(deptCanvas, {
+    type: 'bar',
+    data: {
+      labels: deptData.map(d => d[0].length > 18 ? d[0].substring(0,17)+'…' : d[0]),
+      datasets: [{
+        label: 'RMAs', data: deptData.map(d => d[1]),
+        backgroundColor: 'rgba(139,92,246,.7)', borderRadius: 6,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+  });
+}
+{% endif %}
 </script>
 {% endblock %}

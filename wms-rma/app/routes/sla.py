@@ -31,12 +31,12 @@ def index():
     total_violados = PrazoSLA.query.filter_by(violado=True).count()
 
     # Filtros
-    comprador   = request.args.get('comprador', '').strip()
-    forn_id     = request.args.get('fornecedor_id', type=int)
-    canal       = request.args.get('canal', '').strip()
-    status_fil  = request.args.get('status', 'atrasados')  # atrasados | todos
-    data_ini    = request.args.get('data_ini', '').strip()
-    data_fim    = request.args.get('data_fim', '').strip()
+    departamento = request.args.get('departamento', '').strip()
+    forn_id      = request.args.get('fornecedor_id', type=int)
+    canal        = request.args.get('canal', '').strip()
+    status_fil   = request.args.get('status', 'atrasados')  # atrasados | todos
+    data_ini     = request.args.get('data_ini', '').strip()
+    data_fim     = request.args.get('data_fim', '').strip()
 
     q_atrasados = RMA.query.join(PrazoSLA, RMA.prazo_sla_id == PrazoSLA.id)\
                            .filter(RMA.estado.notin_([EstadoRMA.FINALIZADO, EstadoRMA.CANCELADO]))
@@ -44,21 +44,24 @@ def index():
     if status_fil == 'atrasados':
         q_atrasados = q_atrasados.filter(PrazoSLA.em_atraso == True)
 
-    if comprador:
+    if departamento:
         q_atrasados = q_atrasados.join(Produto, RMA.produto_id == Produto.id)\
-                                 .filter(Produto.comprador.ilike(f'%{comprador}%'))
+                                 .filter(Produto.categoria.ilike(f'%{departamento}%'))
     if forn_id:
         q_atrasados = q_atrasados.filter(RMA.fornecedor_id == forn_id)
     if canal:
         q_atrasados = q_atrasados.filter(RMA.canal == canal)
     if data_ini:
-        from datetime import datetime as dt
-        q_atrasados = q_atrasados.filter(RMA.criado_em >= dt.strptime(data_ini, '%Y-%m-%d'))
+        q_atrasados = q_atrasados.filter(RMA.criado_em >= datetime.strptime(data_ini, '%Y-%m-%d'))
     if data_fim:
-        from datetime import datetime as dt
-        q_atrasados = q_atrasados.filter(RMA.criado_em < dt.strptime(data_fim, '%Y-%m-%d'))
+        q_atrasados = q_atrasados.filter(RMA.criado_em < datetime.strptime(data_fim, '%Y-%m-%d'))
 
     rmas_atrasados = q_atrasados.order_by(PrazoSLA.prazo_resolucao).all()
+
+    departamentos = db.session.query(Produto.categoria)\
+        .filter(Produto.categoria.isnot(None), Produto.categoria != '')\
+        .distinct().order_by(Produto.categoria).all()
+    departamentos = [r[0] for r in departamentos]
 
     # Por fornecedor - ranking de atrasos
     por_fornecedor = db.session.query(
@@ -87,7 +90,8 @@ def index():
         agora=agora,
         fornecedores=fornecedores,
         opcoes_canal=opcoes_canal,
-        filtro_comprador=comprador,
+        departamentos=departamentos,
+        filtro_departamento=departamento,
         filtro_forn=forn_id,
         filtro_canal=canal,
         filtro_status=status_fil,

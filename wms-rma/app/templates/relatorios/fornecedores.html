@@ -14,6 +14,54 @@
   <li class="nav-item"><a class="nav-link active" href="{{ url_for('relatorios.por_fornecedor') }}">Por Fornecedor</a></li>
 </ul>
 
+<div class="form-card mb-4">
+  <form method="GET" class="row g-2 align-items-end">
+    <div class="col-md-2">
+      <label class="form-label">Data Inicial</label>
+      <input type="date" name="data_ini" class="form-control" value="{{ filtros.get('data_ini','') }}">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Data Final</label>
+      <input type="date" name="data_fim" class="form-control" value="{{ filtros.get('data_fim','') }}">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Canal</label>
+      <select name="canal" class="form-select">
+        <option value="">Todos</option>
+        <option value="LOJA"      {% if filtros.get('canal') == 'LOJA' %}selected{% endif %}>Loja</option>
+        <option value="ECOMMERCE" {% if filtros.get('canal') == 'ECOMMERCE' %}selected{% endif %}>E-commerce</option>
+        <option value="B2B"       {% if filtros.get('canal') == 'B2B' %}selected{% endif %}>B2B</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Estado</label>
+      <select name="estado" class="form-select">
+        <option value="">Todos</option>
+        {% for cod, (label, badge) in estados %}
+        <option value="{{ cod }}" {% if filtros.get('estado') == cod %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Departamento</label>
+      <select name="departamento" class="form-select">
+        <option value="">Todos</option>
+        {% for d in departamentos %}
+        <option value="{{ d }}" {% if filtros.get('departamento') == d %}selected{% endif %}>{{ d }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2 d-flex gap-2">
+      <button type="submit" class="btn btn-primary-custom flex-grow-1">
+        <i class="fa-solid fa-search me-1"></i>Filtrar
+      </button>
+      <a href="{{ url_for('relatorios.por_fornecedor') }}" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-xmark"></i>
+      </a>
+    </div>
+  </form>
+</div>
+
 <div class="table-card">
   <div class="table-responsive">
     <table class="table table-hover mb-0">

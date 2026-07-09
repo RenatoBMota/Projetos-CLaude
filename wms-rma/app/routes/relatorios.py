@@ -10,14 +10,15 @@ bp = Blueprint('relatorios', __name__, url_prefix='/relatorios')
 
 
 def _aplicar_filtros(q):
-    """Aplica filtros comuns de data, estado, canal, fornecedor e comprador."""
-    data_ini  = request.args.get('data_ini') or request.form.get('data_ini')
-    data_fim  = request.args.get('data_fim') or request.form.get('data_fim')
-    estado    = request.args.get('estado')   or request.form.get('estado')
-    canal     = request.args.get('canal')    or request.form.get('canal')
-    forn_id   = request.args.get('fornecedor_id', type=int) or \
-                request.form.get('fornecedor_id', type=int)
-    comprador = request.args.get('comprador') or request.form.get('comprador')
+    """Aplica filtros comuns de data, estado, canal, fornecedor, departamento e loja."""
+    data_ini     = request.args.get('data_ini') or request.form.get('data_ini')
+    data_fim     = request.args.get('data_fim') or request.form.get('data_fim')
+    estado       = request.args.get('estado')   or request.form.get('estado')
+    canal        = request.args.get('canal')    or request.form.get('canal')
+    forn_id      = request.args.get('fornecedor_id', type=int) or \
+                   request.form.get('fornecedor_id', type=int)
+    departamento = request.args.get('departamento') or request.form.get('departamento')
+    loja_origem  = request.args.get('loja_origem') or request.form.get('loja_origem')
 
     filtros = {}
     if data_ini:
@@ -37,46 +38,52 @@ def _aplicar_filtros(q):
     if forn_id:
         q = q.filter_by(fornecedor_id=forn_id)
         filtros['fornecedor_id'] = forn_id
-    if comprador:
+    if departamento:
         q = q.join(Produto, RMA.produto_id == Produto.id)\
-              .filter(Produto.comprador.ilike(f'%{comprador}%'))
-        filtros['comprador'] = comprador
+              .filter(Produto.categoria.ilike(f'%{departamento}%'))
+        filtros['departamento'] = departamento
+    if loja_origem:
+        q = q.filter(RMA.loja_origem.ilike(f'%{loja_origem}%'))
+        filtros['loja_origem'] = loja_origem
 
     return q, filtros
+
+
+def _get_departamentos():
+    rows = db.session.query(Produto.categoria)\
+        .filter(Produto.categoria.isnot(None), Produto.categoria != '')\
+        .distinct().order_by(Produto.categoria).all()
+    return [r[0] for r in rows]
 
 
 @bp.route('/')
 @login_required
 def index():
-    fornecedores = Fornecedor.query.filter_by(ativo=True).order_by(Fornecedor.nome).all()
-    estados      = list(EstadoRMA.LABELS.items())
+    fornecedores  = Fornecedor.query.filter_by(ativo=True).order_by(Fornecedor.nome).all()
+    estados       = list(EstadoRMA.LABELS.items())
+    departamentos = _get_departamentos()
 
-    # Dados do relatório se houver filtros
     q, filtros = _aplicar_filtros(RMA.query)
     rmas = q.order_by(RMA.criado_em.desc()).all() if filtros else []
 
-    # Métricas de resumo
-    total  = len(rmas)
+    total       = len(rmas)
     valor_total = sum(float(r.valor_total or 0) for r in rmas)
     finalizados = sum(1 for r in rmas if r.estado == EstadoRMA.FINALIZADO)
     atrasados   = sum(1 for r in rmas if r.em_atraso)
 
-    # Por estado
     por_estado = {}
     for r in rmas:
         por_estado[r.estado_label] = por_estado.get(r.estado_label, 0) + 1
 
-    # Por fornecedor
     por_forn = {}
     for r in rmas:
         nome = r.fornecedor.nome if r.fornecedor else 'N/A'
         por_forn[nome] = por_forn.get(nome, 0) + 1
 
-    # Aging (tempo em aberto)
     aging = {'0-7 dias': 0, '8-15 dias': 0, '16-30 dias': 0, '31-60 dias': 0, '60+ dias': 0}
     for r in rmas:
         d = r.dias_em_aberto
-        if d <= 7:   aging['0-7 dias'] += 1
+        if d <= 7:    aging['0-7 dias'] += 1
         elif d <= 15: aging['8-15 dias'] += 1
         elif d <= 30: aging['16-30 dias'] += 1
         elif d <= 60: aging['31-60 dias'] += 1
@@ -85,6 +92,7 @@ def index():
     return render_template('relatorios/index.html',
         fornecedores=fornecedores,
         estados=estados,
+        departamentos=departamentos,
         filtros=filtros,
         rmas=rmas,
         total=total,
@@ -268,9 +276,9 @@ def exportar_pdf():
 @bp.route('/aging')
 @login_required
 def aging():
-    rmas_ativos = RMA.query.filter(
-        RMA.estado.notin_([EstadoRMA.FINALIZADO, EstadoRMA.CANCELADO])
-    ).order_by(RMA.recebido_em).all()
+    q = RMA.query.filter(RMA.estado.notin_([EstadoRMA.FINALIZADO, EstadoRMA.CANCELADO]))
+    q, filtros = _aplicar_filtros(q)
+    rmas_ativos = q.order_by(RMA.recebido_em).all()
 
     faixas = [
         ('0-7 dias',   0,   7),
@@ -286,7 +294,11 @@ def aging():
         resultado.append({'label': label, 'count': len(itens),
                           'valor': valor, 'rmas': itens[:10]})
 
-    return render_template('relatorios/aging.html', resultado=resultado)
+    fornecedores  = Fornecedor.query.filter_by(ativo=True).order_by(Fornecedor.nome).all()
+    departamentos = _get_departamentos()
+    estados       = list(EstadoRMA.LABELS.items())
+    return render_template('relatorios/aging.html', resultado=resultado, filtros=filtros,
+        fornecedores=fornecedores, departamentos=departamentos, estados=estados)
 
 
 @bp.route('/fornecedores')
@@ -304,9 +316,12 @@ def por_fornecedor():
      .group_by(Fornecedor.id)\
      .order_by(db.desc('total')).all()
 
-    fornecedores = Fornecedor.query.filter_by(ativo=True).order_by(Fornecedor.nome).all()
+    fornecedores  = Fornecedor.query.filter_by(ativo=True).order_by(Fornecedor.nome).all()
+    departamentos = _get_departamentos()
+    estados       = list(EstadoRMA.LABELS.items())
     return render_template('relatorios/fornecedores.html',
-                           dados=dados, fornecedores=fornecedores, filtros=filtros)
+        dados=dados, fornecedores=fornecedores, filtros=filtros,
+        departamentos=departamentos, estados=estados)
 
 
 def _redirect_relatorios():

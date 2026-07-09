@@ -20,12 +20,22 @@
 <!-- ── Filtros ─────────────────────────────────────────────────────────────── -->
 <div class="form-card mb-4">
   <form method="GET" class="row g-2 align-items-end">
-    <div class="col-md-3">
+    <div class="col-md-2">
       <label class="form-label">Busca</label>
       <input type="text" name="busca" class="form-control"
              placeholder="Número, cliente, NF..." value="{{ filtro_busca }}">
     </div>
     <div class="col-md-2">
+      <label class="form-label">Cód/EAN Produto</label>
+      <input type="text" name="busca_produto" class="form-control"
+             placeholder="Código ou EAN..." value="{{ filtro_busca_produto }}">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Loja Origem</label>
+      <input type="text" name="loja_origem" class="form-control"
+             placeholder="Nome da loja..." value="{{ filtro_loja }}">
+    </div>
+    <div class="col-md-1">
       <label class="form-label">Estado</label>
       <select name="estado" class="form-select">
         <option value="">Todos</option>
@@ -34,7 +44,7 @@
         {% endfor %}
       </select>
     </div>
-    <div class="col-md-2">
+    <div class="col-md-1">
       <label class="form-label">Canal</label>
       <select name="canal" class="form-select">
         <option value="">Todos</option>
@@ -52,17 +62,20 @@
         {% endfor %}
       </select>
     </div>
-    <div class="col-md-2">
+    <div class="col-md-1">
       <label class="form-label">SLA</label>
       <select name="atrasados" class="form-select">
         <option value="">Todos</option>
-        <option value="1" {% if filtro_atrasados %}selected{% endif %}>Apenas atrasados</option>
+        <option value="1" {% if filtro_atrasados %}selected{% endif %}>Atrasados</option>
       </select>
     </div>
-    <div class="col-md-1">
-      <button type="submit" class="btn btn-primary-custom w-100">
+    <div class="col-md-1 d-flex gap-1">
+      <button type="submit" class="btn btn-primary-custom flex-grow-1">
         <i class="fa-solid fa-magnifying-glass"></i>
       </button>
+      <a href="{{ url_for('rma.index') }}" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-xmark"></i>
+      </a>
     </div>
   </form>
 </div>
@@ -96,7 +109,9 @@
           <th>Número</th>
           <th>Estado</th>
           <th>Canal</th>
+          <th>Loja</th>
           <th>Cliente</th>
+          <th>Código</th>
           <th>Produto</th>
           <th>Fornecedor</th>
           <th>Endereço</th>
@@ -119,11 +134,19 @@
           <td>
             <span class="badge bg-light text-secondary border">{{ r.canal or '—' }}</span>
           </td>
-          <td class="text-truncate" style="max-width:140px;">{{ r.cliente_nome or '—' }}</td>
-          <td class="text-truncate" style="max-width:160px;">
+          <td class="text-truncate" style="max-width:100px;">
+            <small class="text-muted">{{ r.loja_origem or '—' }}</small>
+          </td>
+          <td class="text-truncate" style="max-width:130px;">{{ r.cliente_nome or '—' }}</td>
+          <td>
+            {% if r.produto %}
+            <span class="font-monospace small text-muted">{{ r.produto.codigo or '—' }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td class="text-truncate" style="max-width:150px;">
             {% if r.produto %}{{ r.produto.descricao }}{% else %}—{% endif %}
           </td>
-          <td class="text-truncate" style="max-width:120px;">
+          <td class="text-truncate" style="max-width:110px;">
             {% if r.fornecedor %}{{ r.fornecedor.nome }}{% else %}—{% endif %}
           </td>
           <td>
@@ -157,7 +180,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="12" class="text-center py-5 text-muted">
+          <td colspan="13" class="text-center py-5 text-muted">
             <i class="fa-solid fa-inbox fa-2x mb-2 d-block"></i>
             Nenhum RMA encontrado com os filtros aplicados.
           </td>
