@@ -18,6 +18,8 @@ export interface NfeParsed {
   destinatarioCnpj: string;
   destinatarioNome?: string;
   dataEmissao: Date;
+  /** Falso quando a hora de dataEmissao não é confiável (ex.: OCR sem o horário do protocolo de autorização). */
+  dataEmissaoConfiavel: boolean;
   valorTotal: number;
   qtdVolumes: number;
   pesoBruto: number;
@@ -91,7 +93,10 @@ export function parseNfeXml(xml: string): NfeParsed {
     emitenteNome: String(emit.xNome),
     destinatarioCnpj: onlyDigits(dest.CNPJ),
     destinatarioNome: String(dest.xNome),
-    dataEmissao: new Date(ide.dhEmi ?? ide.dEmi),
+    // dhEmi já traz o horário com offset (ex.: "2026-07-04T10:00:00-03:00"), confiável.
+    // dEmi (layout antigo, sem hora) é só a data — evitamos inventar um horário.
+    dataEmissao: ide.dhEmi ? new Date(ide.dhEmi) : new Date(`${ide.dEmi}T12:00:00-03:00`),
+    dataEmissaoConfiavel: Boolean(ide.dhEmi),
     valorTotal: Number(total?.vNF ?? 0),
     qtdVolumes,
     pesoBruto,

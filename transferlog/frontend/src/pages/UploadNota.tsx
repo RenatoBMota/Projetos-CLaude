@@ -2,7 +2,7 @@ import { useState, type DragEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import { nomeUnidade, type Unidade } from "../api/types";
-import { formatarDataHora } from "../utils/formatar";
+import { formatarData, formatarDataHora } from "../utils/formatar";
 
 interface NfeItemEditavel {
   codigoInterno: string;
@@ -20,6 +20,7 @@ interface ResumoResponse {
     emitenteCnpj: string;
     destinatarioCnpj: string;
     dataEmissao: string;
+    dataEmissaoConfiavel: boolean;
     valorTotal: number;
     qtdVolumes: number;
     pesoBruto: number;
@@ -138,6 +139,7 @@ export function UploadNota() {
         destinatarioCnpj: resumo.nfe.destinatarioCnpj,
         dataPedido: new Date(dataPedido).toISOString(),
         dataEmissao: resumo.nfe.dataEmissao,
+        dataEmissaoConfiavel: resumo.nfe.dataEmissaoConfiavel,
         valorTotal: campos.valorTotal,
         qtdVolumes: campos.qtdVolumes,
         pesoBruto: campos.pesoBruto,
@@ -191,7 +193,11 @@ export function UploadNota() {
             </div>
             <div className="field">
               <label>Data de emissão da NF (faturamento)</label>
-              <strong>{formatarDataHora(resumo.nfe.dataEmissao)}</strong>
+              <strong>
+                {resumo.nfe.dataEmissaoConfiavel
+                  ? formatarDataHora(resumo.nfe.dataEmissao)
+                  : formatarData(resumo.nfe.dataEmissao)}
+              </strong>
             </div>
             <div className="field">
               <label>Prazo previsto (SLA: {resumo.prazoHoras}h a partir do pedido)</label>

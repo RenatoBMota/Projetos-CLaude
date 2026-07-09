@@ -60,6 +60,7 @@ export interface Transferencia {
   destino: Unidade;
   dataPedido: string;
   dataEmissao: string;
+  dataEmissaoConfiavel: boolean;
   valorTotal: string;
   qtdVolumes: number;
   pesoBruto: string;

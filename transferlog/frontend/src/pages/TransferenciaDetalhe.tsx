@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import { StatusBadge } from "../components/StatusBadge";
 import { nomeUnidade, type Transferencia, type TipoDivergencia } from "../api/types";
-import { formatarDataHora, formatarMoeda } from "../utils/formatar";
+import { formatarData, formatarDataHora, formatarMoeda } from "../utils/formatar";
 
 interface ConferenciaLinha {
   itemId: string;
@@ -70,7 +70,10 @@ export function TransferenciaDetalhe() {
           <div className="field"><label>Itens totais</label><strong>{t.qtdItensTotal}</strong></div>
         </div>
         <div className="form-row">
-          <div className="field"><label>Data de emissão da NF</label><strong>{formatarDataHora(t.dataEmissao)}</strong></div>
+          <div className="field">
+            <label>Data de emissão da NF</label>
+            <strong>{t.dataEmissaoConfiavel ? formatarDataHora(t.dataEmissao) : formatarData(t.dataEmissao)}</strong>
+          </div>
           <div className="field"><label>Enviado ao sistema em</label><strong>{formatarDataHora(t.createdAt)}</strong></div>
         </div>
         {(t.transportadora || t.veiculo || t.motorista) && (

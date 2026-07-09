@@ -112,6 +112,9 @@ model Transferencia {
   destino       Unidade             @relation("TransferenciaDestino", fields: [destinoId], references: [id])
   dataPedido    DateTime
   dataEmissao   DateTime
+  // Falso quando a hora de dataEmissao não veio de fonte confiável (ex.: OCR sem
+  // o horário do protocolo de autorização) — nesse caso a UI mostra só a data.
+  dataEmissaoConfiavel Boolean @default(true)
   valorTotal    Decimal             @db.Decimal(14, 2)
   qtdVolumes    Int
   pesoBruto     Decimal             @db.Decimal(12, 3)

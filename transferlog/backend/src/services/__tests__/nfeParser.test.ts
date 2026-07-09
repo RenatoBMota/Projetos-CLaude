@@ -21,6 +21,8 @@ describe("parseNfeXml", () => {
     expect(nfe.qtdVolumes).toBe(40);
     expect(nfe.pesoBruto).toBe(40);
     expect(nfe.itens).toHaveLength(2);
+    expect(nfe.dataEmissaoConfiavel).toBe(true);
+    expect(nfe.dataEmissao.toISOString()).toBe(new Date("2026-07-04T10:00:00-03:00").toISOString());
   });
 
   it("conta SKUs distintos e itens totais", () => {

@@ -99,6 +99,7 @@ const criarTransferenciaSchema = z.object({
   destinatarioCnpj: z.string().min(11),
   dataPedido: z.coerce.date(),
   dataEmissao: z.coerce.date(),
+  dataEmissaoConfiavel: z.boolean(),
   valorTotal: z.number().nonnegative(),
   qtdVolumes: z.number().int().nonnegative(),
   pesoBruto: z.number().nonnegative(),

@@ -41,7 +41,7 @@ function parseNumeroBr(valor: string): number {
   return Number(valor.replace(/\./g, "").replace(",", "."));
 }
 
-function extrairCabecalho(texto: string) {
+export function extrairCabecalho(texto: string) {
   const numeroNF = primeiroValor(texto.match(/N[ºo°]\.?\s*(\d{1,10})/i), (v) => v);
   const serie = primeiroValor(texto.match(/S[ÉE]RIE\s*(\d{1,3})/i), (v) => v);
   const numeroPedido = primeiroValor(texto.match(/Pedido:?\s*(\d+)/i), (v) => v);
@@ -65,12 +65,31 @@ function extrairCabecalho(texto: string) {
   const destinatarioMatch = texto.match(/(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/);
   const destinatarioCnpj = destinatarioMatch ? onlyDigits(destinatarioMatch[1]) : "";
 
-  const dataEmissaoMatch = destinatarioMatch
-    ? texto.slice(destinatarioMatch.index).match(/(\d{2})\/(\d{2})\/(\d{4})/)
-    : texto.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-  const dataEmissao = dataEmissaoMatch
-    ? new Date(`${dataEmissaoMatch[3]}-${dataEmissaoMatch[2]}-${dataEmissaoMatch[1]}T00:00:00`)
-    : new Date();
+  // O DANFE não imprime a hora de emissão da NF-e diretamente — "Data da Emissão"
+  // só tem data. O horário mais próximo e confiável disponível é o do protocolo
+  // de autorização da SEFAZ (rótulo numa linha, valor "protocolo DD/MM/AAAA HH:MM:SS"
+  // na linha seguinte). Preferimos essa data+hora real; sem ela, usamos só a data
+  // (nunca uma hora inventada) e assumimos meio-dia como marcador neutro.
+  const idxProtocolo = linhas.findIndex((l) => /protocolo de autoriza/i.test(l));
+  let dataEmissao: Date | null = null;
+  if (idxProtocolo >= 0) {
+    for (let i = idxProtocolo; i < Math.min(idxProtocolo + 3, linhas.length); i++) {
+      const m = linhas[i].match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})/);
+      if (m) {
+        dataEmissao = new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:${m[6]}-03:00`);
+        break;
+      }
+    }
+  }
+  const dataEmissaoConfiavel = dataEmissao !== null;
+  if (!dataEmissao) {
+    const dataEmissaoMatch = destinatarioMatch
+      ? texto.slice(destinatarioMatch.index).match(/(\d{2})\/(\d{2})\/(\d{4})/)
+      : texto.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    dataEmissao = dataEmissaoMatch
+      ? new Date(`${dataEmissaoMatch[3]}-${dataEmissaoMatch[2]}-${dataEmissaoMatch[1]}T12:00:00-03:00`)
+      : new Date();
+  }
 
   const idxValorNota = linhas.findIndex((l) => /VALOR TOTAL DA NOTA/i.test(l));
   let valorTotal = 0;
@@ -90,7 +109,18 @@ function extrairCabecalho(texto: string) {
     if (decimal) pesoBruto = parseNumeroBr(decimal[0]);
   }
 
-  return { numeroNF, serie, numeroPedido, emitenteCnpj, destinatarioCnpj, dataEmissao, valorTotal, qtdVolumes, pesoBruto };
+  return {
+    numeroNF,
+    serie,
+    numeroPedido,
+    emitenteCnpj,
+    destinatarioCnpj,
+    dataEmissao,
+    dataEmissaoConfiavel,
+    valorTotal,
+    qtdVolumes,
+    pesoBruto,
+  };
 }
 
 // O cabeçalho da tabela de itens ("Código | Descrição | NCM ...") costuma ter
@@ -145,6 +175,7 @@ export async function parseDanfePdf(buffer: Buffer): Promise<NfeParsed> {
     destinatarioCnpj: cabecalho.destinatarioCnpj,
     destinatarioNome: "",
     dataEmissao: cabecalho.dataEmissao,
+    dataEmissaoConfiavel: cabecalho.dataEmissaoConfiavel,
     valorTotal: cabecalho.valorTotal,
     qtdVolumes: cabecalho.qtdVolumes,
     pesoBruto: cabecalho.pesoBruto,

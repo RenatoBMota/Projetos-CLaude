@@ -14,6 +14,15 @@ export function formatarDataHora(valor: string | Date): string {
   return `${dia}/${mes}/${ano} ${hora}:${min}:${seg}`;
 }
 
+/** Formata somente a data como DD/MM/AAAA, sem horário (quando a hora não é confiável). */
+export function formatarData(valor: string | Date): string {
+  const date = typeof valor === "string" ? new Date(valor) : valor;
+  const dia = pad(date.getDate());
+  const mes = pad(date.getMonth() + 1);
+  const ano = date.getFullYear();
+  return `${dia}/${mes}/${ano}`;
+}
+
 /** Formata uma duração em horas decimais como HH:MM:SS. */
 export function formatarDuracao(horasDecimais: number | null): string {
   if (horasDecimais === null) return "—";

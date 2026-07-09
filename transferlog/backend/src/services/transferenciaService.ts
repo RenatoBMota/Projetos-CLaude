@@ -50,6 +50,7 @@ export async function criarTransferencia(
       destinoId: destino.id,
       dataPedido,
       dataEmissao: nfe.dataEmissao,
+      dataEmissaoConfiavel: nfe.dataEmissaoConfiavel,
       valorTotal: nfe.valorTotal,
       qtdVolumes: nfe.qtdVolumes,
       pesoBruto: nfe.pesoBruto,
