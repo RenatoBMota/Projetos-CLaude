@@ -204,6 +204,19 @@ th {
   margin-top: 2px;
 }
 
+.kpi-tile--brand {
+  background: var(--accent-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.kpi-tile__brand-text {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.3px;
+}
+
 /* Meter: single ratio against a target (e.g. OTIF %) */
 .meter {
   margin-top: 10px;

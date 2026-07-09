@@ -126,6 +126,9 @@ export function DashboardGerencial() {
               valor={dados.valorFinanceiroTransferenciasPendentes.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               label="Valor pendente"
             />
+            <div className="kpi-tile kpi-tile--brand">
+              <span className="kpi-tile__brand-text">TransferLog</span>
+            </div>
           </div>
 
           <div className="rankings-grid">
