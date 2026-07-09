@@ -343,25 +343,29 @@ th {
   display: grid;
   grid-template-columns: 1fr 300px;
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 .dashboard-gerencial-sidebar {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  position: sticky;
-  top: 24px;
 }
 .dashboard-gerencial-sidebar h2 {
   margin: 0 0 4px;
+}
+/* Cards grow to fill the column's full height (matches the main content's
+   bottom edge) instead of stacking compactly and leaving dead space below. */
+.dashboard-gerencial-sidebar .kpi-tile {
+  flex: 1;
+  align-items: center;
 }
 
 @media (max-width: 900px) {
   .dashboard-gerencial-layout {
     grid-template-columns: 1fr;
   }
-  .dashboard-gerencial-sidebar {
-    position: static;
+  .dashboard-gerencial-sidebar .kpi-tile {
+    flex: initial;
   }
 }
 

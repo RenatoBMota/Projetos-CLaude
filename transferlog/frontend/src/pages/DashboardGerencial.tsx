@@ -5,6 +5,7 @@ import { KpiTile } from "../components/KpiTile";
 import { Meter } from "../components/charts/Meter";
 import { BarraHorizontal, type ItemBarra } from "../components/charts/BarraHorizontal";
 import {
+  IconBox,
   IconClipboard,
   IconClock,
   IconDollar,
@@ -15,6 +16,7 @@ import {
 } from "../components/icons";
 
 interface DashboardGerencialData {
+  totalTransferenciasPeriodo: number;
   transferenciasEmAberto: number;
   atrasadasPorOrigem: Array<{ nome: string; quantidade: number }>;
   atrasadasPorDestino: Array<{ nome: string; quantidade: number }>;
@@ -179,6 +181,9 @@ export function DashboardGerencial() {
         </div>
 
         <aside className="dashboard-gerencial-sidebar">
+          <h2>Transferências no período</h2>
+          <KpiTile icone={<IconBox />} tom="accent" valor={dados.totalTransferenciasPeriodo} label="Todas as rotas" />
+
           <h2>Valor por rota</h2>
           {dados.valorPorRota.length === 0 ? (
             <p style={{ color: "var(--text-muted)" }}>Sem dados no período.</p>

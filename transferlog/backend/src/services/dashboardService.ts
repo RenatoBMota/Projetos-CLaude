@@ -164,6 +164,7 @@ export async function dashboardGerencial(dataInicio: Date, dataFim: Date) {
   const valorPorRota = agruparValorPorRota(todas);
 
   return {
+    totalTransferenciasPeriodo: todas.length,
     transferenciasEmAberto: emAberto.length,
     atrasadasPorOrigem,
     atrasadasPorDestino,
