@@ -1,6 +1,18 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import { formatarDuracao } from "../utils/formatar";
+import { KpiTile } from "../components/KpiTile";
+import { Meter } from "../components/charts/Meter";
+import { BarraHorizontal, type ItemBarra } from "../components/charts/BarraHorizontal";
+import {
+  IconClipboard,
+  IconClock,
+  IconDollar,
+  IconLayers,
+  IconClipboardCheck,
+  IconTarget,
+  IconTruck,
+} from "../components/icons";
 
 interface DashboardGerencialData {
   transferenciasEmAberto: number;
@@ -20,24 +32,19 @@ interface DashboardGerencialData {
   heatmapRotasCriticas: Array<{ rota: string; quantidadeAtrasos: number }>;
 }
 
-function Ranking({ titulo, itens }: { titulo: string; itens: Array<{ label: string; valor: string | number }> }) {
+function tomOtif(percentual: number): "ok" | "warn" | "danger" {
+  if (percentual >= 90) return "ok";
+  if (percentual >= 70) return "warn";
+  return "danger";
+}
+
+function RankingCard({ titulo, itens, tomPadrao, vazio }: { titulo: string; itens: ItemBarra[]; tomPadrao?: "accent" | "danger"; vazio?: string }) {
   return (
     <div className="card">
-      <h2>{titulo}</h2>
-      {itens.length === 0 ? (
-        <p style={{ color: "var(--text-muted)" }}>Sem dados</p>
-      ) : (
-        <table>
-          <tbody>
-            {itens.map((item) => (
-              <tr key={item.label}>
-                <td>{item.label}</td>
-                <td style={{ textAlign: "right", fontWeight: 600 }}>{item.valor}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <div className="card-header">
+        <h2>{titulo}</h2>
+      </div>
+      <BarraHorizontal itens={itens} tomPadrao={tomPadrao} vazio={vazio} />
     </div>
   );
 }
@@ -60,69 +67,74 @@ export function DashboardGerencial() {
     <div>
       <h1>Dashboard gerencial</h1>
       <div className="kpi-row">
-        <div className="kpi">
-          <div className="value">{dados.transferenciasEmAberto}</div>
-          <div className="label">Em aberto</div>
-        </div>
-        <div className="kpi">
-          <div className="value">{dados.otifGeralPercentual === null ? "—" : `${dados.otifGeralPercentual.toFixed(1)}%`}</div>
-          <div className="label">OTIF geral</div>
-        </div>
-        <div className="kpi">
-          <div className="value">{formatarDuracao(dados.tempoMedioFaturamentoCarregamentoHoras)}</div>
-          <div className="label">Faturamento → carregamento</div>
-        </div>
-        <div className="kpi">
-          <div className="value">{formatarDuracao(dados.tempoMedioTransitoHoras)}</div>
-          <div className="label">Tempo em trânsito</div>
-        </div>
-        <div className="kpi">
-          <div className="value">{formatarDuracao(dados.tempoMedioSeparacaoHoras)}</div>
-          <div className="label">Tempo de separação</div>
-        </div>
-        <div className="kpi">
-          <div className="value">{formatarDuracao(dados.tempoMedioConferenciaHoras)}</div>
-          <div className="label">Tempo de conferência</div>
-        </div>
-        <div className="kpi">
-          <div className="value">
-            {dados.valorFinanceiroTransferenciasPendentes.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-          </div>
-          <div className="label">Valor pendente</div>
-        </div>
+        <KpiTile icone={<IconLayers />} tom="accent" valor={dados.transferenciasEmAberto} label="Em aberto" />
+        <KpiTile
+          icone={<IconTarget />}
+          tom={dados.otifGeralPercentual === null ? "warn" : tomOtif(dados.otifGeralPercentual)}
+          valor={dados.otifGeralPercentual === null ? "—" : `${dados.otifGeralPercentual.toFixed(1)}%`}
+          label="OTIF geral"
+        >
+          <Meter percentual={dados.otifGeralPercentual} />
+        </KpiTile>
+        <KpiTile icone={<IconClock />} tom="accent" valor={formatarDuracao(dados.tempoMedioFaturamentoCarregamentoHoras)} label="Faturamento → carregamento" />
+        <KpiTile icone={<IconTruck />} tom="accent" valor={formatarDuracao(dados.tempoMedioTransitoHoras)} label="Tempo em trânsito" />
+        <KpiTile icone={<IconClipboard />} tom="accent" valor={formatarDuracao(dados.tempoMedioSeparacaoHoras)} label="Tempo de separação" />
+        <KpiTile icone={<IconClipboardCheck />} tom="accent" valor={formatarDuracao(dados.tempoMedioConferenciaHoras)} label="Tempo de conferência" />
+        <KpiTile
+          icone={<IconDollar />}
+          tom="accent"
+          valor={dados.valorFinanceiroTransferenciasPendentes.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+          label="Valor pendente"
+        />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        <Ranking
+        <RankingCard
           titulo="OTIF por filial"
-          itens={dados.otifPorFilial.map((f) => ({ label: f.nome, valor: `${f.percentual.toFixed(0)}% (${f.total})` }))}
+          itens={dados.otifPorFilial.map((f) => ({
+            label: f.nome,
+            valor: f.percentual,
+            valorExibido: `${f.percentual.toFixed(0)}% (${f.total})`,
+            tom: tomOtif(f.percentual),
+          }))}
         />
-        <Ranking
+        <RankingCard
           titulo="OTIF por rota"
-          itens={dados.otifPorRota.map((f) => ({ label: f.nome, valor: `${f.percentual.toFixed(0)}% (${f.total})` }))}
+          itens={dados.otifPorRota.map((f) => ({
+            label: f.nome,
+            valor: f.percentual,
+            valorExibido: `${f.percentual.toFixed(0)}% (${f.total})`,
+            tom: tomOtif(f.percentual),
+          }))}
         />
-        <Ranking
+        <RankingCard
           titulo="Atrasadas por origem"
+          tomPadrao="danger"
           itens={dados.atrasadasPorOrigem.map((f) => ({ label: f.nome, valor: f.quantidade }))}
         />
-        <Ranking
+        <RankingCard
           titulo="Atrasadas por destino"
+          tomPadrao="danger"
           itens={dados.atrasadasPorDestino.map((f) => ({ label: f.nome, valor: f.quantidade }))}
         />
-        <Ranking
+        <RankingCard
           titulo="Filiais com mais divergências"
+          tomPadrao="danger"
           itens={dados.rankingDivergenciasPorFilial.map((f) => ({ label: f.nome, valor: f.quantidade }))}
         />
-        <Ranking
+        <RankingCard
           titulo="Produtos mais divergentes"
+          tomPadrao="danger"
           itens={dados.rankingProdutosMaisDivergentes.map((f) => ({ label: f.produto, valor: f.quantidade }))}
         />
-        <Ranking
+        <RankingCard
           titulo="Transportadoras mais usadas"
+          tomPadrao="accent"
           itens={dados.rankingTransportadoras.map((f) => ({ label: f.transportadora, valor: f.quantidade }))}
         />
-        <Ranking
+        <RankingCard
           titulo="Rotas críticas (mais atrasos)"
+          tomPadrao="danger"
           itens={dados.heatmapRotasCriticas.map((f) => ({ label: f.rota, valor: f.quantidadeAtrasos }))}
         />
       </div>

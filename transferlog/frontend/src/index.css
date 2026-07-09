@@ -151,24 +151,147 @@ th {
 
 .kpi-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
   margin-bottom: 20px;
 }
-.kpi {
+
+/* KpiTile: icon-badge KPI card used on the dashboards */
+.kpi-tile {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 14px 16px;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-.kpi .value {
-  font-size: 26px;
+.kpi-tile:hover {
+  transform: translateY(-1px);
+  box-shadow: rgba(16, 16, 20, 0.1) 0 4px 12px, rgba(16, 16, 20, 0.06) 0 2px 4px;
+}
+.kpi-tile__icon {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.kpi-tile--accent .kpi-tile__icon { background: var(--accent-bg); color: var(--accent); }
+.kpi-tile--ok .kpi-tile__icon { background: var(--ok-bg); color: var(--ok); }
+.kpi-tile--warn .kpi-tile__icon { background: var(--warn-bg); color: var(--warn); }
+.kpi-tile--danger .kpi-tile__icon { background: var(--danger-bg); color: var(--danger); }
+.kpi-tile__body {
+  min-width: 0;
+  flex: 1;
+}
+.kpi-tile__value {
+  font-size: 22px;
   font-weight: 700;
   color: var(--text-h);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
-.kpi .label {
-  font-size: 13px;
+.kpi-tile__label {
+  font-size: 12.5px;
   color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Meter: single ratio against a target (e.g. OTIF %) */
+.meter {
+  margin-top: 10px;
+}
+.meter__trilho {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: visible;
+}
+.meter__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+.meter__fill--ok { background: var(--ok); }
+.meter__fill--warn { background: var(--warn); }
+.meter__fill--danger { background: var(--danger); }
+.meter__meta {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: var(--text-muted);
+  opacity: 0.6;
+}
+.meter--vazio {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+/* BarraHorizontal: ranking chart used on the gerencial dashboard */
+.barra-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.barra-linha {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(70px, 130px) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 6px;
+  border-radius: 6px;
+}
+.barra-linha:hover {
+  background: var(--bg);
+}
+.barra-linha__label {
+  font-size: 13.5px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.barra-linha__trilho {
+  height: 12px;
+  border-radius: 0 6px 6px 0;
+  background: var(--border);
+  overflow: hidden;
+}
+.barra-linha__fill {
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+}
+.barra-linha__fill--accent { background: var(--accent); }
+.barra-linha__fill--ok { background: var(--ok); }
+.barra-linha__fill--warn { background: var(--warn); }
+.barra-linha__fill--danger { background: var(--danger); }
+.barra-linha__valor {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-h);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 48px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.card-header h2 {
+  margin: 0;
 }
 
 .badge {

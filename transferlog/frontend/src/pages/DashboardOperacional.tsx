@@ -2,6 +2,17 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { nomeUnidade, type DashboardOperacional as DashboardOperacionalData, type Unidade } from "../api/types";
+import { KpiTile } from "../components/KpiTile";
+import { Meter } from "../components/charts/Meter";
+import { BarraHorizontal, type ItemBarra } from "../components/charts/BarraHorizontal";
+import {
+  IconAlertTriangle,
+  IconBox,
+  IconClipboardCheck,
+  IconClock,
+  IconTarget,
+  IconTruck,
+} from "../components/icons";
 
 interface FilialDashboard extends DashboardOperacionalData {
   unidade: Unidade;
@@ -9,6 +20,13 @@ interface FilialDashboard extends DashboardOperacionalData {
 
 function otifTexto(otif: number | null): string {
   return otif === null ? "—" : `${otif.toFixed(1)}%`;
+}
+
+function tomOtif(otif: number | null): "ok" | "warn" | "danger" {
+  if (otif === null) return "warn";
+  if (otif >= 90) return "ok";
+  if (otif >= 70) return "warn";
+  return "danger";
 }
 
 export function DashboardOperacional() {
@@ -37,9 +55,25 @@ export function DashboardOperacional() {
 
   if (verPorFilial) {
     if (!porFilial) return <p>Carregando...</p>;
+
+    const barrasOtif: ItemBarra[] = porFilial.map((f) => ({
+      label: nomeUnidade(f.unidade),
+      valor: f.otifPercentual ?? 0,
+      valorExibido: otifTexto(f.otifPercentual),
+      tom: tomOtif(f.otifPercentual),
+    }));
+
     return (
       <div>
         <h1>Painel por filial</h1>
+
+        <div className="card">
+          <div className="card-header">
+            <h2>OTIF por filial</h2>
+          </div>
+          <BarraHorizontal itens={barrasOtif} vazio="Nenhuma unidade cadastrada ainda." />
+        </div>
+
         <div className="card">
           {porFilial.length === 0 ? (
             <p style={{ color: "var(--text-muted)" }}>Nenhuma unidade cadastrada ainda.</p>
@@ -82,30 +116,19 @@ export function DashboardOperacional() {
     <div>
       <h1>Painel da unidade</h1>
       <div className="kpi-row">
-        <div className="kpi">
-          <div className="value">{dados.aguardandoSeparacao}</div>
-          <div className="label">Aguardando separação</div>
-        </div>
-        <div className="kpi">
-          <div className="value">{dados.carregadas}</div>
-          <div className="label">Carregadas</div>
-        </div>
-        <div className="kpi">
-          <div className="value">{dados.emTransito}</div>
-          <div className="label">Em trânsito</div>
-        </div>
-        <div className="kpi">
-          <div className="value">{dados.aguardandoConferencia}</div>
-          <div className="label">Aguardando conferência</div>
-        </div>
-        <div className="kpi">
-          <div className="value">{dados.comDivergencia}</div>
-          <div className="label">Com divergência</div>
-        </div>
-        <div className="kpi">
-          <div className="value">{otifTexto(dados.otifPercentual)}</div>
-          <div className="label">OTIF</div>
-        </div>
+        <KpiTile icone={<IconClock />} tom="accent" valor={dados.aguardandoSeparacao} label="Aguardando separação" />
+        <KpiTile icone={<IconBox />} tom="accent" valor={dados.carregadas} label="Carregadas" />
+        <KpiTile icone={<IconTruck />} tom="accent" valor={dados.emTransito} label="Em trânsito" />
+        <KpiTile icone={<IconClipboardCheck />} tom="accent" valor={dados.aguardandoConferencia} label="Aguardando conferência" />
+        <KpiTile
+          icone={<IconAlertTriangle />}
+          tom={dados.comDivergencia > 0 ? "danger" : "ok"}
+          valor={dados.comDivergencia}
+          label="Com divergência"
+        />
+        <KpiTile icone={<IconTarget />} tom={tomOtif(dados.otifPercentual)} valor={otifTexto(dados.otifPercentual)} label="OTIF">
+          <Meter percentual={dados.otifPercentual} />
+        </KpiTile>
       </div>
     </div>
   );
