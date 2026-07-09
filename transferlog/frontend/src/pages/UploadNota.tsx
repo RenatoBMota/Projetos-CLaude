@@ -190,6 +190,10 @@ export function UploadNota() {
               />
             </div>
             <div className="field">
+              <label>Data de emissão da NF (faturamento)</label>
+              <strong>{formatarDataHora(resumo.nfe.dataEmissao)}</strong>
+            </div>
+            <div className="field">
               <label>Prazo previsto (SLA: {resumo.prazoHoras}h a partir do pedido)</label>
               <strong>
                 {(() => {
