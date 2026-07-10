@@ -50,3 +50,29 @@ export const api = {
   upload: <T>(path: string, formData: FormData) =>
     request<T>(path, { method: "POST", body: formData }),
 };
+
+/** Baixa um arquivo binário (ex.: PDF) autenticado, disparando o download no navegador. */
+export async function baixarArquivo(path: string, nomeArquivoPadrao: string): Promise<void> {
+  const token = getToken();
+  const headers = new Headers();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  const res = await fetch(`${API_URL}/api${path}`, { headers });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    const message = data?.error?.formErrors?.join(", ") ?? data?.error ?? "Erro ao baixar arquivo";
+    throw new ApiError(typeof message === "string" ? message : JSON.stringify(message), res.status);
+  }
+
+  const disposition = res.headers.get("Content-Disposition");
+  const nomeArquivo = disposition?.match(/filename="?([^"]+)"?/)?.[1] ?? nomeArquivoPadrao;
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = nomeArquivo;
+  link.click();
+  URL.revokeObjectURL(url);
+}

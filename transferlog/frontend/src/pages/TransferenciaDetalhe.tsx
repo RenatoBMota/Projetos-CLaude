@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { api, ApiError } from "../api/client";
+import { api, ApiError, baixarArquivo } from "../api/client";
 import { StatusBadge } from "../components/StatusBadge";
 import { nomeUnidade, type Transferencia, type TipoDivergencia, type TipoEvento } from "../api/types";
 import { formatarData, formatarDataHora, formatarMoeda } from "../utils/formatar";
@@ -27,6 +27,20 @@ export function TransferenciaDetalhe() {
   const [transferencia, setTransferencia] = useState<Transferencia | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [baixandoDanfe, setBaixandoDanfe] = useState(false);
+
+  async function baixarDanfe() {
+    if (!id) return;
+    setErro(null);
+    setBaixandoDanfe(true);
+    try {
+      await baixarArquivo(`/transferencias/${id}/danfe`, `DANFE-${transferencia?.numeroNF}.pdf`);
+    } catch (err) {
+      setErro(err instanceof ApiError ? err.message : "Não foi possível baixar a DANFE");
+    } finally {
+      setBaixandoDanfe(false);
+    }
+  }
 
   async function recarregar() {
     if (!id) return;
@@ -58,9 +72,14 @@ export function TransferenciaDetalhe() {
 
   return (
     <div>
-      <h1>
-        NF {t.numeroNF} — Pedido {t.numeroPedido} <StatusBadge status={t.status} itens={t.itens} />
-        {t.numeroBonus && <span className="badge neutral" style={{ marginLeft: 8 }}>Bônus nº {t.numeroBonus}</span>}
+      <h1 style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <span>
+          NF {t.numeroNF} — Pedido {t.numeroPedido} <StatusBadge status={t.status} itens={t.itens} />
+          {t.numeroBonus && <span className="badge neutral" style={{ marginLeft: 8 }}>Bônus nº {t.numeroBonus}</span>}
+        </span>
+        <button disabled={baixandoDanfe} onClick={baixarDanfe} style={{ fontSize: 14 }}>
+          {baixandoDanfe ? "Gerando DANFE..." : "Baixar DANFE"}
+        </button>
       </h1>
       {erro && <div className="error-box">{erro}</div>}
 

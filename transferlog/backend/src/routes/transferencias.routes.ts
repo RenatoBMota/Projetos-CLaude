@@ -18,6 +18,7 @@ import {
   registrarConferencia,
 } from "../services/transferenciaService";
 import { calcularOtif } from "../services/otifService";
+import { obterDanfe } from "../services/danfeService";
 
 export const transferenciasRouter = Router();
 transferenciasRouter.use(authenticate);
@@ -265,6 +266,21 @@ transferenciasRouter.get("/:id", async (req, res) => {
 
   const otif = calcularOtif(transferencia, transferencia.itens);
   res.json({ ...transferencia, otif });
+});
+
+/** Baixa a DANFE da transferência: o PDF original (se veio de upload em PDF) ou uma DANFE gerada a partir do XML. */
+transferenciasRouter.get("/:id/danfe", async (req, res) => {
+  const transferencia = await carregarTransferenciaAutorizada(req, res);
+  if (!transferencia) return;
+
+  try {
+    const { buffer, nomeArquivo } = await obterDanfe(transferencia.numeroNF, transferencia.xmlOriginal);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${nomeArquivo}"`);
+    res.send(buffer);
+  } catch (err) {
+    res.status(422).json({ error: (err as Error).message });
+  }
 });
 
 transferenciasRouter.patch(
