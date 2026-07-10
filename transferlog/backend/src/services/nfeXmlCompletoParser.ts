@@ -120,12 +120,12 @@ function opt(value: unknown): string | undefined {
 }
 
 const MODALIDADE_FRETE: Record<string, string> = {
-  "0": "Contratação do frete por conta do remetente (CIF)",
-  "1": "Contratação do frete por conta do destinatário (FOB)",
-  "2": "Contratação do frete por conta de terceiros",
-  "3": "Transporte próprio por conta do remetente",
-  "4": "Transporte próprio por conta do destinatário",
-  "9": "Sem frete",
+  "0": "0 - Emitente",
+  "1": "1 - Destinatário",
+  "2": "2 - Terceiros",
+  "3": "3 - Próprio (remetente)",
+  "4": "4 - Próprio (destinatário)",
+  "9": "9 - Sem frete",
 };
 
 function extrairEndereco(ender: any): EnderecoCompleto {
