@@ -132,6 +132,7 @@ const filaQuerySchema = z.object({
   status: z.nativeEnum(StatusTransferencia).optional(),
   origemId: z.string().optional(),
   destinoId: z.string().optional(),
+  numeroNF: z.string().trim().min(1).optional(),
   dataInicio: z.coerce.date().optional(),
   dataFim: z.coerce.date().optional(),
 });
@@ -142,7 +143,7 @@ transferenciasRouter.get("/", async (req, res) => {
   if (!parsed.success) {
     return res.status(400).json({ error: parsed.error.flatten() });
   }
-  const { status, origemId, destinoId, dataInicio, dataFim } = parsed.data;
+  const { status, origemId, destinoId, numeroNF, dataInicio, dataFim } = parsed.data;
   const auth = req.auth!;
   const isAdmin = auth.perfil === Perfil.ADMINISTRADOR;
 
@@ -153,6 +154,7 @@ transferenciasRouter.get("/", async (req, res) => {
       ...(status ? { status } : {}),
       ...(origemId ? { origemId } : {}),
       ...(destinoId ? { destinoId } : {}),
+      ...(numeroNF ? { numeroNF: { contains: numeroNF, mode: "insensitive" } } : {}),
       ...(dataInicio || dataFimFimDoDia
         ? {
             dataPedido: {

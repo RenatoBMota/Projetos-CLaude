@@ -24,6 +24,7 @@ export function FilaTransferencias() {
   const [origemId, setOrigemId] = useState("");
   const [destinoId, setDestinoId] = useState("");
   const [status, setStatus] = useState<StatusTransferencia | "">("");
+  const [numeroNF, setNumeroNF] = useState("");
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [transferencias, setTransferencias] = useState<Transferencia[] | null>(null);
@@ -35,18 +36,23 @@ export function FilaTransferencias() {
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (origemId) params.set("origemId", origemId);
-    if (destinoId) params.set("destinoId", destinoId);
-    if (status) params.set("status", status);
-    if (dataInicio) params.set("dataInicio", dataInicio);
-    if (dataFim) params.set("dataFim", dataFim);
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams();
+      if (origemId) params.set("origemId", origemId);
+      if (destinoId) params.set("destinoId", destinoId);
+      if (status) params.set("status", status);
+      if (numeroNF) params.set("numeroNF", numeroNF);
+      if (dataInicio) params.set("dataInicio", dataInicio);
+      if (dataFim) params.set("dataFim", dataFim);
 
-    api
-      .get<Transferencia[]>(`/transferencias?${params.toString()}`)
-      .then(setTransferencias)
-      .catch((err) => setErro(err.message));
-  }, [origemId, destinoId, status, dataInicio, dataFim]);
+      api
+        .get<Transferencia[]>(`/transferencias?${params.toString()}`)
+        .then(setTransferencias)
+        .catch((err) => setErro(err.message));
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [origemId, destinoId, status, numeroNF, dataInicio, dataFim]);
 
   async function excluir(t: Transferencia) {
     if (!window.confirm(`Excluir a transferência do pedido ${t.numeroPedido} (NF ${t.numeroNF})? Essa ação não pode ser desfeita.`)) {
@@ -68,6 +74,15 @@ export function FilaTransferencias() {
 
       <div className="card">
         <div className="form-row">
+          <div className="field">
+            <label>Número da NF</label>
+            <input
+              type="text"
+              placeholder="Buscar por NF..."
+              value={numeroNF}
+              onChange={(e) => setNumeroNF(e.target.value)}
+            />
+          </div>
           <div className="field">
             <label>Data do pedido de</label>
             <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
