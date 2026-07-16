@@ -149,12 +149,20 @@ export async function dashboardGerencial(dataInicio: Date, dataFim: Date) {
     (t) => t.itens.some((i) => i.divergenciaTipo !== null),
   );
 
-  const produtosDivergentes: Record<string, number> = {};
+  // Top 5 produtos com mais ocorrências de divergência; em caso de empate,
+  // prevalece o mais recente (data da conferência), pra refletir o que está
+  // acontecendo agora, não um problema antigo já resolvido.
+  const produtosDivergentes: Record<string, { quantidade: number; maisRecente: number }> = {};
   for (const t of todas) {
     for (const item of t.itens) {
       if (item.divergenciaTipo) {
         const chave = `${item.codigoInterno} - ${item.descricao}`;
-        produtosDivergentes[chave] = (produtosDivergentes[chave] ?? 0) + 1;
+        const dataConferencia = t.dataConferencia?.getTime() ?? 0;
+        const atual = produtosDivergentes[chave];
+        produtosDivergentes[chave] = {
+          quantidade: (atual?.quantidade ?? 0) + 1,
+          maisRecente: Math.max(atual?.maisRecente ?? 0, dataConferencia),
+        };
       }
     }
   }
@@ -188,8 +196,10 @@ export async function dashboardGerencial(dataInicio: Date, dataFim: Date) {
     inFullPorFilial,
     rankingDivergenciasPorFilial,
     rankingProdutosMaisDivergentes: Object.entries(produtosDivergentes)
-      .map(([produto, quantidade]) => ({ produto, quantidade }))
-      .sort((a, b) => b.quantidade - a.quantidade),
+      .map(([produto, v]) => ({ produto, quantidade: v.quantidade, maisRecente: v.maisRecente }))
+      .sort((a, b) => b.quantidade - a.quantidade || b.maisRecente - a.maisRecente)
+      .slice(0, 5)
+      .map(({ produto, quantidade }) => ({ produto, quantidade })),
     rankingTransportadoras: Object.entries(transportadoras)
       .map(([transportadora, quantidade]) => ({ transportadora, quantidade }))
       .sort((a, b) => b.quantidade - a.quantidade),
