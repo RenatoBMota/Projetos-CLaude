@@ -1,29 +1,23 @@
-import { PrismaClient, StatusTransferencia } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { calcularPrazoPrevisto } from "../src/services/unidadeService";
 
 const prisma = new PrismaClient();
 
 /**
- * Recalcula o prazoPrevisto de transferências ainda abertas usando o SLA de
- * rota atual. Necessário quando uma RotaSLA é cadastrada/alterada depois que
- * transferências já foram criadas (o prazo é travado no momento da criação,
- * não recalculado automaticamente quando o SLA muda).
+ * Recalcula o prazoPrevisto de TODAS as transferências (inclusive já
+ * finalizadas) usando o SLA de rota e a regra de cálculo atuais. Necessário
+ * tanto quando uma RotaSLA é alterada depois que transferências já foram
+ * criadas quanto quando a própria fórmula do prazo muda (ex.: passou a
+ * considerar dias úteis e horário fixo de 18h) — nesse segundo caso é
+ * importante recalcular também as já finalizadas, porque o OTIF (On Time) é
+ * apurado comparando dataRecebimento com prazoPrevisto toda vez que o
+ * indicador é consultado, não fica travado no valor de quando foi conferida.
  */
-const STATUS_ABERTO: StatusTransferencia[] = [
-  "PENDENTE_SEPARACAO",
-  "EM_SEPARACAO",
-  "CARREGADO",
-  "EM_TRANSITO",
-  "RECEBIDO",
-];
-
 async function main() {
-  const abertas = await prisma.transferencia.findMany({
-    where: { status: { in: STATUS_ABERTO } },
-  });
+  const todas = await prisma.transferencia.findMany();
 
   let atualizadas = 0;
-  for (const t of abertas) {
+  for (const t of todas) {
     const novoPrazo = await calcularPrazoPrevisto(t.origemId, t.destinoId, t.dataPedido);
     if (novoPrazo.getTime() !== t.prazoPrevisto.getTime()) {
       await prisma.transferencia.update({
@@ -37,7 +31,7 @@ async function main() {
     }
   }
 
-  console.log(`Concluído. ${abertas.length} transferências verificadas, ${atualizadas} atualizadas.`);
+  console.log(`Concluído. ${todas.length} transferências verificadas, ${atualizadas} atualizadas.`);
 }
 
 main()
