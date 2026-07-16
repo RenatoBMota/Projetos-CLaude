@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
-import { StatusBadge } from "../components/StatusBadge";
+import { StatusBadge, temDivergencia } from "../components/StatusBadge";
 import { useAuth } from "../context/AuthContext";
 import { nomeUnidade, type StatusTransferencia, type Transferencia, type Unidade } from "../api/types";
 import { formatarDataHora } from "../utils/formatar";
 
-const STATUS_OPCOES: { valor: StatusTransferencia; label: string }[] = [
+type StatusFiltro = StatusTransferencia | "FINALIZADO_DIVERGENTE";
+
+const STATUS_OPCOES: { valor: StatusFiltro; label: string }[] = [
   { valor: "PENDENTE_SEPARACAO", label: "Pendente de separação" },
   { valor: "EM_SEPARACAO", label: "Em separação" },
   { valor: "CARREGADO", label: "Separado / pronto p/ carregar" },
@@ -15,21 +17,36 @@ const STATUS_OPCOES: { valor: StatusTransferencia; label: string }[] = [
   { valor: "CONFERIDO_OK", label: "Recebido OK" },
   { valor: "CONFERIDO_DIVERGENTE", label: "Recebido com divergência" },
   { valor: "FINALIZADO", label: "Finalizado" },
+  { valor: "FINALIZADO_DIVERGENTE", label: "Finalizado com divergência" },
   { valor: "CANCELADO", label: "Cancelado" },
 ];
 
 export function FilaTransferencias() {
   const { usuario } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [unidades, setUnidades] = useState<Unidade[]>([]);
-  const [origemId, setOrigemId] = useState("");
-  const [destinoId, setDestinoId] = useState("");
-  const [status, setStatus] = useState<StatusTransferencia | "">("");
-  const [numeroNF, setNumeroNF] = useState("");
-  const [dataInicio, setDataInicio] = useState("");
-  const [dataFim, setDataFim] = useState("");
   const [transferencias, setTransferencias] = useState<Transferencia[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const isAdmin = usuario?.perfil === "ADMINISTRADOR";
+
+  const origemId = searchParams.get("origemId") ?? "";
+  const destinoId = searchParams.get("destinoId") ?? "";
+  const status = (searchParams.get("status") ?? "") as StatusFiltro | "";
+  const numeroNF = searchParams.get("numeroNF") ?? "";
+  const dataInicio = searchParams.get("dataInicio") ?? "";
+  const dataFim = searchParams.get("dataFim") ?? "";
+
+  function atualizarFiltro(chave: string, valor: string) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (valor) next.set(chave, valor);
+        else next.delete(chave);
+        return next;
+      },
+      { replace: true },
+    );
+  }
 
   useEffect(() => {
     api.get<Unidade[]>("/unidades").then(setUnidades).catch(() => {});
@@ -40,14 +57,17 @@ export function FilaTransferencias() {
       const params = new URLSearchParams();
       if (origemId) params.set("origemId", origemId);
       if (destinoId) params.set("destinoId", destinoId);
-      if (status) params.set("status", status);
+      if (status === "FINALIZADO_DIVERGENTE") params.set("status", "FINALIZADO");
+      else if (status) params.set("status", status);
       if (numeroNF) params.set("numeroNF", numeroNF);
       if (dataInicio) params.set("dataInicio", dataInicio);
       if (dataFim) params.set("dataFim", dataFim);
 
       api
         .get<Transferencia[]>(`/transferencias?${params.toString()}`)
-        .then(setTransferencias)
+        .then((dados) =>
+          setTransferencias(status === "FINALIZADO_DIVERGENTE" ? dados.filter((t) => temDivergencia(t.itens)) : dados),
+        )
         .catch((err) => setErro(err.message));
     }, 300);
 
@@ -80,20 +100,20 @@ export function FilaTransferencias() {
               type="text"
               placeholder="Buscar por NF..."
               value={numeroNF}
-              onChange={(e) => setNumeroNF(e.target.value)}
+              onChange={(e) => atualizarFiltro("numeroNF", e.target.value)}
             />
           </div>
           <div className="field">
             <label>Data do pedido de</label>
-            <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
+            <input type="date" value={dataInicio} onChange={(e) => atualizarFiltro("dataInicio", e.target.value)} />
           </div>
           <div className="field">
             <label>Data do pedido até</label>
-            <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
+            <input type="date" value={dataFim} onChange={(e) => atualizarFiltro("dataFim", e.target.value)} />
           </div>
           <div className="field">
             <label>Origem</label>
-            <select value={origemId} onChange={(e) => setOrigemId(e.target.value)}>
+            <select value={origemId} onChange={(e) => atualizarFiltro("origemId", e.target.value)}>
               <option value="">Todas</option>
               {unidades.map((u) => (
                 <option key={u.id} value={u.id}>{nomeUnidade(u)}</option>
@@ -102,7 +122,7 @@ export function FilaTransferencias() {
           </div>
           <div className="field">
             <label>Destino</label>
-            <select value={destinoId} onChange={(e) => setDestinoId(e.target.value)}>
+            <select value={destinoId} onChange={(e) => atualizarFiltro("destinoId", e.target.value)}>
               <option value="">Todas</option>
               {unidades.map((u) => (
                 <option key={u.id} value={u.id}>{nomeUnidade(u)}</option>
@@ -111,7 +131,7 @@ export function FilaTransferencias() {
           </div>
           <div className="field">
             <label>Status</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value as StatusTransferencia | "")}>
+            <select value={status} onChange={(e) => atualizarFiltro("status", e.target.value)}>
               <option value="">Todos</option>
               {STATUS_OPCOES.map((o) => (
                 <option key={o.valor} value={o.valor}>{o.label}</option>

@@ -28,6 +28,8 @@ interface DashboardGerencialData {
   otifGeralPercentual: number | null;
   otifPorFilial: Array<{ nome: string; percentual: number; total: number }>;
   otifPorRota: Array<{ nome: string; percentual: number; total: number }>;
+  onTimePorFilial: Array<{ nome: string; percentual: number; total: number }>;
+  inFullPorFilial: Array<{ nome: string; percentual: number; total: number }>;
   rankingDivergenciasPorFilial: Array<{ nome: string; quantidade: number }>;
   rankingProdutosMaisDivergentes: Array<{ produto: string; quantidade: number }>;
   rankingTransportadoras: Array<{ transportadora: string; quantidade: number }>;
@@ -133,6 +135,24 @@ export function DashboardGerencial() {
           <RankingCard
             titulo="OTIF por filial"
             itens={dados.otifPorFilial.map((f) => ({
+              label: f.nome,
+              valor: f.percentual,
+              valorExibido: `${f.percentual.toFixed(0)}% (${f.total})`,
+              tom: tomOtif(f.percentual),
+            }))}
+          />
+          <RankingCard
+            titulo="On Time por filial (transporte)"
+            itens={dados.onTimePorFilial.map((f) => ({
+              label: f.nome,
+              valor: f.percentual,
+              valorExibido: `${f.percentual.toFixed(0)}% (${f.total})`,
+              tom: tomOtif(f.percentual),
+            }))}
+          />
+          <RankingCard
+            titulo="In Full por filial (separação)"
+            itens={dados.inFullPorFilial.map((f) => ({
               label: f.nome,
               valor: f.percentual,
               valorExibido: `${f.percentual.toFixed(0)}% (${f.total})`,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError, baixarArquivo } from "../api/client";
 import { StatusBadge } from "../components/StatusBadge";
 import { nomeUnidade, type Transferencia, type TipoDivergencia, type TipoEvento } from "../api/types";
@@ -24,6 +24,7 @@ interface ConferenciaLinha {
 
 export function TransferenciaDetalhe() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [transferencia, setTransferencia] = useState<Transferencia | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
@@ -72,6 +73,9 @@ export function TransferenciaDetalhe() {
 
   return (
     <div>
+      <button onClick={() => navigate(-1)} style={{ marginBottom: 12 }}>
+        ← Voltar
+      </button>
       <h1 style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <span>
           NF {t.numeroNF} — Pedido {t.numeroPedido} <StatusBadge status={t.status} itens={t.itens} />

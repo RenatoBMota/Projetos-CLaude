@@ -134,6 +134,13 @@ export async function dashboardGerencial(dataInicio: Date, dataFim: Date) {
     (o) => !!o.otif.otif,
   );
 
+  // On Time e In Full separados: On Time depende do transporte (prazo de
+  // entrega), enquanto In Full depende da separação/conferência (acurácia do
+  // que foi enviado) — indicadores com causas diferentes, por isso não bastam
+  // combinados no OTIF único.
+  const onTimePorFilial = percentualPorGrupo(otifValidos, (o) => nomeUnidade(o.transferencia.origem), (o) => !!o.otif.onTime);
+  const inFullPorFilial = percentualPorGrupo(otifValidos, (o) => nomeUnidade(o.transferencia.origem), (o) => !!o.otif.inFull);
+
   // Creditada à origem: o OTIF (In Full) também é atribuído a quem envia, então
   // a responsabilidade pela divergência acompanha a mesma unidade.
   const rankingDivergenciasPorFilial = agrupar(
@@ -177,6 +184,8 @@ export async function dashboardGerencial(dataInicio: Date, dataFim: Date) {
     otifGeralPercentual: otifGeral,
     otifPorFilial,
     otifPorRota,
+    onTimePorFilial,
+    inFullPorFilial,
     rankingDivergenciasPorFilial,
     rankingProdutosMaisDivergentes: Object.entries(produtosDivergentes)
       .map(([produto, quantidade]) => ({ produto, quantidade }))
