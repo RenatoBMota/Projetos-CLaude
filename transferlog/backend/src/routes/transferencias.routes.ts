@@ -177,7 +177,7 @@ transferenciasRouter.get("/", async (req, res) => {
     orderBy: { createdAt: "desc" },
   });
 
-  res.json(transferencias);
+  res.json(transferencias.map((t) => ({ ...t, otif: calcularOtif(t, t.itens) })));
 });
 
 /**

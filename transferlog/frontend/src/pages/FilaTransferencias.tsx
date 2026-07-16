@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import { StatusBadge, temDivergencia } from "../components/StatusBadge";
+import { StatusDot } from "../components/StatusDot";
 import { useAuth } from "../context/AuthContext";
 import { nomeUnidade, type StatusTransferencia, type Transferencia, type Unidade } from "../api/types";
 import { formatarDataHora } from "../utils/formatar";
@@ -155,6 +156,8 @@ export function FilaTransferencias() {
                 <th>Data pedido</th>
                 <th>Prazo</th>
                 <th>Status</th>
+                <th>In Full</th>
+                <th>On Time</th>
                 <th></th>
                 {isAdmin && <th></th>}
               </tr>
@@ -169,6 +172,8 @@ export function FilaTransferencias() {
                   <td>{formatarDataHora(t.dataPedido)}</td>
                   <td>{formatarDataHora(t.prazoPrevisto)}</td>
                   <td><StatusBadge status={t.status} itens={t.itens} /></td>
+                  <td><StatusDot valor={t.otif?.inFull} titulo="In Full" /></td>
+                  <td><StatusDot valor={t.otif?.onTime} titulo="On Time" /></td>
                   <td><Link to={`/transferencias/${t.id}`}>Ver</Link></td>
                   {isAdmin && (
                     <td><button className="danger" onClick={() => excluir(t)}>Excluir</button></td>
@@ -176,7 +181,7 @@ export function FilaTransferencias() {
                 </tr>
               ))}
               {transferencias.length === 0 && (
-                <tr><td colSpan={isAdmin ? 9 : 8} style={{ color: "var(--text-muted)" }}>Nenhuma transferência encontrada.</td></tr>
+                <tr><td colSpan={isAdmin ? 11 : 10} style={{ color: "var(--text-muted)" }}>Nenhuma transferência encontrada.</td></tr>
               )}
             </tbody>
           </table>
