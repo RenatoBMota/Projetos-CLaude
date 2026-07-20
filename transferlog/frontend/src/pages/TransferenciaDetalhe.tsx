@@ -127,6 +127,11 @@ export function TransferenciaDetalhe() {
               {t.otif.otif ? "Sim" : "Não"}
             </span>{" "}
             (On Time: {t.otif.onTime ? "sim" : "não"}, In Full: {t.otif.inFull ? "sim" : "não"})
+            {t.causaAtraso && (
+              <span className="badge warn" style={{ marginLeft: 8 }}>
+                Atraso provável na etapa: {t.causaAtraso}
+              </span>
+            )}
           </p>
         )}
       </div>
@@ -168,16 +173,7 @@ export function TransferenciaDetalhe() {
       )}
 
       {t.status === "EM_TRANSITO" && (
-        <div className="card">
-          <h2>Em trânsito</h2>
-          <button
-            className="primary"
-            disabled={carregando}
-            onClick={() => acao(() => api.post(`/transferencias/${t.id}/confirmar-recebimento`))}
-          >
-            Confirmar recebimento
-          </button>
-        </div>
+        <PontoControleBloco transferenciaId={t.id} carregando={carregando} acao={acao} />
       )}
 
       {t.status === "RECEBIDO" && (
@@ -274,6 +270,51 @@ function SeparacaoBloco({
         onClick={() => acao(() => api.post(`/transferencias/${transferencia.id}/concluir-separacao`))}
       >
         Separação concluída
+      </button>
+    </div>
+  );
+}
+
+function PontoControleBloco({
+  transferenciaId,
+  carregando,
+  acao,
+}: {
+  transferenciaId: string;
+  carregando: boolean;
+  acao: <T>(fn: () => Promise<T>) => Promise<void>;
+}) {
+  const [descricao, setDescricao] = useState("");
+
+  async function registrar() {
+    if (!descricao.trim()) return;
+    await acao(() => api.post(`/transferencias/${transferenciaId}/ponto-controle`, { descricao }));
+    setDescricao("");
+  }
+
+  return (
+    <div className="card">
+      <h2>Em trânsito</h2>
+      <div className="form-row" style={{ alignItems: "flex-end" }}>
+        <div className="field">
+          <label>Registrar ponto de controle</label>
+          <input
+            value={descricao}
+            onChange={(e) => setDescricao(e.target.value)}
+            placeholder="Ex.: Saiu do CD, chegou no polo X..."
+          />
+        </div>
+        <button disabled={carregando || !descricao.trim()} onClick={registrar}>
+          Registrar
+        </button>
+      </div>
+      <button
+        className="primary"
+        style={{ marginTop: 12 }}
+        disabled={carregando}
+        onClick={() => acao(() => api.post(`/transferencias/${transferenciaId}/confirmar-recebimento`))}
+      >
+        Confirmar recebimento
       </button>
     </div>
   );

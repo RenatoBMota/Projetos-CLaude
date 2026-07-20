@@ -16,9 +16,11 @@ import {
   marcarItemSeparado,
   montarPreviaTransferencia,
   registrarConferencia,
+  registrarPontoControle,
 } from "../services/transferenciaService";
-import { calcularOtif } from "../services/otifService";
+import { calcularOtif, identificarEtapaAtraso } from "../services/otifService";
 import { obterDanfe } from "../services/danfeService";
+import { calcularMediasEtapasGlobais } from "../services/dashboardService";
 
 export const transferenciasRouter = Router();
 transferenciasRouter.use(authenticate);
@@ -272,7 +274,9 @@ transferenciasRouter.get("/:id", async (req, res) => {
   if (!transferencia) return;
 
   const otif = calcularOtif(transferencia, transferencia.itens);
-  res.json({ ...transferencia, otif });
+  const causaAtraso =
+    otif.onTime === false ? identificarEtapaAtraso(transferencia, await calcularMediasEtapasGlobais()) : null;
+  res.json({ ...transferencia, otif, causaAtraso });
 });
 
 /** Baixa a DANFE da transferência: o PDF original (se veio de upload em PDF) ou uma DANFE gerada a partir do XML. */
@@ -346,6 +350,31 @@ transferenciasRouter.post(
 
     const atualizada = await marcarCarregado(req.params.id, req.auth!.sub, parsed.data);
     res.json(atualizada);
+  },
+);
+
+const pontoControleSchema = z.object({
+  descricao: z.string().trim().min(1),
+});
+
+transferenciasRouter.post(
+  "/:id/ponto-controle",
+  requirePerfil(Perfil.OPERADOR, Perfil.SUPERVISOR, Perfil.CONFERENTE),
+  async (req, res) => {
+    const parsed = pontoControleSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.flatten() });
+    }
+
+    const transferencia = await carregarTransferenciaAutorizada(req, res);
+    if (!transferencia) return;
+
+    try {
+      const atualizada = await registrarPontoControle(req.params.id, req.auth!.sub, parsed.data.descricao);
+      res.json(atualizada);
+    } catch (err) {
+      res.status(409).json({ error: (err as Error).message });
+    }
   },
 );
 

@@ -1,6 +1,6 @@
 import { StatusTransferencia } from "@prisma/client";
 import { prisma } from "../prisma";
-import { calcularOtif } from "./otifService";
+import { calcularOtif, identificarEtapaAtraso, type MediasEtapas } from "./otifService";
 import { nomeUnidade } from "./unidadeService";
 
 const STATUS_EM_ABERTO: StatusTransferencia[] = [
@@ -17,6 +17,19 @@ function mediaHoras(pares: Array<[Date | null, Date | null]>): number | null {
     .map(([inicio, fim]) => (fim.getTime() - inicio.getTime()) / (1000 * 60 * 60));
   if (diffs.length === 0) return null;
   return diffs.reduce((a, b) => a + b, 0) / diffs.length;
+}
+
+/** Médias de duração de cada etapa em toda a história (sem filtro de período) — usadas para
+ * apontar a causa raiz do atraso de uma transferência específica na tela de detalhe. */
+export async function calcularMediasEtapasGlobais(): Promise<MediasEtapas> {
+  const todas = await prisma.transferencia.findMany({
+    select: { dataPedido: true, dataEmissao: true, dataSeparacaoConcluida: true, dataCarregamento: true, dataRecebimento: true },
+  });
+  return {
+    separacaoHoras: mediaHoras(todas.map((t) => [t.dataPedido, t.dataSeparacaoConcluida])),
+    faturamentoCarregamentoHoras: mediaHoras(todas.map((t) => [t.dataEmissao, t.dataCarregamento])),
+    transitoHoras: mediaHoras(todas.map((t) => [t.dataCarregamento, t.dataRecebimento])),
+  };
 }
 
 /**
@@ -141,6 +154,19 @@ export async function dashboardGerencial(dataInicio: Date, dataFim: Date) {
   const onTimePorFilial = percentualPorGrupo(otifValidos, (o) => nomeUnidade(o.transferencia.origem), (o) => !!o.otif.onTime);
   const inFullPorFilial = percentualPorGrupo(otifValidos, (o) => nomeUnidade(o.transferencia.origem), (o) => !!o.otif.inFull);
 
+  // Pra cada entrega atrasada, aponta qual etapa (separação, faturamento->carregamento
+  // ou trânsito) mais excedeu a média do próprio período — dá visão de causa raiz,
+  // não só o número agregado de atrasos.
+  const mediasEtapas = {
+    separacaoHoras: tempoMedioSeparacao,
+    faturamentoCarregamentoHoras: tempoMedioFaturamentoCarregamento,
+    transitoHoras: tempoMedioTransito,
+  };
+  const atrasosPorEtapa = agrupar(
+    otifValidos.filter((o) => o.otif.onTime === false),
+    (o) => identificarEtapaAtraso(o.transferencia, mediasEtapas) ?? "Não identificado",
+  );
+
   // Creditada à origem: o OTIF (In Full) também é atribuído a quem envia, então
   // a responsabilidade pela divergência acompanha a mesma unidade.
   const rankingDivergenciasPorFilial = agrupar(
@@ -198,6 +224,7 @@ export async function dashboardGerencial(dataInicio: Date, dataFim: Date) {
     otifPorRota,
     onTimePorFilial,
     inFullPorFilial,
+    atrasosPorEtapa,
     rankingDivergenciasPorFilial,
     rankingProdutosMaisDivergentes: Object.entries(produtosDivergentes)
       .map(([produto, v]) => ({ produto, quantidade: v.quantidade, maisRecente: v.maisRecente }))

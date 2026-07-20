@@ -30,6 +30,7 @@ interface DashboardGerencialData {
   otifPorRota: Array<{ nome: string; percentual: number; total: number }>;
   onTimePorFilial: Array<{ nome: string; percentual: number; total: number }>;
   inFullPorFilial: Array<{ nome: string; percentual: number; total: number }>;
+  atrasosPorEtapa: Array<{ nome: string; quantidade: number }>;
   rankingDivergenciasPorFilial: Array<{ nome: string; quantidade: number }>;
   rankingProdutosMaisDivergentes: Array<{ produto: string; quantidade: number }>;
   rankingTransportadoras: Array<{ transportadora: string; quantidade: number }>;
@@ -207,6 +208,11 @@ export function DashboardGerencial() {
             titulo="Rotas críticas (mais atrasos)"
             tomPadrao="danger"
             itens={dados.heatmapRotasCriticas.map((f) => ({ label: f.rota, valor: f.quantidadeAtrasos }))}
+          />
+          <RankingCard
+            titulo="Atrasos por etapa (causa raiz)"
+            tomPadrao="danger"
+            itens={dados.atrasosPorEtapa.map((f) => ({ label: f.nome, valor: f.quantidade }))}
           />
         </div>
 

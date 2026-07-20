@@ -117,6 +117,7 @@ export interface Transferencia {
   eventos: EventoAuditoria[];
   createdAt: string;
   otif?: { onTime: boolean | null; inFull: boolean | null; otif: boolean | null };
+  causaAtraso?: string | null;
 }
 
 export interface UsuarioAutenticado {

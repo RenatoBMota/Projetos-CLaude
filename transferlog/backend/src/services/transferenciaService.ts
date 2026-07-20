@@ -171,6 +171,26 @@ export async function marcarCarregado(
   });
 }
 
+/** Registra um checkpoint manual do trajeto (ex.: "Saiu do CD", "Chegou no polo X"). */
+export async function registrarPontoControle(transferenciaId: string, usuarioId: string, descricao: string) {
+  const transferencia = await prisma.transferencia.findUniqueOrThrow({
+    where: { id: transferenciaId },
+  });
+  if (transferencia.status !== StatusTransferencia.EM_TRANSITO) {
+    throw new Error("Só é possível registrar pontos de controle enquanto a transferência está em trânsito");
+  }
+
+  return prisma.transferencia.update({
+    where: { id: transferenciaId },
+    data: {
+      eventos: { create: { tipo: TipoEvento.PONTO_CONTROLE, usuarioId, observacao: descricao } },
+    },
+    include: {
+      eventos: { include: { usuario: { select: { nome: true } } }, orderBy: { dataHora: "asc" } },
+    },
+  });
+}
+
 /** Confirma a chegada física no destino, antes da conferência detalhada dos itens. */
 export async function confirmarRecebimento(transferenciaId: string, usuarioId: string) {
   const transferencia = await prisma.transferencia.findUniqueOrThrow({
