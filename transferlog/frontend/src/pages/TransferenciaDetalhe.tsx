@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError, baixarArquivo } from "../api/client";
-import { StatusBadge } from "../components/StatusBadge";
-import { nomeUnidade, type Transferencia, type TipoDivergencia, type TipoEvento, type Transportadora } from "../api/types";
+import { useAuth } from "../context/AuthContext";
+import { StatusBadge, temDivergencia } from "../components/StatusBadge";
+import { nomeUnidade, type Transferencia, type TipoDivergencia, type TipoEvento, type Transportadora, type StatusTratativa } from "../api/types";
 import { formatarData, formatarDataHora, formatarMoeda } from "../utils/formatar";
 
 const LABEL_EVENTO: Record<TipoEvento, string> = {
@@ -136,6 +137,8 @@ export function TransferenciaDetalhe() {
         )}
       </div>
 
+      {temDivergencia(t.itens) && <TratativaBloco transferencia={t} carregando={carregando} acao={acao} />}
+
       <div className="card">
         <h2>Produtos</h2>
         <ItensTabela transferencia={t} />
@@ -192,6 +195,85 @@ export function TransferenciaDetalhe() {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+const LABEL_TRATATIVA: Record<StatusTratativa, string> = {
+  ABERTA: "Aberta",
+  EM_ANDAMENTO: "Em andamento",
+  RESOLVIDA: "Resolvida",
+};
+
+function TratativaBloco({
+  transferencia,
+  carregando,
+  acao,
+}: {
+  transferencia: Transferencia;
+  carregando: boolean;
+  acao: <T>(fn: () => Promise<T>) => Promise<void>;
+}) {
+  const { usuario } = useAuth();
+  const podeEditar = usuario && ["SUPERVISOR", "ADMINISTRADOR", "AUDITORIA"].includes(usuario.perfil);
+  const [status, setStatus] = useState<StatusTratativa>(transferencia.tratativaStatus ?? "ABERTA");
+  const [prazo, setPrazo] = useState(transferencia.tratativaPrazo ? transferencia.tratativaPrazo.slice(0, 10) : "");
+  const [observacao, setObservacao] = useState(transferencia.tratativaObservacao ?? "");
+
+  if (!podeEditar) {
+    return (
+      <div className="card">
+        <h2>Tratativa da divergência</h2>
+        <p>
+          Status: <strong>{LABEL_TRATATIVA[transferencia.tratativaStatus ?? "ABERTA"]}</strong>
+          {" — "}Responsável: <strong>{transferencia.tratativaResponsavel?.nome ?? "Ninguém assumiu ainda"}</strong>
+        </p>
+        {transferencia.tratativaObservacao && <p>{transferencia.tratativaObservacao}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="card">
+      <h2>Tratativa da divergência</h2>
+      <div className="form-row">
+        <div className="field">
+          <label>Status</label>
+          <select value={status} onChange={(e) => setStatus(e.target.value as StatusTratativa)}>
+            {(Object.keys(LABEL_TRATATIVA) as StatusTratativa[]).map((s) => (
+              <option key={s} value={s}>{LABEL_TRATATIVA[s]}</option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label>Prazo de resolução</label>
+          <input type="date" value={prazo} onChange={(e) => setPrazo(e.target.value)} />
+        </div>
+        <div className="field">
+          <label>Responsável atual</label>
+          <strong>{transferencia.tratativaResponsavel?.nome ?? "Ninguém assumiu ainda"}</strong>
+        </div>
+      </div>
+      <div className="field">
+        <label>Observação</label>
+        <input value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="O que está sendo feito para resolver..." />
+      </div>
+      <button
+        className="primary"
+        style={{ marginTop: 12 }}
+        disabled={carregando}
+        onClick={() =>
+          acao(() =>
+            api.patch(`/transferencias/${transferencia.id}/tratativa`, {
+              status,
+              prazo: prazo || undefined,
+              observacao: observacao || undefined,
+            }),
+          )
+        }
+      >
+        Salvar tratativa (assume como responsável)
+      </button>
     </div>
   );
 }

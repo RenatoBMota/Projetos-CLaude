@@ -4,10 +4,16 @@ import { api } from "../api/client";
 import { StatusBadge, temDivergencia } from "../components/StatusBadge";
 import { StatusDot } from "../components/StatusDot";
 import { useAuth } from "../context/AuthContext";
-import { nomeUnidade, type StatusTransferencia, type Transferencia, type Unidade } from "../api/types";
+import { nomeUnidade, type StatusTransferencia, type StatusTratativa, type Transferencia, type Unidade } from "../api/types";
 import { formatarDataHora } from "../utils/formatar";
 
 type StatusFiltro = StatusTransferencia | "FINALIZADO_DIVERGENTE";
+
+const TRATATIVA_OPCOES: { valor: StatusTratativa; label: string }[] = [
+  { valor: "ABERTA", label: "Aberta" },
+  { valor: "EM_ANDAMENTO", label: "Em andamento" },
+  { valor: "RESOLVIDA", label: "Resolvida" },
+];
 
 const STATUS_OPCOES: { valor: StatusFiltro; label: string }[] = [
   { valor: "PENDENTE_SEPARACAO", label: "Pendente de separação" },
@@ -35,6 +41,7 @@ export function FilaTransferencias() {
   const status = (searchParams.get("status") ?? "") as StatusFiltro | "";
   const numeroNF = searchParams.get("numeroNF") ?? "";
   const viagemNumero = searchParams.get("viagemNumero") ?? "";
+  const tratativaStatus = (searchParams.get("tratativaStatus") ?? "") as StatusTratativa | "";
   const dataInicio = searchParams.get("dataInicio") ?? "";
   const dataFim = searchParams.get("dataFim") ?? "";
 
@@ -63,6 +70,7 @@ export function FilaTransferencias() {
       else if (status) params.set("status", status);
       if (numeroNF) params.set("numeroNF", numeroNF);
       if (viagemNumero) params.set("viagemNumero", viagemNumero);
+      if (tratativaStatus) params.set("tratativaStatus", tratativaStatus);
       if (dataInicio) params.set("dataInicio", dataInicio);
       if (dataFim) params.set("dataFim", dataFim);
 
@@ -75,7 +83,7 @@ export function FilaTransferencias() {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [origemId, destinoId, status, numeroNF, viagemNumero, dataInicio, dataFim]);
+  }, [origemId, destinoId, status, numeroNF, viagemNumero, tratativaStatus, dataInicio, dataFim]);
 
   async function excluir(t: Transferencia) {
     if (!window.confirm(`Excluir a transferência do pedido ${t.numeroPedido} (NF ${t.numeroNF})? Essa ação não pode ser desfeita.`)) {
@@ -146,6 +154,15 @@ export function FilaTransferencias() {
             <select value={status} onChange={(e) => atualizarFiltro("status", e.target.value)}>
               <option value="">Todos</option>
               {STATUS_OPCOES.map((o) => (
+                <option key={o.valor} value={o.valor}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label>Tratativa da divergência</label>
+            <select value={tratativaStatus} onChange={(e) => atualizarFiltro("tratativaStatus", e.target.value)}>
+              <option value="">Todas</option>
+              {TRATATIVA_OPCOES.map((o) => (
                 <option key={o.valor} value={o.valor}>{o.label}</option>
               ))}
             </select>

@@ -17,6 +17,7 @@ import {
   montarPreviaTransferencia,
   registrarConferencia,
   registrarPontoControle,
+  atualizarTratativa,
 } from "../services/transferenciaService";
 import { calcularOtif, identificarEtapaAtraso } from "../services/otifService";
 import { obterDanfe } from "../services/danfeService";
@@ -138,6 +139,7 @@ const filaQuerySchema = z.object({
   destinoId: z.string().optional(),
   numeroNF: z.string().trim().min(1).optional(),
   viagemNumero: z.string().trim().min(1).optional(),
+  tratativaStatus: z.nativeEnum(StatusTratativa).optional(),
   dataInicio: z.coerce.date().optional(),
   dataFim: z.coerce.date().optional(),
 });
@@ -148,7 +150,7 @@ transferenciasRouter.get("/", async (req, res) => {
   if (!parsed.success) {
     return res.status(400).json({ error: parsed.error.flatten() });
   }
-  const { status, origemId, destinoId, numeroNF, viagemNumero, dataInicio, dataFim } = parsed.data;
+  const { status, origemId, destinoId, numeroNF, viagemNumero, tratativaStatus, dataInicio, dataFim } = parsed.data;
   const auth = req.auth!;
   const isAdmin = auth.perfil === Perfil.ADMINISTRADOR;
 
@@ -161,6 +163,7 @@ transferenciasRouter.get("/", async (req, res) => {
       ...(destinoId ? { destinoId } : {}),
       ...(numeroNF ? { numeroNF: { contains: numeroNF, mode: "insensitive" } } : {}),
       ...(viagemNumero ? { viagemNumero: { contains: viagemNumero, mode: "insensitive" } } : {}),
+      ...(tratativaStatus ? { tratativaStatus } : {}),
       ...(dataInicio || dataFimFimDoDia
         ? {
             dataPedido: {
@@ -375,6 +378,30 @@ transferenciasRouter.post(
     } catch (err) {
       res.status(409).json({ error: (err as Error).message });
     }
+  },
+);
+
+const tratativaSchema = z.object({
+  status: z.nativeEnum(StatusTratativa),
+  prazo: z.coerce.date().optional(),
+  observacao: z.string().trim().optional(),
+});
+
+/** Fecha o loop de uma divergência: quem atualiza a tratativa assume como responsável. */
+transferenciasRouter.patch(
+  "/:id/tratativa",
+  requirePerfil(Perfil.SUPERVISOR, Perfil.ADMINISTRADOR, Perfil.AUDITORIA),
+  async (req, res) => {
+    const parsed = tratativaSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.flatten() });
+    }
+
+    const transferencia = await carregarTransferenciaAutorizada(req, res);
+    if (!transferencia) return;
+
+    const atualizada = await atualizarTratativa(req.params.id, req.auth!.sub, parsed.data);
+    res.json(atualizada);
   },
 );
 

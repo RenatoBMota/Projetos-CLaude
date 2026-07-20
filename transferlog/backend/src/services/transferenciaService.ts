@@ -1,4 +1,4 @@
-import { Prioridade, StatusTransferencia, TipoDivergencia, TipoEvento } from "@prisma/client";
+import { Prioridade, StatusTransferencia, StatusTratativa, TipoDivergencia, TipoEvento } from "@prisma/client";
 import { prisma } from "../prisma";
 import { NfeParsed, contarItensTotal, contarSkusDistintos } from "./nfeParser";
 import { calcularPrazoPrevisto, obterPrazoHoras, resolverUnidadePorCnpj } from "./unidadeService";
@@ -293,5 +293,27 @@ export async function finalizarTransferencia(transferenciaId: string, usuarioId:
       dataFinalizacao: new Date(),
       eventos: { create: { tipo: TipoEvento.CONFERENCIA, usuarioId, observacao: "Transferência finalizada" } },
     },
+  });
+}
+
+/**
+ * Fecha o loop de uma divergência: quem atualiza a tratativa vira o
+ * responsável por ela — não é preciso escolher de uma lista de usuários,
+ * o registro simplesmente acompanha quem está cuidando do caso agora.
+ */
+export async function atualizarTratativa(
+  transferenciaId: string,
+  usuarioId: string,
+  dados: { status: StatusTratativa; prazo?: Date; observacao?: string },
+) {
+  return prisma.transferencia.update({
+    where: { id: transferenciaId },
+    data: {
+      tratativaStatus: dados.status,
+      tratativaResponsavelId: usuarioId,
+      tratativaPrazo: dados.prazo,
+      tratativaObservacao: dados.observacao,
+    },
+    include: { tratativaResponsavel: { select: { id: true, nome: true } } },
   });
 }
