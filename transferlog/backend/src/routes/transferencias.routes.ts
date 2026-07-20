@@ -18,6 +18,7 @@ import {
   registrarConferencia,
   registrarPontoControle,
   atualizarTratativa,
+  criarDevolucao,
 } from "../services/transferenciaService";
 import { calcularOtif, identificarEtapaAtraso } from "../services/otifService";
 import { obterDanfe } from "../services/danfeService";
@@ -402,6 +403,23 @@ transferenciasRouter.patch(
 
     const atualizada = await atualizarTratativa(req.params.id, req.auth!.sub, parsed.data);
     res.json(atualizada);
+  },
+);
+
+/** Cria a transferência reversa (devolução) de sobra/quebra encontrada na conferência. */
+transferenciasRouter.post(
+  "/:id/devolucao",
+  requirePerfil(Perfil.CONFERENTE, Perfil.SUPERVISOR),
+  async (req, res) => {
+    const transferencia = await carregarTransferenciaAutorizada(req, res);
+    if (!transferencia) return;
+
+    try {
+      const devolucao = await criarDevolucao(req.params.id, req.auth!.sub);
+      res.status(201).json(devolucao);
+    } catch (err) {
+      res.status(422).json({ error: (err as Error).message });
+    }
   },
 );
 

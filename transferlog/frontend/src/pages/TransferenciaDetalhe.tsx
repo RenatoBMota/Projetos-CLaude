@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, ApiError, baixarArquivo } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { StatusBadge, temDivergencia } from "../components/StatusBadge";
@@ -31,6 +31,21 @@ export function TransferenciaDetalhe() {
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [baixandoDanfe, setBaixandoDanfe] = useState(false);
+  const [criandoDevolucao, setCriandoDevolucao] = useState(false);
+
+  async function criarDevolucao() {
+    if (!id) return;
+    setErro(null);
+    setCriandoDevolucao(true);
+    try {
+      const devolucao = await api.post<{ id: string }>(`/transferencias/${id}/devolucao`);
+      navigate(`/transferencias/${devolucao.id}`);
+    } catch (err) {
+      setErro(err instanceof ApiError ? err.message : "Não foi possível criar a devolução");
+    } finally {
+      setCriandoDevolucao(false);
+    }
+  }
 
   async function baixarDanfe() {
     if (!id) return;
@@ -138,6 +153,42 @@ export function TransferenciaDetalhe() {
       </div>
 
       {temDivergencia(t.itens) && <TratativaBloco transferencia={t} carregando={carregando} acao={acao} />}
+
+      {(t.transferenciaOrigemId || t.devolucoes.length > 0 || t.itens.some((i) => i.divergenciaTipo === "SOBROU" || i.divergenciaTipo === "QUEBRADO")) && (
+        <div className="card">
+          <h2>Devolução</h2>
+          {t.transferenciaOrigemId && (
+            <p>
+              Esta transferência é uma devolução de{" "}
+              <Link to={`/transferencias/${t.transferenciaOrigemId}`}>outra transferência</Link>.
+            </p>
+          )}
+          {t.devolucoes.length > 0 && (
+            <p>
+              Devoluções geradas a partir desta transferência:{" "}
+              {t.devolucoes.map((d, i) => (
+                <span key={d.id}>
+                  {i > 0 && ", "}
+                  <Link to={`/transferencias/${d.id}`}>NF {d.numeroNF}</Link>
+                </span>
+              ))}
+            </p>
+          )}
+          {!t.transferenciaOrigemId &&
+            t.devolucoes.length === 0 &&
+            t.itens.some((i) => i.divergenciaTipo === "SOBROU" || i.divergenciaTipo === "QUEBRADO") && (
+              <>
+                <p style={{ color: "var(--text-muted)" }}>
+                  Há itens de sobra ou quebra nesta transferência — crie uma devolução pra formalizar o retorno
+                  físico da mercadoria à origem.
+                </p>
+                <button disabled={criandoDevolucao} onClick={criarDevolucao}>
+                  {criandoDevolucao ? "Criando..." : "Criar devolução"}
+                </button>
+              </>
+            )}
+        </div>
+      )}
 
       <div className="card">
         <h2>Produtos</h2>

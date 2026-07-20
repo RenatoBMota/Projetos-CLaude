@@ -317,3 +317,76 @@ export async function atualizarTratativa(
     include: { tratativaResponsavel: { select: { id: true, nome: true } } },
   });
 }
+
+/**
+ * Cria uma transferência reversa (devolução) a partir dos itens com sobra ou
+ * quebra encontrados na conferência — origem e destino invertidos em relação
+ * à transferência original, que fica referenciada pra rastrear o vínculo.
+ */
+export async function criarDevolucao(transferenciaOrigemId: string, usuarioId: string) {
+  const original = await prisma.transferencia.findUniqueOrThrow({
+    where: { id: transferenciaOrigemId },
+    include: { itens: true },
+  });
+
+  const itensDevolucao = original.itens.filter(
+    (i) => i.divergenciaTipo === TipoDivergencia.SOBROU || i.divergenciaTipo === TipoDivergencia.QUEBRADO,
+  );
+  if (itensDevolucao.length === 0) {
+    throw new Error("Esta transferência não tem itens de sobra ou quebra para devolver");
+  }
+
+  const devolucaoExistente = await prisma.transferencia.findUnique({
+    where: {
+      numeroNF_serie_origemId: {
+        numeroNF: `DEV-${original.numeroNF}`,
+        serie: original.serie,
+        origemId: original.destinoId,
+      },
+    },
+  });
+  if (devolucaoExistente) {
+    throw new Error(`Já existe uma devolução criada para a NF ${original.numeroNF}/${original.serie}`);
+  }
+
+  const agora = new Date();
+  const prazoPrevisto = await calcularPrazoPrevisto(original.destinoId, original.origemId, agora);
+  const qtdItensTotal = itensDevolucao.reduce((acc, i) => acc + (i.divergenciaQtd ?? i.quantidade), 0);
+
+  return prisma.transferencia.create({
+    data: {
+      numeroNF: `DEV-${original.numeroNF}`,
+      serie: original.serie,
+      numeroPedido: `DEV-${original.numeroPedido}`,
+      origemId: original.destinoId,
+      destinoId: original.origemId,
+      dataPedido: agora,
+      dataEmissao: agora,
+      valorTotal: 0,
+      qtdVolumes: 1,
+      pesoBruto: 0,
+      qtdSku: itensDevolucao.length,
+      qtdItensTotal,
+      prazoPrevisto,
+      transferenciaOrigemId: original.id,
+      status: StatusTransferencia.PENDENTE_SEPARACAO,
+      itens: {
+        create: itensDevolucao.map((i) => ({
+          codigoInterno: i.codigoInterno,
+          descricao: i.descricao,
+          ncm: i.ncm,
+          cfop: i.cfop,
+          quantidade: i.divergenciaQtd ?? i.quantidade,
+        })),
+      },
+      eventos: {
+        create: {
+          tipo: TipoEvento.UPLOAD,
+          usuarioId,
+          observacao: `Devolução criada a partir da NF ${original.numeroNF}/${original.serie}`,
+        },
+      },
+    },
+    include: { itens: true, origem: true, destino: true },
+  });
+}
