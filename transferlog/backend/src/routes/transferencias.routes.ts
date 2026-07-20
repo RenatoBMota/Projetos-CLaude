@@ -22,7 +22,7 @@ import {
 } from "../services/transferenciaService";
 import { calcularOtif, identificarEtapaAtraso } from "../services/otifService";
 import { obterDanfe } from "../services/danfeService";
-import { calcularMediasEtapasGlobais } from "../services/dashboardService";
+import { calcularMediasEtapasGlobais, obterTransferenciasEmAtencao } from "../services/dashboardService";
 
 export const transferenciasRouter = Router();
 transferenciasRouter.use(authenticate);
@@ -240,6 +240,14 @@ transferenciasRouter.get("/relatorio", async (req, res) => {
   });
 
   res.json(transferencias);
+});
+
+/** Transferências em aberto que precisam de atenção agora: atrasadas, em risco de atraso ou paradas há muito tempo. */
+transferenciasRouter.get("/atencao", async (req, res) => {
+  const auth = req.auth!;
+  const isAdmin = auth.perfil === Perfil.ADMINISTRADOR;
+  const dados = await obterTransferenciasEmAtencao(isAdmin ? null : auth.unidadeIds);
+  res.json(dados);
 });
 
 async function carregarTransferenciaAutorizada(req: any, res: any) {

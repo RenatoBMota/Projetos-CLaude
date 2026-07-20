@@ -9,6 +9,7 @@ import { FilaTransferencias } from "./pages/FilaTransferencias";
 import { TransferenciaDetalhe } from "./pages/TransferenciaDetalhe";
 import { Cadastros } from "./pages/Cadastros";
 import { Relatorio } from "./pages/Relatorio";
+import { PainelAtencao } from "./pages/PainelAtencao";
 
 function Rotas() {
   const { usuario } = useAuth();
@@ -25,6 +26,7 @@ function Rotas() {
     <Layout>
       <Routes>
         <Route path="/" element={<DashboardOperacional />} />
+        <Route path="/atencao" element={<PainelAtencao />} />
         <Route path="/transferencias" element={<FilaTransferencias />} />
         <Route path="/transferencias/:id" element={<TransferenciaDetalhe />} />
         <Route path="/upload" element={<UploadNota />} />

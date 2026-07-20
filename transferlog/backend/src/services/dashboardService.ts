@@ -11,6 +11,56 @@ const STATUS_EM_ABERTO: StatusTransferencia[] = [
   StatusTransferencia.RECEBIDO,
 ];
 
+const HORAS_RISCO = 6;
+const HORAS_PARADA = 24;
+
+/**
+ * Transferências em aberto que precisam de atenção agora: atrasadas (prazo já
+ * estourou), em risco (prazo vence nas próximas horas) ou paradas há muito
+ * tempo na etapa atual — visão de "o que olhar agora", sem precisar montar
+ * filtro no dashboard. `escopoUnidadeIds` restringe a supervisores/operadores
+ * às próprias unidades; null enxerga tudo (uso do administrador).
+ */
+export async function obterTransferenciasEmAtencao(escopoUnidadeIds: string[] | null) {
+  const agora = new Date();
+  const limiteRisco = new Date(agora.getTime() + HORAS_RISCO * 60 * 60 * 1000);
+  const limiteParada = new Date(agora.getTime() - HORAS_PARADA * 60 * 60 * 1000);
+
+  const abertas = await prisma.transferencia.findMany({
+    where: {
+      status: { in: STATUS_EM_ABERTO },
+      ...(escopoUnidadeIds
+        ? { OR: [{ origemId: { in: escopoUnidadeIds } }, { destinoId: { in: escopoUnidadeIds } }] }
+        : {}),
+    },
+    include: { origem: true, destino: true, itens: true, transportadora: true },
+    orderBy: { prazoPrevisto: "asc" },
+  });
+
+  function inicioEtapaAtual(t: (typeof abertas)[number]): Date {
+    switch (t.status) {
+      case StatusTransferencia.CARREGADO:
+        return t.dataSeparacaoConcluida ?? t.dataPedido;
+      case StatusTransferencia.EM_TRANSITO:
+        return t.dataCarregamento ?? t.dataPedido;
+      case StatusTransferencia.RECEBIDO:
+        return t.dataRecebimento ?? t.dataPedido;
+      default:
+        return t.dataPedido;
+    }
+  }
+
+  const atrasadas = abertas.filter((t) => t.prazoPrevisto.getTime() < agora.getTime());
+  const emRisco = abertas.filter(
+    (t) => t.prazoPrevisto.getTime() >= agora.getTime() && t.prazoPrevisto.getTime() <= limiteRisco.getTime(),
+  );
+  const paradas = abertas.filter(
+    (t) => !atrasadas.includes(t) && inicioEtapaAtual(t).getTime() < limiteParada.getTime(),
+  );
+
+  return { atrasadas, emRisco, paradas };
+}
+
 function mediaHoras(pares: Array<[Date | null, Date | null]>): number | null {
   const diffs = pares
     .filter((p): p is [Date, Date] => p[0] !== null && p[1] !== null)
