@@ -1,7 +1,18 @@
-import { StatusTransferencia, TipoDivergencia, TipoEvento } from "@prisma/client";
+import { Prioridade, StatusTransferencia, TipoDivergencia, TipoEvento } from "@prisma/client";
 import { prisma } from "../prisma";
 import { NfeParsed, contarItensTotal, contarSkusDistintos } from "./nfeParser";
 import { calcularPrazoPrevisto, obterPrazoHoras, resolverUnidadePorCnpj } from "./unidadeService";
+
+/** Busca a transportadora pelo nome (case-insensitive) ou cria uma nova cadastrada. */
+async function resolverOuCriarTransportadora(nome: string): Promise<string> {
+  const nomeNormalizado = nome.trim();
+  const existente = await prisma.transportadora.findFirst({
+    where: { nome: { equals: nomeNormalizado, mode: "insensitive" } },
+  });
+  if (existente) return existente.id;
+  const criada = await prisma.transportadora.create({ data: { nome: nomeNormalizado } });
+  return criada.id;
+}
 
 export async function montarPreviaTransferencia(nfe: NfeParsed) {
   const origem = await resolverUnidadePorCnpj(nfe.emitenteCnpj);
@@ -23,10 +34,11 @@ export async function criarTransferencia(
   usuarioId: string,
   dataPedido: Date,
   xmlOriginal?: string,
+  prioridade: Prioridade = Prioridade.NORMAL,
 ) {
   const origem = await resolverUnidadePorCnpj(nfe.emitenteCnpj);
   const destino = await resolverUnidadePorCnpj(nfe.destinatarioCnpj);
-  const prazoPrevisto = await calcularPrazoPrevisto(origem.id, destino.id, dataPedido);
+  const prazoPrevisto = await calcularPrazoPrevisto(origem.id, destino.id, dataPedido, prioridade);
 
   const existente = await prisma.transferencia.findUnique({
     where: {
@@ -58,6 +70,7 @@ export async function criarTransferencia(
       qtdItensTotal: contarItensTotal(nfe.itens),
       prazoPrevisto,
       xmlOriginal,
+      prioridade,
       status: StatusTransferencia.PENDENTE_SEPARACAO,
       itens: {
         create: nfe.itens.map((item) => ({
@@ -130,7 +143,7 @@ export async function concluirSeparacao(transferenciaId: string, usuarioId: stri
 export async function marcarCarregado(
   transferenciaId: string,
   usuarioId: string,
-  dados: { transportadora?: string; veiculo?: string; motorista?: string },
+  dados: { transportadoraNome?: string; valorFrete?: number; veiculo?: string; motorista?: string; viagemNumero?: string },
 ) {
   const transferencia = await prisma.transferencia.findUniqueOrThrow({
     where: { id: transferenciaId },
@@ -139,10 +152,18 @@ export async function marcarCarregado(
     throw new Error("Transferência precisa ter a separação concluída antes de ser carregada");
   }
 
+  const transportadoraId = dados.transportadoraNome
+    ? await resolverOuCriarTransportadora(dados.transportadoraNome)
+    : undefined;
+
   return prisma.transferencia.update({
     where: { id: transferenciaId },
     data: {
-      ...dados,
+      transportadoraId,
+      valorFrete: dados.valorFrete,
+      veiculo: dados.veiculo,
+      motorista: dados.motorista,
+      viagemNumero: dados.viagemNumero,
       status: StatusTransferencia.EM_TRANSITO,
       dataCarregamento: new Date(),
       eventos: { create: { tipo: TipoEvento.CARREGAMENTO, usuarioId, observacao: JSON.stringify(dados) } },

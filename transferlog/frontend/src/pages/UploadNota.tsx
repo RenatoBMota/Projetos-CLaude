@@ -1,7 +1,7 @@
 import { useState, type DragEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../api/client";
-import { nomeUnidade, type Unidade } from "../api/types";
+import { nomeUnidade, type Prioridade, type Unidade } from "../api/types";
 import { formatarData, formatarDataHora } from "../utils/formatar";
 
 interface NfeItemEditavel {
@@ -42,6 +42,7 @@ export function UploadNota() {
   const [resumo, setResumo] = useState<ResumoResponse | null>(null);
   const [campos, setCampos] = useState({ numeroNF: "", serie: "", numeroPedido: "", valorTotal: 0, qtdVolumes: 0, pesoBruto: 0 });
   const [dataPedido, setDataPedido] = useState("");
+  const [prioridade, setPrioridade] = useState<Prioridade>("NORMAL");
   const [itens, setItens] = useState<NfeItemEditavel[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
@@ -143,6 +144,7 @@ export function UploadNota() {
         valorTotal: campos.valorTotal,
         qtdVolumes: campos.qtdVolumes,
         pesoBruto: campos.pesoBruto,
+        prioridade,
         itens,
       });
       navigate(`/transferencias/${transferencia.id}`);
@@ -200,13 +202,24 @@ export function UploadNota() {
               </strong>
             </div>
             <div className="field">
-              <label>Prazo previsto (SLA: {resumo.prazoHoras}h a partir do pedido)</label>
+              <label>
+                Prazo previsto ({prioridade === "URGENTE" ? "urgente: mesmo dia útil até 18h" : `SLA: ${resumo.prazoHoras}h a partir do pedido`})
+              </label>
               <strong>
-                {(() => {
-                  const preview = prazoPrevistoPreview();
-                  return preview ? formatarDataHora(preview) : "Informe a data do pedido";
-                })()}
+                {prioridade === "URGENTE"
+                  ? "Calculado ao criar (mesmo dia útil, ou o próximo, sempre até 18h)"
+                  : (() => {
+                      const preview = prazoPrevistoPreview();
+                      return preview ? formatarDataHora(preview) : "Informe a data do pedido";
+                    })()}
               </strong>
+            </div>
+            <div className="field">
+              <label>Prioridade</label>
+              <select value={prioridade} onChange={(e) => setPrioridade(e.target.value as Prioridade)}>
+                <option value="NORMAL">Normal</option>
+                <option value="URGENTE">Urgente</option>
+              </select>
             </div>
           </div>
           <div className="form-row">

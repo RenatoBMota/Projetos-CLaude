@@ -49,6 +49,18 @@ enum TipoEvento {
   RECEBIMENTO
   CONFERENCIA
   CANCELAMENTO
+  PONTO_CONTROLE
+}
+
+enum Prioridade {
+  NORMAL
+  URGENTE
+}
+
+enum StatusTratativa {
+  ABERTA
+  EM_ANDAMENTO
+  RESOLVIDA
 }
 
 model Unidade {
@@ -69,15 +81,16 @@ model Unidade {
 }
 
 model Usuario {
-  id        String            @id @default(cuid())
-  nome      String
-  email     String            @unique
-  senhaHash String
-  perfil    Perfil
-  ativo     Boolean           @default(true)
-  unidades  UsuarioUnidade[]
-  eventos   EventoAuditoria[]
-  createdAt DateTime          @default(now())
+  id                    String            @id @default(cuid())
+  nome                  String
+  email                 String            @unique
+  senhaHash             String
+  perfil                Perfil
+  ativo                 Boolean           @default(true)
+  unidades              UsuarioUnidade[]
+  eventos               EventoAuditoria[]
+  tratativasResponsavel Transferencia[]   @relation("TratativaResponsavel")
+  createdAt             DateTime          @default(now())
 }
 
 model UsuarioUnidade {
@@ -88,6 +101,18 @@ model UsuarioUnidade {
 
   @@id([usuarioId, unidadeId])
   @@index([unidadeId])
+}
+
+model Transportadora {
+  id        String   @id @default(cuid())
+  nome      String   @unique
+  cnpj      String?
+  telefone  String?
+  ativa     Boolean  @default(true)
+
+  transferencias Transferencia[]
+
+  createdAt DateTime @default(now())
 }
 
 model RotaSLA {
@@ -121,18 +146,34 @@ model Transferencia {
   qtdSku        Int
   qtdItensTotal Int
   status        StatusTransferencia @default(PENDENTE_SEPARACAO)
+  prioridade    Prioridade          @default(NORMAL)
 
-  transportadora String?
-  veiculo        String?
-  motorista      String?
-  numeroBonus    String?
-  prazoPrevisto  DateTime
+  transportadoraId String?
+  transportadora   Transportadora? @relation(fields: [transportadoraId], references: [id])
+  valorFrete       Decimal?        @db.Decimal(12, 2)
+  veiculo          String?
+  motorista        String?
+  viagemNumero     String?
+  numeroBonus      String?
+  prazoPrevisto    DateTime
 
   dataSeparacaoConcluida DateTime?
   dataCarregamento       DateTime?
   dataRecebimento        DateTime?
   dataConferencia        DateTime?
   dataFinalizacao        DateTime?
+
+  // Tratativa da divergência: fechamento de loop depois que a conferência aponta problema.
+  tratativaStatus        StatusTratativa?
+  tratativaResponsavelId String?
+  tratativaResponsavel   Usuario?         @relation("TratativaResponsavel", fields: [tratativaResponsavelId], references: [id])
+  tratativaPrazo         DateTime?
+  tratativaObservacao    String?
+
+  // Devolução: transferência reversa criada a partir de uma divergência (sobrou/quebrado).
+  transferenciaOrigemId String?
+  transferenciaOrigem   Transferencia?  @relation("Devolucao", fields: [transferenciaOrigemId], references: [id])
+  devolucoes            Transferencia[] @relation("Devolucao")
 
   xmlOriginal String?
 

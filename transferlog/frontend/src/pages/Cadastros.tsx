@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from "react";
 import { api, ApiError } from "../api/client";
-import { nomeUnidade, type Perfil, type Unidade, type UsuarioListado } from "../api/types";
+import { nomeUnidade, type Perfil, type Transportadora, type Unidade, type UsuarioListado } from "../api/types";
 
 interface RotaSla {
   id: string;
@@ -24,17 +24,20 @@ export function Cadastros() {
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [rotas, setRotas] = useState<RotaSla[]>([]);
   const [usuarios, setUsuarios] = useState<UsuarioListado[]>([]);
+  const [transportadoras, setTransportadoras] = useState<Transportadora[]>([]);
   const [erro, setErro] = useState<string | null>(null);
 
   async function carregar() {
-    const [u, r, us] = await Promise.all([
+    const [u, r, us, t] = await Promise.all([
       api.get<Unidade[]>("/unidades"),
       api.get<RotaSla[]>("/unidades/rotas-sla"),
       api.get<UsuarioListado[]>("/usuarios"),
+      api.get<Transportadora[]>("/transportadoras"),
     ]);
     setUnidades(u);
     setRotas(r);
     setUsuarios(us);
+    setTransportadoras(t);
   }
 
   useEffect(() => {
@@ -54,6 +57,8 @@ export function Cadastros() {
       <ListaUnidades unidades={unidades} onAtualizado={carregar} onErro={tratarErro} />
       <NovaRotaSla unidades={unidades} onCriada={carregar} onErro={setErro} />
       <ListaRotas rotas={rotas} onAtualizado={carregar} onErro={tratarErro} />
+      <NovaTransportadora onCriada={carregar} onErro={setErro} />
+      <ListaTransportadoras transportadoras={transportadoras} onAtualizado={carregar} onErro={tratarErro} />
       <NovoUsuario unidades={unidades} onCriado={carregar} onErro={setErro} />
       <ListaUsuarios usuarios={usuarios} unidades={unidades} onAtualizado={carregar} onErro={tratarErro} />
     </div>
@@ -342,6 +347,116 @@ function NovaRotaSla({
         </div>
       </div>
       <button className="primary" disabled={enviando || !origemId || !destinoId} onClick={salvar}>Salvar rota</button>
+    </div>
+  );
+}
+
+// ---------- Transportadoras ----------
+
+function NovaTransportadora({ onCriada, onErro }: { onCriada: () => void; onErro: (e: string) => void }) {
+  const [nome, setNome] = useState("");
+  const [cnpj, setCnpj] = useState("");
+  const [telefone, setTelefone] = useState("");
+  const [enviando, setEnviando] = useState(false);
+
+  async function salvar() {
+    setEnviando(true);
+    try {
+      await api.post("/transportadoras", { nome, cnpj: cnpj || undefined, telefone: telefone || undefined });
+      setNome(""); setCnpj(""); setTelefone("");
+      onCriada();
+    } catch (err) {
+      onErro(err instanceof ApiError ? err.message : "Erro ao criar transportadora");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div className="card">
+      <h2>Nova transportadora</h2>
+      <div className="form-row">
+        <div className="field"><label>Nome</label><input value={nome} onChange={(e) => setNome(e.target.value)} /></div>
+        <div className="field"><label>CNPJ/CPF</label><input value={cnpj} onChange={(e) => setCnpj(e.target.value)} /></div>
+        <div className="field"><label>Telefone</label><input value={telefone} onChange={(e) => setTelefone(e.target.value)} /></div>
+      </div>
+      <button className="primary" disabled={enviando || !nome} onClick={salvar}>Salvar transportadora</button>
+    </div>
+  );
+}
+
+function ListaTransportadoras({
+  transportadoras,
+  onAtualizado,
+  onErro,
+}: {
+  transportadoras: Transportadora[];
+  onAtualizado: () => void;
+  onErro: (err: unknown, fallback: string) => void;
+}) {
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [form, setForm] = useState<{ nome: string; cnpj: string; telefone: string; ativa: boolean }>({
+    nome: "", cnpj: "", telefone: "", ativa: true,
+  });
+  const [salvando, setSalvando] = useState(false);
+
+  function iniciarEdicao(t: Transportadora) {
+    setEditandoId(t.id);
+    setForm({ nome: t.nome, cnpj: t.cnpj ?? "", telefone: t.telefone ?? "", ativa: t.ativa });
+  }
+
+  async function salvar(id: string) {
+    setSalvando(true);
+    try {
+      await api.patch(`/transportadoras/${id}`, {
+        nome: form.nome,
+        cnpj: form.cnpj || undefined,
+        telefone: form.telefone || undefined,
+        ativa: form.ativa,
+      });
+      setEditandoId(null);
+      onAtualizado();
+    } catch (err) {
+      onErro(err, "Erro ao salvar transportadora");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div className="card">
+      <h2>Transportadoras</h2>
+      {transportadoras.length === 0 ? (
+        <p style={{ color: "var(--text-muted)" }}>Nenhuma transportadora cadastrada ainda.</p>
+      ) : (
+        <table>
+          <thead><tr><th>Nome</th><th>CNPJ/CPF</th><th>Telefone</th><th>Ativa</th><th></th></tr></thead>
+          <tbody>
+            {transportadoras.map((t) =>
+              editandoId === t.id ? (
+                <tr key={t.id}>
+                  <td><input value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} /></td>
+                  <td><input value={form.cnpj} onChange={(e) => setForm((f) => ({ ...f, cnpj: e.target.value }))} /></td>
+                  <td><input value={form.telefone} onChange={(e) => setForm((f) => ({ ...f, telefone: e.target.value }))} /></td>
+                  <td><input type="checkbox" checked={form.ativa} onChange={(e) => setForm((f) => ({ ...f, ativa: e.target.checked }))} /></td>
+                  <td>
+                    <button disabled={salvando} onClick={() => salvar(t.id)}>Salvar</button>{" "}
+                    <button disabled={salvando} onClick={() => setEditandoId(null)}>Cancelar</button>
+                  </td>
+                </tr>
+              ) : (
+                <tr key={t.id}>
+                  <td>{t.nome}</td>
+                  <td>{t.cnpj || "—"}</td>
+                  <td>{t.telefone || "—"}</td>
+                  <td>{t.ativa ? "Sim" : "Não"}</td>
+                  <td><button onClick={() => iniciarEdicao(t)}>Editar</button></td>
+                </tr>
+              ),
+            )}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

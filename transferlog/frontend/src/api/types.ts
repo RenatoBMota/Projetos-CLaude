@@ -21,7 +21,26 @@ export type StatusTransferencia =
 
 export type TipoDivergencia = "FALTOU" | "SOBROU" | "QUEBRADO" | "PRODUTO_ERRADO";
 
-export type TipoEvento = "UPLOAD" | "SEPARACAO" | "CARREGAMENTO" | "RECEBIMENTO" | "CONFERENCIA" | "CANCELAMENTO";
+export type TipoEvento =
+  | "UPLOAD"
+  | "SEPARACAO"
+  | "CARREGAMENTO"
+  | "RECEBIMENTO"
+  | "CONFERENCIA"
+  | "CANCELAMENTO"
+  | "PONTO_CONTROLE";
+
+export type Prioridade = "NORMAL" | "URGENTE";
+
+export type StatusTratativa = "ABERTA" | "EM_ANDAMENTO" | "RESOLVIDA";
+
+export interface Transportadora {
+  id: string;
+  nome: string;
+  cnpj: string | null;
+  telefone: string | null;
+  ativa: boolean;
+}
 
 export interface EventoAuditoria {
   id: string;
@@ -77,11 +96,23 @@ export interface Transferencia {
   qtdSku: number;
   qtdItensTotal: number;
   status: StatusTransferencia;
-  transportadora: string | null;
+  prioridade: Prioridade;
+  transportadoraId: string | null;
+  transportadora: Transportadora | null;
+  valorFrete: string | null;
   veiculo: string | null;
   motorista: string | null;
+  viagemNumero: string | null;
   numeroBonus: string | null;
   prazoPrevisto: string;
+  tratativaStatus: StatusTratativa | null;
+  tratativaResponsavelId: string | null;
+  tratativaResponsavel: { id: string; nome: string } | null;
+  tratativaPrazo: string | null;
+  tratativaObservacao: string | null;
+  transferenciaOrigemId: string | null;
+  transferenciaOrigem: Transferencia | null;
+  devolucoes: Transferencia[];
   itens: ItemTransferencia[];
   eventos: EventoAuditoria[];
   createdAt: string;

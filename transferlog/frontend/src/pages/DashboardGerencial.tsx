@@ -34,6 +34,7 @@ interface DashboardGerencialData {
   rankingProdutosMaisDivergentes: Array<{ produto: string; quantidade: number }>;
   rankingTransportadoras: Array<{ transportadora: string; quantidade: number }>;
   valorFinanceiroTransferenciasPendentes: number;
+  valorFreteTotal: number;
   heatmapRotasCriticas: Array<{ rota: string; quantidadeAtrasos: number }>;
   valorPorRota: Array<{ rota: string; valor: number }>;
 }
@@ -128,6 +129,12 @@ export function DashboardGerencial() {
           label="Valor pendente"
         />
         <KpiTile icone={<IconClock />} tom="accent" valor={formatarDuracao(dados.tempoMedioPedidoFinalizacaoHoras)} label="Pedido → finalização" />
+        <KpiTile
+          icone={<IconDollar />}
+          tom="accent"
+          valor={dados.valorFreteTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+          label="Custo de frete no período"
+        />
       </div>
 
       <div className="dashboard-gerencial-columns">

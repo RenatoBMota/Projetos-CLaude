@@ -2,7 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import path from "node:path";
 import { z } from "zod";
-import { Perfil, StatusTransferencia, TipoDivergencia } from "@prisma/client";
+import { Perfil, Prioridade, StatusTransferencia, StatusTratativa, TipoDivergencia, TipoEvento } from "@prisma/client";
 import { prisma } from "../prisma";
 import { authenticate, podeAcessarUnidade, requirePerfil } from "../middlewares/auth";
 import { NfeParsed, parseNfeXml } from "../services/nfeParser";
@@ -105,6 +105,7 @@ const criarTransferenciaSchema = z.object({
   qtdVolumes: z.number().int().nonnegative(),
   pesoBruto: z.number().nonnegative(),
   itens: z.array(nfeItemSchema).min(1),
+  prioridade: z.nativeEnum(Prioridade).default(Prioridade.NORMAL),
 });
 
 /**
@@ -121,8 +122,8 @@ transferenciasRouter.post("/", requirePerfil(Perfil.ANALISTA), async (req, res) 
   }
 
   try {
-    const { arquivoPath, dataPedido, ...nfe } = parsed.data;
-    const transferencia = await criarTransferencia(nfe, req.auth!.sub, dataPedido, arquivoPath);
+    const { arquivoPath, dataPedido, prioridade, ...nfe } = parsed.data;
+    const transferencia = await criarTransferencia(nfe, req.auth!.sub, dataPedido, arquivoPath, prioridade);
     res.status(201).json(transferencia);
   } catch (err) {
     res.status(422).json({ error: (err as Error).message });
@@ -134,6 +135,7 @@ const filaQuerySchema = z.object({
   origemId: z.string().optional(),
   destinoId: z.string().optional(),
   numeroNF: z.string().trim().min(1).optional(),
+  viagemNumero: z.string().trim().min(1).optional(),
   dataInicio: z.coerce.date().optional(),
   dataFim: z.coerce.date().optional(),
 });
@@ -144,7 +146,7 @@ transferenciasRouter.get("/", async (req, res) => {
   if (!parsed.success) {
     return res.status(400).json({ error: parsed.error.flatten() });
   }
-  const { status, origemId, destinoId, numeroNF, dataInicio, dataFim } = parsed.data;
+  const { status, origemId, destinoId, numeroNF, viagemNumero, dataInicio, dataFim } = parsed.data;
   const auth = req.auth!;
   const isAdmin = auth.perfil === Perfil.ADMINISTRADOR;
 
@@ -156,6 +158,7 @@ transferenciasRouter.get("/", async (req, res) => {
       ...(origemId ? { origemId } : {}),
       ...(destinoId ? { destinoId } : {}),
       ...(numeroNF ? { numeroNF: { contains: numeroNF, mode: "insensitive" } } : {}),
+      ...(viagemNumero ? { viagemNumero: { contains: viagemNumero, mode: "insensitive" } } : {}),
       ...(dataInicio || dataFimFimDoDia
         ? {
             dataPedido: {
@@ -173,7 +176,7 @@ transferenciasRouter.get("/", async (req, res) => {
             ],
           }),
     },
-    include: { origem: true, destino: true, itens: true },
+    include: { origem: true, destino: true, itens: true, transportadora: true },
     orderBy: { createdAt: "desc" },
   });
 
@@ -225,7 +228,7 @@ transferenciasRouter.get("/relatorio", async (req, res) => {
             ],
           }),
     },
-    include: { origem: true, destino: true, itens: true },
+    include: { origem: true, destino: true, itens: true, transportadora: true },
     orderBy: { createdAt: "desc" },
     take: 500,
   });
@@ -240,6 +243,10 @@ async function carregarTransferenciaAutorizada(req: any, res: any) {
       itens: true,
       origem: true,
       destino: true,
+      transportadora: true,
+      transferenciaOrigem: true,
+      devolucoes: true,
+      tratativaResponsavel: { select: { id: true, nome: true } },
       eventos: {
         include: { usuario: { select: { nome: true } } },
         orderBy: { dataHora: "asc" },
@@ -318,9 +325,11 @@ transferenciasRouter.post(
 );
 
 const carregamentoSchema = z.object({
-  transportadora: z.string().optional(),
+  transportadoraNome: z.string().trim().min(1).optional(),
+  valorFrete: z.number().nonnegative().optional(),
   veiculo: z.string().optional(),
   motorista: z.string().optional(),
+  viagemNumero: z.string().trim().min(1).optional(),
 });
 
 transferenciasRouter.post(

@@ -34,6 +34,7 @@ export function FilaTransferencias() {
   const destinoId = searchParams.get("destinoId") ?? "";
   const status = (searchParams.get("status") ?? "") as StatusFiltro | "";
   const numeroNF = searchParams.get("numeroNF") ?? "";
+  const viagemNumero = searchParams.get("viagemNumero") ?? "";
   const dataInicio = searchParams.get("dataInicio") ?? "";
   const dataFim = searchParams.get("dataFim") ?? "";
 
@@ -61,6 +62,7 @@ export function FilaTransferencias() {
       if (status === "FINALIZADO_DIVERGENTE") params.set("status", "FINALIZADO");
       else if (status) params.set("status", status);
       if (numeroNF) params.set("numeroNF", numeroNF);
+      if (viagemNumero) params.set("viagemNumero", viagemNumero);
       if (dataInicio) params.set("dataInicio", dataInicio);
       if (dataFim) params.set("dataFim", dataFim);
 
@@ -73,7 +75,7 @@ export function FilaTransferencias() {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [origemId, destinoId, status, numeroNF, dataInicio, dataFim]);
+  }, [origemId, destinoId, status, numeroNF, viagemNumero, dataInicio, dataFim]);
 
   async function excluir(t: Transferencia) {
     if (!window.confirm(`Excluir a transferência do pedido ${t.numeroPedido} (NF ${t.numeroNF})? Essa ação não pode ser desfeita.`)) {
@@ -102,6 +104,15 @@ export function FilaTransferencias() {
               placeholder="Buscar por NF..."
               value={numeroNF}
               onChange={(e) => atualizarFiltro("numeroNF", e.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label>Nº da viagem</label>
+            <input
+              type="text"
+              placeholder="Buscar por viagem..."
+              value={viagemNumero}
+              onChange={(e) => atualizarFiltro("viagemNumero", e.target.value)}
             />
           </div>
           <div className="field">

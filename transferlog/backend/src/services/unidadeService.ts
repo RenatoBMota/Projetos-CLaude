@@ -1,3 +1,4 @@
+import { Prioridade } from "@prisma/client";
 import { prisma } from "../prisma";
 
 const SLA_PADRAO_HORAS = 24;
@@ -56,11 +57,34 @@ export function calcularPrazoPrevistoData(dataBase: Date, prazoHoras: number): D
   return new Date(cursor.getTime() - DESLOCAMENTO_BRASILIA_HORAS * 60 * 60 * 1000);
 }
 
+const HORA_CORTE_URGENTE = 18;
+
+/**
+ * Transferência urgente ignora o SLA da rota: vence no próprio dia útil às
+ * 18h (Brasília), ou no próximo dia útil se o pedido for feito depois das
+ * 18h ou num fim de semana.
+ */
+export function calcularPrazoUrgenteData(dataBase: Date): Date {
+  let cursor = new Date(dataBase.getTime() + DESLOCAMENTO_BRASILIA_HORAS * 60 * 60 * 1000);
+  if (cursor.getUTCHours() >= HORA_CORTE_URGENTE) {
+    cursor = new Date(cursor.getTime() + UM_DIA_MS);
+  }
+  while (ehFimDeSemana(cursor.getUTCDay())) {
+    cursor = new Date(cursor.getTime() + UM_DIA_MS);
+  }
+  cursor.setUTCHours(HORA_CORTE_URGENTE, 0, 0, 0);
+  return new Date(cursor.getTime() - DESLOCAMENTO_BRASILIA_HORAS * 60 * 60 * 1000);
+}
+
 export async function calcularPrazoPrevisto(
   origemId: string,
   destinoId: string,
   dataBase: Date,
+  prioridade: Prioridade = Prioridade.NORMAL,
 ): Promise<Date> {
+  if (prioridade === Prioridade.URGENTE) {
+    return calcularPrazoUrgenteData(dataBase);
+  }
   const prazoHoras = await obterPrazoHoras(origemId, destinoId);
   return calcularPrazoPrevistoData(dataBase, prazoHoras);
 }

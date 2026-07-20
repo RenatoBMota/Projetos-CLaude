@@ -94,7 +94,7 @@ export async function dashboardGerencial(dataInicio: Date, dataFim: Date) {
 
   const todas = await prisma.transferencia.findMany({
     where: { dataPedido: { gte: dataInicio, lte: dataFim } },
-    include: { itens: true, origem: true, destino: true },
+    include: { itens: true, origem: true, destino: true, transportadora: true },
   });
 
   const emAberto = todas.filter((t) => STATUS_EM_ABERTO.includes(t.status));
@@ -168,9 +168,13 @@ export async function dashboardGerencial(dataInicio: Date, dataFim: Date) {
   }
 
   const transportadoras: Record<string, number> = {};
+  let valorFreteTotal = 0;
   for (const t of todas) {
     if (t.transportadora) {
-      transportadoras[t.transportadora] = (transportadoras[t.transportadora] ?? 0) + 1;
+      transportadoras[t.transportadora.nome] = (transportadoras[t.transportadora.nome] ?? 0) + 1;
+    }
+    if (t.valorFrete) {
+      valorFreteTotal += Number(t.valorFrete);
     }
   }
 
@@ -204,6 +208,7 @@ export async function dashboardGerencial(dataInicio: Date, dataFim: Date) {
       .map(([transportadora, quantidade]) => ({ transportadora, quantidade }))
       .sort((a, b) => b.quantidade - a.quantidade),
     valorFinanceiroTransferenciasPendentes: valorPendente,
+    valorFreteTotal,
     heatmapRotasCriticas: heatmapRotas,
     valorPorRota,
   };

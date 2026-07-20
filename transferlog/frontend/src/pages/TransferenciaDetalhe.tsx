@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError, baixarArquivo } from "../api/client";
 import { StatusBadge } from "../components/StatusBadge";
-import { nomeUnidade, type Transferencia, type TipoDivergencia, type TipoEvento } from "../api/types";
+import { nomeUnidade, type Transferencia, type TipoDivergencia, type TipoEvento, type Transportadora } from "../api/types";
 import { formatarData, formatarDataHora, formatarMoeda } from "../utils/formatar";
 
 const LABEL_EVENTO: Record<TipoEvento, string> = {
@@ -12,6 +12,7 @@ const LABEL_EVENTO: Record<TipoEvento, string> = {
   RECEBIMENTO: "Recebimento confirmado",
   CONFERENCIA: "Conferência registrada",
   CANCELAMENTO: "Cancelada",
+  PONTO_CONTROLE: "Ponto de controle em trânsito",
 };
 
 interface ConferenciaLinha {
@@ -79,6 +80,7 @@ export function TransferenciaDetalhe() {
       <h1 style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <span>
           NF {t.numeroNF} — Pedido {t.numeroPedido} <StatusBadge status={t.status} itens={t.itens} />
+          {t.prioridade === "URGENTE" && <span className="badge danger" style={{ marginLeft: 8 }}>Urgente</span>}
           {t.numeroBonus && <span className="badge neutral" style={{ marginLeft: 8 }}>Bônus nº {t.numeroBonus}</span>}
         </span>
         <button disabled={baixandoDanfe} onClick={baixarDanfe} style={{ fontSize: 14 }}>
@@ -111,9 +113,11 @@ export function TransferenciaDetalhe() {
         </div>
         {(t.transportadora || t.veiculo || t.motorista) && (
           <div className="form-row">
-            <div className="field"><label>Transportadora</label><strong>{t.transportadora ?? "—"}</strong></div>
+            <div className="field"><label>Transportadora</label><strong>{t.transportadora?.nome ?? "—"}</strong></div>
             <div className="field"><label>Veículo</label><strong>{t.veiculo ?? "—"}</strong></div>
             <div className="field"><label>Motorista</label><strong>{t.motorista ?? "—"}</strong></div>
+            <div className="field"><label>Custo do frete</label><strong>{t.valorFrete ? formatarMoeda(t.valorFrete) : "—"}</strong></div>
+            {t.viagemNumero && <div className="field"><label>Nº da viagem</label><strong>{t.viagemNumero}</strong></div>}
           </div>
         )}
         {t.otif && t.otif.otif !== null && (
@@ -284,9 +288,16 @@ function CarregamentoBloco({
   carregando: boolean;
   acao: <T>(fn: () => Promise<T>) => Promise<void>;
 }) {
-  const [transportadora, setTransportadora] = useState("");
+  const [transportadoras, setTransportadoras] = useState<Transportadora[]>([]);
+  const [transportadoraNome, setTransportadoraNome] = useState("");
+  const [valorFrete, setValorFrete] = useState("");
   const [veiculo, setVeiculo] = useState("");
   const [motorista, setMotorista] = useState("");
+  const [viagemNumero, setViagemNumero] = useState("");
+
+  useEffect(() => {
+    api.get<Transportadora[]>("/transportadoras").then(setTransportadoras).catch(() => {});
+  }, []);
 
   return (
     <div className="card">
@@ -294,7 +305,21 @@ function CarregamentoBloco({
       <div className="form-row">
         <div className="field">
           <label>Transportadora</label>
-          <input value={transportadora} onChange={(e) => setTransportadora(e.target.value)} />
+          <input
+            list="transportadoras-cadastradas"
+            value={transportadoraNome}
+            onChange={(e) => setTransportadoraNome(e.target.value)}
+            placeholder="Selecione ou digite uma nova"
+          />
+          <datalist id="transportadoras-cadastradas">
+            {transportadoras.map((t) => (
+              <option key={t.id} value={t.nome} />
+            ))}
+          </datalist>
+        </div>
+        <div className="field">
+          <label>Custo do frete (R$)</label>
+          <input type="number" step="0.01" value={valorFrete} onChange={(e) => setValorFrete(e.target.value)} />
         </div>
         <div className="field">
           <label>Veículo</label>
@@ -304,13 +329,23 @@ function CarregamentoBloco({
           <label>Motorista</label>
           <input value={motorista} onChange={(e) => setMotorista(e.target.value)} />
         </div>
+        <div className="field">
+          <label>Nº da viagem</label>
+          <input value={viagemNumero} onChange={(e) => setViagemNumero(e.target.value)} placeholder="Opcional" />
+        </div>
       </div>
       <button
         className="primary"
         disabled={carregando}
         onClick={() =>
           acao(() =>
-            api.post(`/transferencias/${transferenciaId}/carregar`, { transportadora, veiculo, motorista }),
+            api.post(`/transferencias/${transferenciaId}/carregar`, {
+              transportadoraNome: transportadoraNome || undefined,
+              valorFrete: valorFrete ? Number(valorFrete) : undefined,
+              veiculo,
+              motorista,
+              viagemNumero: viagemNumero || undefined,
+            }),
           )
         }
       >

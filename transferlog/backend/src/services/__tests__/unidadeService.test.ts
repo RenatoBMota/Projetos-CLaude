@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcularPrazoPrevistoData } from "../unidadeService";
+import { calcularPrazoPrevistoData, calcularPrazoUrgenteData } from "../unidadeService";
 
 describe("calcularPrazoPrevistoData", () => {
   it("cai sempre às 18h de Brasília, não na mesma hora do pedido", () => {
@@ -29,6 +29,30 @@ describe("calcularPrazoPrevistoData", () => {
     const pedido = new Date("2026-07-18T13:00:00Z");
     const prazo = calcularPrazoPrevistoData(pedido, 24); // 1 dia útil
     // Sáb -> domingo (não conta) -> segunda (conta) = segunda 20/07 18:00 Brasília = 21:00Z
+    expect(prazo.toISOString()).toBe("2026-07-20T21:00:00.000Z");
+  });
+});
+
+describe("calcularPrazoUrgenteData", () => {
+  it("vence no mesmo dia útil às 18h quando o pedido é antes do corte", () => {
+    // Segunda 13/07/2026 09:57 em Brasília = 12:57Z
+    const pedido = new Date("2026-07-13T12:57:00Z");
+    const prazo = calcularPrazoUrgenteData(pedido);
+    expect(prazo.toISOString()).toBe("2026-07-13T21:00:00.000Z");
+  });
+
+  it("vence no próximo dia útil quando o pedido é feito depois das 18h", () => {
+    // Segunda 13/07/2026 20:00 em Brasília = 23:00Z
+    const pedido = new Date("2026-07-13T23:00:00Z");
+    const prazo = calcularPrazoUrgenteData(pedido);
+    // Terça 14/07/2026 18:00 em Brasília = 21:00Z
+    expect(prazo.toISOString()).toBe("2026-07-14T21:00:00.000Z");
+  });
+
+  it("pedido no fim de semana vence na segunda-feira seguinte", () => {
+    // Sábado 18/07/2026 10:00 em Brasília = 13:00Z
+    const pedido = new Date("2026-07-18T13:00:00Z");
+    const prazo = calcularPrazoUrgenteData(pedido);
     expect(prazo.toISOString()).toBe("2026-07-20T21:00:00.000Z");
   });
 });
