@@ -333,7 +333,7 @@ function ItensTabela({ transferencia }: { transferencia: Transferencia }) {
   return (
     <table>
       <thead>
-        <tr><th>Código</th><th>Descrição</th><th>Qtd NF</th><th>Conferido</th><th>Divergência</th></tr>
+        <tr><th>Código</th><th>Descrição</th><th>Qtd NF</th><th>Conferido</th><th>Divergência</th><th>Observação</th></tr>
       </thead>
       <tbody>
         {transferencia.itens.map((item) => (
@@ -347,6 +347,7 @@ function ItensTabela({ transferencia }: { transferencia: Transferencia }) {
                 ? `${item.divergenciaTipo}${item.divergenciaQtd ? ` (${item.divergenciaQtd})` : ""}`
                 : "—"}
             </td>
+            <td>{item.divergenciaObs ?? "—"}</td>
           </tr>
         ))}
       </tbody>
