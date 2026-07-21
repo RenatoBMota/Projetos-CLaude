@@ -129,12 +129,13 @@ def exportar_excel():
     center_align = Alignment(horizontal='center', vertical='center')
 
     cabecalhos = [
-        'Número', 'Estado', 'Canal', 'Cliente', 'Produto',
+        'Número', 'Estado', 'Canal', 'Loja Origem', 'Cliente',
+        'Código Produto', 'EAN', 'Produto', 'Nº Série',
         'Fornecedor', 'Quantidade', 'NF Original', 'Motivo',
         'Categoria Defeito', 'Disposição', 'Valor Total (R$)',
         'Dias em Aberto', 'SLA em Atraso', 'Recebido Em', 'Finalizado Em',
     ]
-    larguras = [18, 18, 10, 25, 30, 20, 10, 15, 30, 20, 20, 15, 12, 12, 18, 18]
+    larguras = [18, 18, 10, 20, 25, 15, 15, 30, 18, 20, 10, 15, 30, 20, 20, 15, 12, 12, 18, 18]
 
     for col, (cab, larg) in enumerate(zip(cabecalhos, larguras), 1):
         cell = ws.cell(row=1, column=col, value=cab)
@@ -156,8 +157,12 @@ def exportar_excel():
             rma.numero,
             rma.estado_label,
             rma.canal or '',
+            rma.loja_origem or '',
             rma.cliente_nome or '',
+            rma.produto.codigo if rma.produto else '',
+            rma.produto.ean or '' if rma.produto else '',
             rma.produto.descricao if rma.produto else '',
+            rma.numero_serie or '',
             rma.fornecedor.nome if rma.fornecedor else '',
             rma.quantidade,
             rma.nf_original or '',
@@ -177,8 +182,8 @@ def exportar_excel():
     # Totalizador no rodapé
     row_total = len(rmas) + 3
     ws.cell(row=row_total, column=1, value='TOTAL').font = Font(bold=True)
-    ws.cell(row=row_total, column=7, value=sum(r.quantidade for r in rmas)).font = Font(bold=True)
-    ws.cell(row=row_total, column=12, value=sum(float(r.valor_total or 0) for r in rmas)).font = Font(bold=True)
+    ws.cell(row=row_total, column=11, value=sum(r.quantidade for r in rmas)).font = Font(bold=True)
+    ws.cell(row=row_total, column=16, value=sum(float(r.valor_total or 0) for r in rmas)).font = Font(bold=True)
 
     output = io.BytesIO()
     wb.save(output)
