@@ -10,6 +10,7 @@ import { TransferenciaDetalhe } from "./pages/TransferenciaDetalhe";
 import { Cadastros } from "./pages/Cadastros";
 import { Relatorio } from "./pages/Relatorio";
 import { PainelAtencao } from "./pages/PainelAtencao";
+import { RelatoriosGerenciais } from "./pages/RelatoriosGerenciais";
 
 function Rotas() {
   const { usuario } = useAuth();
@@ -32,6 +33,7 @@ function Rotas() {
         <Route path="/upload" element={<UploadNota />} />
         <Route path="/relatorio" element={<Relatorio />} />
         <Route path="/dashboard-gerencial" element={<DashboardGerencial />} />
+        <Route path="/relatorios-gerenciais" element={<RelatoriosGerenciais />} />
         <Route path="/cadastros" element={<Cadastros />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

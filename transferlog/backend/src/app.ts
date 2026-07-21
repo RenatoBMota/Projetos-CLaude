@@ -2,6 +2,7 @@ import cors from "cors";
 import express from "express";
 import { authRouter } from "./routes/auth.routes";
 import { dashboardRouter } from "./routes/dashboard.routes";
+import { relatoriosGerenciaisRouter } from "./routes/relatoriosGerenciais.routes";
 import { transferenciasRouter } from "./routes/transferencias.routes";
 import { transportadorasRouter } from "./routes/transportadoras.routes";
 import { unidadesRouter } from "./routes/unidades.routes";
@@ -24,6 +25,7 @@ export function createApp() {
   app.use("/api/transportadoras", transportadorasRouter);
   app.use("/api/transferencias", transferenciasRouter);
   app.use("/api/dashboard", dashboardRouter);
+  app.use("/api/relatorios-gerenciais", relatoriosGerenciaisRouter);
 
   app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     res.status(500).json({ error: err.message });

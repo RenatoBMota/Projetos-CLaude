@@ -49,6 +49,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <NavLink to="/upload">Upload de Nota</NavLink>
           <NavLink to="/relatorio">Relatório</NavLink>
           {isGerencial && <NavLink to="/dashboard-gerencial">Dashboard gerencial</NavLink>}
+          {isGerencial && <NavLink to="/relatorios-gerenciais">Relatórios gerenciais</NavLink>}
           {isAdmin && <NavLink to="/cadastros">Cadastros</NavLink>}
         </nav>
         <div style={{ marginTop: 24, fontSize: 13, color: "var(--text-muted)" }}>
