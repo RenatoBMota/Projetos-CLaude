@@ -42,6 +42,7 @@ services:
       - proxy
     labels:
       traefik.enable: "true"
+      traefik.docker.network: n8n_default
       traefik.http.routers.transferlog.entrypoints: websecure
       traefik.http.routers.transferlog.rule: Host(`${DOMAIN}`)
       traefik.http.routers.transferlog.tls.certresolver: mytlschallenge
