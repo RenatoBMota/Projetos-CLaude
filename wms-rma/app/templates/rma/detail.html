@@ -80,7 +80,7 @@
           <div>{{ rma.cliente_documento or '—' }}</div>
         </div>
         <div class="col-md-6">
-          <div class="text-muted small fw-bold text-uppercase">Produto</div>
+          <div class="text-muted small fw-bold text-uppercase">Descrição</div>
           <div>{{ rma.produto.descricao if rma.produto else '—' }}</div>
           <small class="text-muted">{{ rma.produto.codigo if rma.produto else '' }}</small>
         </div>

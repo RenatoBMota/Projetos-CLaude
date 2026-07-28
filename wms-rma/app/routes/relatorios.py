@@ -130,7 +130,7 @@ def exportar_excel():
 
     cabecalhos = [
         'Número', 'Estado', 'Canal', 'Loja Origem', 'Cliente',
-        'Código Produto', 'EAN', 'Produto', 'Nº Série',
+        'Código Produto', 'EAN', 'Descrição', 'Nº Série',
         'Fornecedor', 'Quantidade', 'NF Original', 'Motivo',
         'Categoria Defeito', 'Disposição', 'Valor Total (R$)',
         'Dias em Aberto', 'SLA em Atraso', 'Recebido Em', 'Finalizado Em',
@@ -231,7 +231,7 @@ def exportar_pdf():
     ))
 
     # Tabela
-    cabecalhos_pdf = ['Número', 'Estado', 'Canal', 'Cliente', 'Produto',
+    cabecalhos_pdf = ['Número', 'Estado', 'Canal', 'Cliente', 'Descrição',
                       'Fornecedor', 'Qtd', 'Dias', 'Atraso']
     dados_tabela = [cabecalhos_pdf]
     for rma in rmas:
