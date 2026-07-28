@@ -148,11 +148,31 @@ def create_app():
     with app.app_context():
         db.create_all()
         _migrar_colunas_novas()
+        _liberar_enderecos_finalizados()
         from app.seed import seed_banco, seed_armazem
         seed_banco()
         seed_armazem()
 
     return app
+
+
+def _liberar_enderecos_finalizados():
+    """Libera endereços de RMAs já finalizados/cancelados que ficaram presos."""
+    try:
+        from app.models import RMA, Apartamento, EstadoRMA
+        rmas = RMA.query.filter(
+            RMA.estado.in_([EstadoRMA.FINALIZADO, EstadoRMA.CANCELADO]),
+            RMA.apartamento_id.isnot(None)
+        ).all()
+        for rma in rmas:
+            apt = Apartamento.query.get(rma.apartamento_id)
+            if apt:
+                apt.ocupado = False
+            rma.apartamento_id = None
+        if rmas:
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
 
 
 def _migrar_colunas_novas():

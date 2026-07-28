@@ -242,6 +242,11 @@ def transitar(rma_id):
             novo_apt.ocupado = True
     if novo_estado in (EstadoRMA.FINALIZADO, EstadoRMA.CANCELADO):
         rma.finalizado_em = datetime.utcnow()
+        if rma.apartamento_id:
+            apt_fin = Apartamento.query.get(rma.apartamento_id)
+            if apt_fin:
+                apt_fin.ocupado = False
+            rma.apartamento_id = None
 
     # Evidência obrigatória na finalização
     if novo_estado == EstadoRMA.FINALIZADO:
@@ -348,6 +353,9 @@ def alocar_endereco(rma_id):
 @login_required
 def mudar_endereco(rma_id):
     rma = RMA.query.get_or_404(rma_id)
+    if rma.estado in (EstadoRMA.FINALIZADO, EstadoRMA.CANCELADO):
+        flash('RMA finalizado/cancelado não pode receber endereço.', 'warning')
+        return redirect(url_for('rma.detalhe', rma_id=rma.id))
     novo_apt_id = request.form.get('apartamento_id', type=int)
     if not novo_apt_id:
         flash('Selecione um endereço.', 'warning')
