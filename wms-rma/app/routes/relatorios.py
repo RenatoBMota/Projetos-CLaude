@@ -131,11 +131,11 @@ def exportar_excel():
     cabecalhos = [
         'Número', 'Estado', 'Canal', 'Loja Origem', 'Cliente',
         'Código Produto', 'EAN', 'Descrição', 'Nº Série',
-        'Fornecedor', 'Quantidade', 'NF Original', 'Motivo',
+        'Fornecedor', 'Endereço', 'Quantidade', 'NF Original', 'Motivo',
         'Categoria Defeito', 'Disposição', 'Valor Total (R$)',
         'Dias em Aberto', 'SLA em Atraso', 'Recebido Em', 'Finalizado Em',
     ]
-    larguras = [18, 18, 10, 20, 25, 15, 15, 30, 18, 20, 10, 15, 30, 20, 20, 15, 12, 12, 18, 18]
+    larguras = [18, 18, 10, 20, 25, 15, 15, 30, 18, 20, 14, 10, 15, 30, 20, 20, 15, 12, 12, 18, 18]
 
     for col, (cab, larg) in enumerate(zip(cabecalhos, larguras), 1):
         cell = ws.cell(row=1, column=col, value=cab)
@@ -164,6 +164,7 @@ def exportar_excel():
             rma.produto.descricao if rma.produto else '',
             rma.numero_serie or '',
             rma.fornecedor.nome if rma.fornecedor else '',
+            rma.apt_ref.endereco if rma.apt_ref else '',
             rma.quantidade,
             rma.nf_original or '',
             rma.motivo_devolucao or '',
@@ -182,8 +183,8 @@ def exportar_excel():
     # Totalizador no rodapé
     row_total = len(rmas) + 3
     ws.cell(row=row_total, column=1, value='TOTAL').font = Font(bold=True)
-    ws.cell(row=row_total, column=11, value=sum(r.quantidade for r in rmas)).font = Font(bold=True)
-    ws.cell(row=row_total, column=16, value=sum(float(r.valor_total or 0) for r in rmas)).font = Font(bold=True)
+    ws.cell(row=row_total, column=12, value=sum(r.quantidade for r in rmas)).font = Font(bold=True)
+    ws.cell(row=row_total, column=17, value=sum(float(r.valor_total or 0) for r in rmas)).font = Font(bold=True)
 
     output = io.BytesIO()
     wb.save(output)
@@ -232,7 +233,7 @@ def exportar_pdf():
 
     # Tabela
     cabecalhos_pdf = ['Número', 'Estado', 'Canal', 'Cliente', 'Descrição',
-                      'Fornecedor', 'Qtd', 'Dias', 'Atraso']
+                      'Fornecedor', 'Endereço', 'Qtd', 'Dias', 'Atraso']
     dados_tabela = [cabecalhos_pdf]
     for rma in rmas:
         dados_tabela.append([
@@ -242,6 +243,7 @@ def exportar_pdf():
             (rma.cliente_nome or '')[:20],
             (rma.produto.descricao if rma.produto else '')[:25],
             (rma.fornecedor.nome if rma.fornecedor else '')[:18],
+            rma.apt_ref.endereco if rma.apt_ref else '—',
             str(rma.quantidade),
             str(rma.dias_em_aberto),
             '⚠ SIM' if rma.em_atraso else 'OK',
@@ -266,7 +268,7 @@ def exportar_pdf():
         if rma.em_atraso:
             estilo_tabela.add('BACKGROUND', (0, i), (-1, i), colors.HexColor('#FEE2E2'))
 
-    col_widths = [3.5*cm, 2.5*cm, 1.8*cm, 4*cm, 5*cm, 4*cm, 1*cm, 1.2*cm, 1.5*cm]
+    col_widths = [3.5*cm, 2.5*cm, 1.8*cm, 4*cm, 5*cm, 4*cm, 2.5*cm, 1*cm, 1.2*cm, 1.5*cm]
     tabela = Table(dados_tabela, colWidths=col_widths, repeatRows=1)
     tabela.setStyle(estilo_tabela)
     elementos.append(tabela)
