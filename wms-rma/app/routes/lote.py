@@ -39,10 +39,13 @@ def novo():
 @login_required
 def detalhe(lote_id):
     lote = LoteDevolucao.query.get_or_404(lote_id)
-    rmas_disponiveis = RMA.query.filter(
+    q = RMA.query.filter(
         RMA.estado == EstadoRMA.AGUARDANDO_DEST,
         RMA.lote_id.is_(None),
-    ).order_by(RMA.numero).all()
+    )
+    if lote.fornecedor_id:
+        q = q.filter(RMA.fornecedor_id == lote.fornecedor_id)
+    rmas_disponiveis = q.order_by(RMA.numero).all()
     return render_template('lote/detalhe.html', lote=lote, rmas_disponiveis=rmas_disponiveis)
 
 
