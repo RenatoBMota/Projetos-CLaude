@@ -71,6 +71,18 @@ parcialmente → Em exposição → Devolução parcial → Encerrado.
 | Gestor | Consultar tudo, relatórios e estornos |
 | Administrador | Cadastros, usuários, perfis e listas de motivos |
 
+Um usuário pode acumular vários perfis. A implantação começa com **um único
+administrador**, criado por linha de comando; ele cria os demais usuários em
+**Configuração › Usuários**, definindo perfis, filial de lotação e abrangência.
+Usuários criados pelo administrador recebem senha temporária e precisam
+trocá-la no primeiro acesso.
+
+## Configuração
+
+- **Cadastros:** Produtos, Fornecedores, Filiais e Motivos. Produtos podem ser
+  importados da planilha do ERP (.xlsx/.csv), atualizando pelo SKU.
+- **Usuários:** criação, perfis, abrangência, inativação e redefinição de senha.
+
 ## Motivos (lista fixa, editável pelo administrador)
 
 **Descarte:** Quebrada / trincada · Riscada / manchada · Lascada nas bordas ·

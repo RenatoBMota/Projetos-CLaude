@@ -3,7 +3,7 @@
 -- As linhas comentadas com 'falha' devem retornar erro.
 \set ON_ERROR_STOP 0
 INSERT INTO filiais (codigo,nome) VALUES ('PGM','Paragominas');
-INSERT INTO usuarios (nome,email,filial_id) VALUES ('Dep','d@x',1);
+INSERT INTO usuarios (nome,email,filial_id,senha_hash) VALUES ('Dep','d@x',1,'x');
 INSERT INTO produtos (sku,descricao,custo_referencia) VALUES ('P1','Porcelanato 60x60',50);
 INSERT INTO solicitacoes (filial_id,requisitante_id,status) VALUES (1,1,'aguardando_aprovacao_comercial');
 INSERT INTO itens_solicitacao (solicitacao_id,produto_id,quantidade_solicitada,custo_referencia) VALUES (1,1,10,50);

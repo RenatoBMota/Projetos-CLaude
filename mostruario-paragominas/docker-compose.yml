@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: mostruario
+      POSTGRES_PASSWORD: ${DB_SENHA:?defina DB_SENHA no arquivo .env}
+    volumes:
+      - dados:/var/lib/postgresql/data
+      # Executado apenas na primeira inicialização (banco vazio).
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mostruario"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://postgres:${DB_SENHA}@db:5432/mostruario
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no arquivo .env}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  dados:

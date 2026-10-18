@@ -54,8 +54,11 @@ CREATE TABLE usuarios (
     nome        text NOT NULL,
     matricula   text UNIQUE,
     email       text NOT NULL UNIQUE,
-    senha_hash  text,
-    filial_id   bigint NOT NULL REFERENCES filiais(id),
+    senha_hash  text NOT NULL,
+    -- Filial de lotação; nulo para usuários corporativos (ex.: administrador).
+    filial_id   bigint REFERENCES filiais(id),
+    -- Obriga a troca da senha no próximo login (senha criada pelo administrador).
+    trocar_senha boolean NOT NULL DEFAULT true,
     ativo       boolean NOT NULL DEFAULT true,
     criado_em   timestamptz NOT NULL DEFAULT now()
 );
