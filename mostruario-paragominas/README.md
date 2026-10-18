@@ -65,10 +65,11 @@ cd projetos-claude/mostruario-paragominas && bash scripts/atualizar.sh
 **Comandos úteis**
 
 ```bash
+docker compose exec app python -m app.redefinir_senha --email voce@empresa.com.br   # esqueceu a senha
+docker compose restart app        # reiniciar o sistema (também libera bloqueio de login)
 docker compose ps                 # situação dos serviços
 docker compose logs -f app        # registros do sistema
 docker compose logs caddy         # registros do HTTPS (certificado)
-docker compose restart app        # reiniciar o sistema
 ```
 
 O arquivo `db/schema.sql` só é aplicado na primeira inicialização (banco

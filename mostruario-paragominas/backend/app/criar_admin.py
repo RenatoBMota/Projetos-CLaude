@@ -17,15 +17,27 @@ from . import config
 from .seguranca import hash_senha
 
 
+def pedir_senha() -> str:
+    """Lê a senha do terminal com confirmação (ou de ADMIN_SENHA, para automação)."""
+    if os.environ.get("ADMIN_SENHA"):
+        senha = os.environ["ADMIN_SENHA"]
+    else:
+        print("A senha não aparece enquanto você digita.")
+        senha = getpass.getpass("Senha: ")
+        if getpass.getpass("Repita a senha: ") != senha:
+            sys.exit("As senhas não conferem. Rode o comando de novo.")
+    if len(senha) < config.SENHA_MIN:
+        sys.exit(f"A senha precisa ter pelo menos {config.SENHA_MIN} caracteres")
+    return senha
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--nome", required=True)
     parser.add_argument("--email", required=True)
     args = parser.parse_args()
 
-    senha = os.environ.get("ADMIN_SENHA") or getpass.getpass("Senha do administrador: ")
-    if len(senha) < config.SENHA_MIN:
-        sys.exit(f"A senha precisa ter pelo menos {config.SENHA_MIN} caracteres")
+    senha = pedir_senha()
 
     with psycopg.connect(config.DATABASE_URL) as conn:
         if conn.execute("SELECT 1 FROM usuarios WHERE lower(email) = lower(%s)", (args.email,)).fetchone():
