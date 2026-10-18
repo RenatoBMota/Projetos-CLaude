@@ -1,0 +1,20 @@
+# Proxy com HTTPS automático (certificado Let's Encrypt gerado e renovado sozinho).
+# O endereço vem da variável DOMINIO do arquivo .env.
+{$DOMINIO} {
+	encode gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# anexos de até 10 MB + margem
+	request_body {
+		max_size 12MB
+	}
+
+	reverse_proxy app:8000
+}

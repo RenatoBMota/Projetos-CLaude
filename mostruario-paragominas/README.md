@@ -31,23 +31,46 @@ ou **Perda**). O estoque do depósito continua no ERP.
   quantidade validadas no próprio banco, proteção contra duplo clique,
   auditoria de todas as alterações.
 
-## Instalação (servidor Linux com Docker)
+## Instalação na VPS (Hostinger)
+
+**1. DNS** — no hPanel, em **Domínios › renatomota.online › DNS**, crie um
+registro **A** com nome `mostruario` apontando para o **IP da VPS**.
+
+**2. Na VPS** (Ubuntu 22.04 ou 24.04), conecte como root (`ssh root@IP-DA-VPS`
+ou pelo terminal do hPanel) e rode:
 
 ```bash
-git clone <repositório> && cd mostruario-paragominas
-cp .env.exemplo .env          # troque DB_SENHA e JWT_SECRET por valores longos e aleatórios
-docker compose up -d --build
-docker compose exec app python -m app.criar_admin --nome "Seu Nome" --email voce@empresa.com.br
+git clone https://github.com/renatobmota/projetos-claude.git
+cd projetos-claude/mostruario-paragominas
+bash scripts/instalar_vps.sh
 ```
 
-Acesse `http://<servidor>:8000` e entre com o e-mail e a senha do administrador.
-Depois: **Configuração** › cadastre as filiais, importe os produtos e crie os usuários.
+O script instala o Docker, gera senhas aleatórias no `.env`, confere o DNS,
+ativa o firewall (portas 22, 80 e 443), sobe o sistema com **HTTPS
+automático**, pede o nome e o e-mail do administrador e agenda o backup
+diário. Pode ser rodado de novo sem perder dados.
 
-**Acesso pela internet**: coloque um proxy com HTTPS na frente (Caddy, Nginx
-ou o proxy da sua infraestrutura) apontando para a porta 8000. Em rede
-interna, o HTTP direto funciona.
+Se o repositório for privado, o `git clone` pede usuário e senha: use um
+**token** do GitHub (Settings › Developer settings › Personal access tokens).
 
-**Atualizar para uma nova versão**: `git pull && docker compose up -d --build`.
+**3. Acesse** `https://mostruario.renatomota.online` e, em **Configuração**,
+cadastre as filiais, importe os produtos e crie os usuários.
+
+**Atualizar** para uma versão nova (faz backup antes):
+
+```bash
+cd projetos-claude/mostruario-paragominas && bash scripts/atualizar.sh
+```
+
+**Comandos úteis**
+
+```bash
+docker compose ps                 # situação dos serviços
+docker compose logs -f app        # registros do sistema
+docker compose logs caddy         # registros do HTTPS (certificado)
+docker compose restart app        # reiniciar o sistema
+```
+
 O arquivo `db/schema.sql` só é aplicado na primeira inicialização (banco
 vazio); mudanças futuras de banco virão como scripts de migração.
 
@@ -58,8 +81,8 @@ scripts/backup.sh                 # gera backups/banco-*.dump e backups/anexos-*
 scripts/restaurar.sh backups/banco-AAAAMMDD-HHMMSS.dump backups/anexos-AAAAMMDD-HHMMSS.tar.gz
 ```
 
-Agende o backup diário no `crontab` (exemplo dentro do script) e copie a pasta
-`backups/` para outro local.
+O `instalar_vps.sh` já agenda o backup diário (02:30). Copie de tempos em
+tempos a pasta `backups/` para fora da VPS (ex.: `scp -r root@IP-DA-VPS:projetos-claude/mostruario-paragominas/backups .`).
 
 ## Desenvolvimento
 

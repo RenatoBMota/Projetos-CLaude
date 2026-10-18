@@ -88,3 +88,21 @@ def test_senha_curta_rejeitada(cliente, admin):
     r = cliente.post("/api/usuarios", headers=admin, json={
         "nome": "Zé", "email": "ze@teste.com", "perfis": ["gestor"], "senha_temporaria": "123"})
     assert r.status_code == 422
+
+
+def test_limite_de_tentativas(cliente):
+    for _ in range(5):
+        r = cliente.post("/api/auth/login", json={"email": "admin@teste.com", "senha": "errada"})
+        assert r.status_code == 401
+    # bloqueada mesmo com a senha certa
+    r = cliente.post("/api/auth/login", json={"email": "ADMIN@teste.com", "senha": "admin12345"})
+    assert r.status_code == 429 and "Muitas tentativas" in r.json()["detail"]
+
+
+def test_sucesso_zera_contador(cliente):
+    for _ in range(4):
+        cliente.post("/api/auth/login", json={"email": "admin@teste.com", "senha": "errada"})
+    login(cliente, "admin@teste.com", "admin12345")
+    for _ in range(4):
+        cliente.post("/api/auth/login", json={"email": "admin@teste.com", "senha": "errada"})
+    login(cliente, "admin@teste.com", "admin12345")

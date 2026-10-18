@@ -14,4 +14,5 @@ COPY --from=frontend /front/dist ./frontend
 ENV FRONTEND_DIR=/app/frontend \
     ANEXOS_DIR=/dados/anexos
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# --proxy-headers: usa o IP real do visitante informado pelo Caddy (limite de login).
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]

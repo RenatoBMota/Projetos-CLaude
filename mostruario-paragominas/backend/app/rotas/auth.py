@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from psycopg import Connection
 from pydantic import BaseModel, Field
 
-from .. import config
+from .. import config, limite_login
 from ..db import auditar, get_conn
 from ..seguranca import (buscar_usuario, criar_token, hash_senha, usuario_autenticado,
                          verificar_senha)
@@ -21,13 +21,19 @@ class TrocarSenhaIn(BaseModel):
 
 
 @router.post("/login")
-def login(dados: LoginIn, conn: Connection = Depends(get_conn)):
+def login(dados: LoginIn, request: Request, conn: Connection = Depends(get_conn)):
+    email = dados.email.strip().lower()
+    ip = request.client.host if request.client else "?"
+    espera = limite_login.bloqueado(email, ip)
+    if espera:
+        raise HTTPException(429, f"Muitas tentativas. Tente de novo em {max(1, espera // 60)} minuto(s).")
     linha = conn.execute(
-        "SELECT id, senha_hash, ativo FROM usuarios WHERE lower(email) = lower(%s)",
-        (dados.email.strip(),),
+        "SELECT id, senha_hash, ativo FROM usuarios WHERE lower(email) = %s", (email,)
     ).fetchone()
     if not linha or not linha["ativo"] or not verificar_senha(linha["senha_hash"], dados.senha):
+        limite_login.registrar_falha(email, ip)
         raise HTTPException(401, "E-mail ou senha inválidos")
+    limite_login.registrar_sucesso(email)
     return {"token": criar_token(linha["id"]), "usuario": buscar_usuario(conn, linha["id"])}
 
 

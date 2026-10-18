@@ -21,13 +21,31 @@ services:
       JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no arquivo .env}
     volumes:
       - anexos:/dados/anexos
+    # Acesso direto só de dentro do servidor; o público entra pelo Caddy (HTTPS).
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     depends_on:
       db:
         condition: service_healthy
     restart: unless-stopped
 
+  caddy:
+    image: caddy:2.8
+    environment:
+      DOMINIO: ${DOMINIO:?defina DOMINIO no arquivo .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_dados:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+    restart: unless-stopped
+
 volumes:
   dados:
   anexos:
+  caddy_dados:
+  caddy_config:

@@ -25,6 +25,7 @@ os.environ["JWT_SECRET"] = "segredo-de-teste"
 
 from fastapi.testclient import TestClient  # noqa: E402
 
+from app import limite_login  # noqa: E402
 from app.main import app  # noqa: E402
 from app.seguranca import hash_senha  # noqa: E402
 
@@ -54,6 +55,7 @@ def cliente():
     with psycopg.connect(PG_URL, autocommit=True) as conn:
         conn.execute(f"DROP DATABASE IF EXISTS {BANCO} WITH (FORCE)")
         conn.execute(f"CREATE DATABASE {BANCO} TEMPLATE {MODELO}")
+    limite_login.limpar()
     with TestClient(app) as c:
         yield c
 
