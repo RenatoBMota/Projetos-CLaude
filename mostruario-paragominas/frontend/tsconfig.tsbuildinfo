@@ -1,1 +1,0 @@
-{"root":["./src/api.ts","./src/main.tsx","./src/sessao.tsx","./src/componentes/Layout.tsx","./src/componentes/Modal.tsx","./src/paginas/Cadastros.tsx","./src/paginas/Configuracao.tsx","./src/paginas/Inicio.tsx","./src/paginas/Login.tsx","./src/paginas/TrocarSenha.tsx","./src/paginas/Usuarios.tsx"],"version":"5.6.3"}
