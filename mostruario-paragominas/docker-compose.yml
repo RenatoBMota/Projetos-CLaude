@@ -29,7 +29,10 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # Usado só quando a VPS não tem outro proxy nas portas 80/443
+  # (o instalar_vps.sh decide e grava COMPOSE_PROFILES no .env).
   caddy:
+    profiles: ["caddy"]
     image: caddy:2.8
     environment:
       DOMINIO: ${DOMINIO:?defina DOMINIO no arquivo .env}
