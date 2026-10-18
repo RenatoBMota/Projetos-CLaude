@@ -8,7 +8,7 @@ from psycopg import errors
 from pydantic import ValidationError
 
 from . import config, db
-from .rotas import auth, cadastros, solicitacoes, usuarios
+from .rotas import anexos, auth, cadastros, relatorios, solicitacoes, usuarios
 
 
 @asynccontextmanager
@@ -25,6 +25,8 @@ app.include_router(auth.router)
 app.include_router(usuarios.router)
 app.include_router(cadastros.router)
 app.include_router(solicitacoes.router)
+app.include_router(relatorios.router)
+app.include_router(anexos.router)
 
 
 @app.exception_handler(ValidationError)

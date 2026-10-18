@@ -1,11 +1,11 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { temPerfil, useSessao } from "../sessao";
+import { PERFIS_RELATORIOS, temPerfil, useSessao } from "../sessao";
 
 export function Layout() {
   const { usuario, sair } = useSessao();
   return (
     <div className="app">
-      <aside className="menu">
+      <aside className="menu sem-impressao">
         <div className="marca">
           Mostruário
           <small>Paragominas</small>
@@ -16,6 +16,7 @@ export function Layout() {
           </NavLink>
           <NavLink to="/requisicoes">Requisições</NavLink>
           <NavLink to="/amostras">Em exposição</NavLink>
+          {temPerfil(usuario, ...PERFIS_RELATORIOS) && <NavLink to="/relatorios">Relatórios</NavLink>}
           {temPerfil(usuario, "admin") && <NavLink to="/configuracao">Configuração</NavLink>}
         </nav>
         <div className="usuario">

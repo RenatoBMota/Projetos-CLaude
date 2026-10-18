@@ -48,6 +48,13 @@ Um item é **encerrado** quando: quantidade expedida = estoque + descarte + perd
 - Prazo de permanência / alertas de vencimento (o sistema só exibe os dias em
   exposição).
 
+Possíveis evoluções (não incluídas nesta versão):
+
+- Integração automática com o ERP (hoje: importação de planilha de produtos e
+  relatório "Lançar no ERP").
+- Notificações por e-mail (hoje: filas de trabalho na tela inicial).
+- Leitura de QR Code / código de barras na expedição e devolução.
+
 ## Regras de negócio
 
 | Código | Regra |
@@ -104,7 +111,10 @@ Embalagem danificada · Produto fora de linha · Outro
 **Perda:** Extraviada na loja · Danificada na loja sem retorno · Extraviada no
 transporte · Outro
 
-## Indicadores principais
+## Relatórios e indicadores
+
+Menu **Relatórios**, com filtro de período, filial e fornecedor; exportação
+Excel/CSV e impressão/PDF.
 
 - Quantidade e valor em exposição por loja, fornecedor, produto e requisitante.
 - Dias em exposição (idade das amostras abertas).

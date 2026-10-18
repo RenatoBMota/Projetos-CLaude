@@ -1,6 +1,6 @@
 import { FormEvent, ReactNode, useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, enviar } from "../api";
+import { api, enviar, token } from "../api";
 import { Modal } from "../componentes/Modal";
 import { data, dataHora, moeda, novaChave, PRIORIDADES, qtd, STATUS, STATUS_ITEM, TIPOS_MOV, useMotivos } from "../formato";
 import { SeloStatus } from "./Requisicoes";
@@ -81,6 +81,7 @@ const ACOES_HISTORICO: Record<string, string> = {
   reprovada_logistica: "Reprovação logística",
   cancelar_pendente: "Cancelou saldo pendente de expedição",
   estornar: "Estornou movimentação",
+  anexar: "Anexou arquivo",
   status: "Status alterado",
 };
 
@@ -295,6 +296,8 @@ export function DetalheRequisicao() {
         </>
       )}
 
+      <Anexos solicitacaoId={s.id} aoAnexar={carregar} />
+
       <h2 className="secao">Histórico</h2>
       <section className="cartao">
         <ul className="linha-tempo">
@@ -303,6 +306,7 @@ export function DetalheRequisicao() {
               <b>{ACOES_HISTORICO[h.acao] ?? h.acao}</b>
               {h.acao === "status" && h.dados_depois?.status ? `: ${STATUS[String(h.dados_depois.status)]?.rotulo}` : ""} —{" "}
               {h.usuario_nome} em {dataHora(h.ocorrido_em)}
+              {typeof h.dados_depois?.arquivo === "string" && <span className="sutil"> ({h.dados_depois.arquivo})</span>}
               {typeof h.dados_depois?.observacao === "string" && <div className="sutil">{h.dados_depois.observacao}</div>}
             </li>
           ))}
@@ -318,6 +322,96 @@ export function DetalheRequisicao() {
       {typeof painel === "object" && painel && (
         <PainelEstornar s={s} movimentacaoId={painel.estornar} aoFechar={() => setPainel(null)} aoConcluir={concluir} />
       )}
+    </>
+  );
+}
+
+interface Anexo {
+  id: number;
+  nome_arquivo: string;
+  tipo_conteudo: string;
+  tamanho: number;
+  descricao: string | null;
+  criado_em: string;
+  usuario_nome: string;
+}
+
+function Anexos({ solicitacaoId, aoAnexar }: { solicitacaoId: number; aoAnexar: () => void }) {
+  const [anexos, setAnexos] = useState<Anexo[]>([]);
+  const [arquivo, setArquivo] = useState<File | null>(null);
+  const [descricao, setDescricao] = useState("");
+  const [erro, setErro] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [chaveInput, setChaveInput] = useState(0);
+
+  const carregar = useCallback(() => {
+    api<Anexo[]>(`/api/solicitacoes/${solicitacaoId}/anexos`).then(setAnexos);
+  }, [solicitacaoId]);
+  useEffect(carregar, [carregar]);
+
+  const enviarArquivo = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!arquivo) return;
+    setErro("");
+    setEnviando(true);
+    const form = new FormData();
+    form.append("arquivo", arquivo);
+    form.append("descricao", descricao);
+    try {
+      await api(`/api/solicitacoes/${solicitacaoId}/anexos`, { method: "POST", body: form });
+      setArquivo(null);
+      setDescricao("");
+      setChaveInput((n) => n + 1);
+      carregar();
+      aoAnexar();
+    } catch (err) {
+      setErro((err as Error).message);
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  const abrir = async (a: Anexo) => {
+    const r = await fetch(`/api/anexos/${a.id}`, { headers: { Authorization: `Bearer ${token.ler()}` } });
+    if (!r.ok) return setErro("Não foi possível abrir o anexo");
+    window.open(URL.createObjectURL(await r.blob()), "_blank");
+  };
+
+  return (
+    <>
+      <h2 className="secao">Anexos</h2>
+      <section className="cartao">
+        {anexos.length > 0 && (
+          <ul className="anexos">
+            {anexos.map((a) => (
+              <li key={a.id}>
+                <button className="link" onClick={() => abrir(a)}>
+                  {a.tipo_conteudo === "application/pdf" ? "📄" : "🖼️"} {a.nome_arquivo}
+                </button>
+                <span className="sutil">
+                  {a.descricao ? `${a.descricao} · ` : ""}
+                  {a.usuario_nome} em {dataHora(a.criado_em)} · {a.tamanho < 1024 * 1024 ? `${Math.max(1, Math.round(a.tamanho / 1024))} KB` : `${(a.tamanho / 1048576).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} MB`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <form className="anexar sem-impressao" onSubmit={enviarArquivo}>
+          <input
+            key={chaveInput}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/heic,application/pdf"
+            capture="environment"
+            onChange={(e) => setArquivo(e.target.files?.[0] ?? null)}
+          />
+          <input placeholder="Descrição (ex.: comprovante de coleta)" value={descricao} onChange={(e) => setDescricao(e.target.value)} />
+          <button className="primario" disabled={!arquivo || enviando}>
+            {enviando ? "Enviando…" : "Anexar"}
+          </button>
+        </form>
+        <p className="sutil nota">Fotos ou PDF, até 10 MB. No celular, é possível tirar a foto na hora.</p>
+        {erro && <div className="erro">{erro}</div>}
+      </section>
     </>
   );
 }

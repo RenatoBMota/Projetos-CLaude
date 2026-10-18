@@ -19,6 +19,8 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:${DB_SENHA}@db:5432/mostruario
       JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no arquivo .env}
+    volumes:
+      - anexos:/dados/anexos
     ports:
       - "8000:8000"
     depends_on:
@@ -28,3 +30,4 @@ services:
 
 volumes:
   dados:
+  anexos:

@@ -47,5 +47,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
 
 export const useSessao = () => useContext(Contexto);
 
+export const PERFIS_RELATORIOS = ["gestor", "admin", "aprovador_comercial", "aprovador_logistica", "deposito"];
+
 export const temPerfil = (u: Usuario | null, ...perfis: string[]) =>
   !!u && u.perfis.some((p) => perfis.includes(p));

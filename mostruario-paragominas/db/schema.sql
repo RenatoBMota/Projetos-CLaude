@@ -189,6 +189,25 @@ CREATE INDEX ON movimentacoes (item_id);
 CREATE INDEX ON movimentacoes (tipo, ocorrido_em);
 
 -- ---------------------------------------------------------------------------
+-- Anexos (fotos, comprovantes de coleta/recebimento)
+-- O arquivo fica em disco (ANEXOS_DIR); aqui só os metadados.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE anexos (
+    id              bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    solicitacao_id  bigint NOT NULL REFERENCES solicitacoes(id),
+    nome_arquivo    text NOT NULL,
+    tipo_conteudo   text NOT NULL,
+    tamanho         bigint NOT NULL,
+    caminho         text NOT NULL UNIQUE,
+    descricao       text,
+    usuario_id      bigint NOT NULL REFERENCES usuarios(id),
+    criado_em       timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX ON anexos (solicitacao_id);
+
+-- ---------------------------------------------------------------------------
 -- Auditoria
 -- ---------------------------------------------------------------------------
 

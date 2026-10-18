@@ -9,9 +9,10 @@ import { DetalheRequisicao } from "./paginas/DetalheRequisicao";
 import { Inicio } from "./paginas/Inicio";
 import { Login } from "./paginas/Login";
 import { NovaRequisicao } from "./paginas/NovaRequisicao";
+import { Relatorios } from "./paginas/Relatorios";
 import { Requisicoes } from "./paginas/Requisicoes";
 import { TrocarSenha } from "./paginas/TrocarSenha";
-import { ProvedorSessao, temPerfil, useSessao } from "./sessao";
+import { PERFIS_RELATORIOS, ProvedorSessao, temPerfil, useSessao } from "./sessao";
 
 function App() {
   const { usuario, carregando } = useSessao();
@@ -28,6 +29,7 @@ function App() {
         <Route path="requisicoes/:id" element={<DetalheRequisicao />} />
         <Route path="requisicoes/:id/editar" element={<NovaRequisicao />} />
         <Route path="amostras" element={<Amostras />} />
+        {temPerfil(usuario, ...PERFIS_RELATORIOS) && <Route path="relatorios/*" element={<Relatorios />} />}
         {temPerfil(usuario, "admin") && <Route path="configuracao/*" element={<Configuracao />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
