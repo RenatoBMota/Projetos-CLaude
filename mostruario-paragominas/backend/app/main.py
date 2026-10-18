@@ -8,7 +8,7 @@ from psycopg import errors
 from pydantic import ValidationError
 
 from . import config, db
-from .rotas import auth, cadastros, usuarios
+from .rotas import auth, cadastros, solicitacoes, usuarios
 
 
 @asynccontextmanager
@@ -24,6 +24,7 @@ app = FastAPI(title="Mostruário Paragominas", lifespan=ciclo_de_vida)
 app.include_router(auth.router)
 app.include_router(usuarios.router)
 app.include_router(cadastros.router)
+app.include_router(solicitacoes.router)
 
 
 @app.exception_handler(ValidationError)

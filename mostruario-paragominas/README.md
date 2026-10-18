@@ -22,7 +22,19 @@ continua no ERP.
   custo no formato `1.234,56`. Se houver erro em alguma linha, nada é gravado.
 - Toda alteração é registrada na tabela `auditoria`.
 
-Próxima etapa: requisições, aprovações, expedição e devolução.
+- **Requisições**: criação com vários produtos (busca por SKU/descrição),
+  rascunho, envio, aprovação comercial e logística (com corte de quantidade),
+  reprovação e cancelamento com motivo.
+- **Depósito**: expedição parcial ou total, devolução classificada em
+  Estoque / Descarte / Perda (com motivo), cancelamento de saldo pendente.
+  Duplo clique não duplica lançamento.
+- **Gestor**: estorno de movimentações (o original fica no histórico).
+- **Em exposição**: o que está em cada loja, quantidade, valor e dias.
+- **Início**: filas de trabalho de cada perfil (a aprovar, a expedir, em loja).
+- Cada requisição mostra itens, aprovações, movimentações e histórico completo.
+
+Próxima etapa: relatórios e indicadores (valor por filial, fornecedor e
+requisitante; descarte e perda; tempos de aprovação e expedição).
 
 ## Instalação com Docker
 

@@ -64,6 +64,29 @@ def usuario_atual(usuario: dict = Depends(usuario_autenticado)) -> dict:
     return usuario
 
 
+def tem_perfil(usuario: dict, *perfis: str) -> bool:
+    return bool(set(perfis) & set(usuario["perfis"]))
+
+
+def filiais_permitidas(usuario: dict) -> set[int] | None:
+    """Filiais que o usuário pode ver/atender; None = todas.
+
+    Gestor e administrador veem tudo, assim como usuários corporativos
+    (sem filial de lotação e sem abrangência definida).
+    """
+    if tem_perfil(usuario, "gestor", "admin"):
+        return None
+    filiais = set(usuario["filiais"])
+    if usuario["filial_id"] is not None:
+        filiais.add(usuario["filial_id"])
+    return filiais or None
+
+
+def pode_ver_filial(usuario: dict, filial_id: int) -> bool:
+    permitidas = filiais_permitidas(usuario)
+    return permitidas is None or filial_id in permitidas
+
+
 def exigir_perfil(*perfis: str):
     def dependencia(usuario: dict = Depends(usuario_atual)) -> dict:
         if not set(perfis) & set(usuario["perfis"]):

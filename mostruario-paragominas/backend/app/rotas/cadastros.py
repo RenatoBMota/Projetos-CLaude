@@ -258,7 +258,7 @@ def listar(entidade: str, busca: str = "", ativos: bool | None = None, pagina: i
     filtros, params = [], []
     if busca.strip():
         filtros.append(sql.SQL("({})").format(sql.SQL(" OR ").join(
-            sql.SQL("t.{} ILIKE %s").format(sql.Identifier(c)) for c in ent.busca)))
+            sql.SQL("unaccent(t.{}) ILIKE unaccent(%s)").format(sql.Identifier(c)) for c in ent.busca)))
         params += [f"%{busca.strip()}%"] * len(ent.busca)
     if ativos is not None:
         filtros.append(sql.SQL("t.ativo = %s"))

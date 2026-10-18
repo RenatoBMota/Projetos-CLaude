@@ -14,9 +14,8 @@ export function Layout() {
           <NavLink to="/" end>
             Início
           </NavLink>
-          <span className="desabilitado" title="Próxima etapa do projeto">
-            Requisições <em>em breve</em>
-          </span>
+          <NavLink to="/requisicoes">Requisições</NavLink>
+          <NavLink to="/amostras">Em exposição</NavLink>
           {temPerfil(usuario, "admin") && <NavLink to="/configuracao">Configuração</NavLink>}
         </nav>
         <div className="usuario">

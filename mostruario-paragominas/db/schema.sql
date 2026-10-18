@@ -8,6 +8,9 @@
 
 BEGIN;
 
+-- Busca sem diferenciar acentos ("vinil" encontra "Vinílico").
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
 -- ---------------------------------------------------------------------------
 -- Tipos
 -- ---------------------------------------------------------------------------
@@ -259,6 +262,7 @@ SELECT
               - t.primeira_expedicao_em::date
     END AS dias_em_exposicao,
     CASE
+        WHEN COALESCE(i.quantidade_aprovada, i.quantidade_solicitada) = 0 THEN 'sem_atendimento'
         WHEN t.qtd_expedida = 0 THEN 'aguardando_expedicao'
         WHEN t.qtd_expedida = t.qtd_estoque + t.qtd_descarte + t.qtd_perda
              AND t.qtd_expedida >= COALESCE(i.quantidade_aprovada, i.quantidade_solicitada)
@@ -380,6 +384,13 @@ INSERT INTO motivos (tipo, descricao, exige_observacao) VALUES
     ('perda', 'Danificada na loja sem retorno', false),
     ('perda', 'Extraviada no transporte', false),
     ('perda', 'Outro', true),
+    ('reprovacao', 'Sem necessidade comercial', false),
+    ('reprovacao', 'Produto sem disponibilidade', false),
+    ('reprovacao', 'Quantidade excessiva', false),
+    ('reprovacao', 'Outro', true),
+    ('cancelamento', 'Desistência da loja', false),
+    ('cancelamento', 'Requisição criada por engano', false),
+    ('cancelamento', 'Outro', true),
     ('estorno', 'Lançamento em duplicidade', false),
     ('estorno', 'Quantidade informada errada', false),
     ('estorno', 'Outro', true);

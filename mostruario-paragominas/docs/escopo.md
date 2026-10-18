@@ -28,6 +28,19 @@ oficial. O sistema responde a três perguntas:
 
 Um item é **encerrado** quando: quantidade expedida = estoque + descarte + perda.
 
+### Detalhes do fluxo
+
+- A aprovação (comercial ou logística) pode **reduzir** a quantidade de um item;
+  0 significa que o item não será atendido. Se todos ficarem em 0, a
+  requisição deve ser reprovada.
+- Ninguém aprova a própria requisição.
+- A requisição pode ser cancelada (com motivo) até a primeira expedição.
+- Se o depósito não conseguir expedir todo o aprovado, ele **cancela o saldo
+  pendente** do item, com justificativa.
+- Correções de lançamentos são feitas por **estorno**, apenas pelo gestor.
+- Visibilidade: cada usuário vê as filiais da sua lotação e abrangência;
+  gestor, administrador e usuários corporativos (sem filial) veem todas.
+
 ## Fora do escopo
 
 - Saldo do depósito, disponibilidade e baixa contábil (ficam no ERP).

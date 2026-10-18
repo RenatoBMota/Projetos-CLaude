@@ -67,3 +67,15 @@ def login(cliente, email: str, senha: str) -> dict:
 @pytest.fixture
 def admin(cliente):
     return login(cliente, "admin@teste.com", SENHA_ADMIN)
+
+
+def criar_usuario(cliente, admin, email: str, perfis: list[str], filial_id=None, filiais=()) -> dict:
+    """Cria o usuário, troca a senha temporária e devolve os cabeçalhos de acesso."""
+    r = cliente.post("/api/usuarios", headers=admin, json={
+        "nome": email.split("@")[0].title(), "email": email, "perfis": perfis,
+        "filial_id": filial_id, "filiais": list(filiais), "senha_temporaria": "temp12345"})
+    assert r.status_code == 201, r.text
+    h = login(cliente, email, "temp12345")
+    r = cliente.post("/api/auth/trocar-senha", headers=h, json={"senha_atual": "temp12345", "nova_senha": "senha12345"})
+    assert r.status_code == 200, r.text
+    return h
