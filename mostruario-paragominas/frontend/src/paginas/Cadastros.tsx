@@ -1,4 +1,5 @@
 import { ChangeEvent, FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { Download, FileUp, Pencil, Plus, Search } from "lucide-react";
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { api, baixar, enviar, Pagina } from "../api";
 import { Modal } from "../componentes/Modal";
@@ -157,25 +158,29 @@ function TabelaCadastro({ config }: { config: Config }) {
   return (
     <section className="cartao">
       <div className="barra">
-        <input
-          className="busca"
-          placeholder={`Buscar ${config.titulo.toLowerCase()}…`}
-          value={busca}
-          onChange={(e) => {
-            setBusca(e.target.value);
-            setPagina(1);
-          }}
-        />
+        <div className="campo-icone busca">
+          <Search size={16} />
+          <input
+            placeholder={`Buscar ${config.titulo.toLowerCase()}`}
+            value={busca}
+            onChange={(e) => {
+              setBusca(e.target.value);
+              setPagina(1);
+            }}
+          />
+        </div>
         <label className="check">
           <input type="checkbox" checked={inativos} onChange={(e) => setInativos(e.target.checked)} />
           Mostrar inativos
         </label>
         <span className="espaco" />
         {config.entidade === "produtos" && (
-          <button onClick={() => setImportando(true)}>Importar planilha</button>
+          <button onClick={() => setImportando(true)}>
+            <FileUp size={16} /> Importar planilha
+          </button>
         )}
         <button className="primario" onClick={() => setEditando("novo")}>
-          {config.feminino ? "Nova" : "Novo"} {config.singular}
+          <Plus size={16} /> {config.feminino ? "Nova" : "Novo"} {config.singular}
         </button>
       </div>
       {erro && <div className="erro">{erro}</div>}
@@ -203,7 +208,7 @@ function TabelaCadastro({ config }: { config: Config }) {
                 </td>
                 <td className="acoes">
                   <button className="link" onClick={() => setEditando(r)}>
-                    Editar
+                    <Pencil size={14} /> Editar
                   </button>
                 </td>
               </tr>
@@ -412,7 +417,7 @@ function ImportarProdutos({ aoFechar }: { aoFechar: () => void }) {
           atualizados pelo SKU. Se houver qualquer erro, nada é gravado.
         </p>
         <button type="button" className="link" onClick={() => baixar("/api/cadastros/produtos/modelo", "modelo_produtos.xlsx")}>
-          Baixar planilha modelo
+          <Download size={14} /> Baixar planilha modelo
         </button>
         <input
           ref={entrada}

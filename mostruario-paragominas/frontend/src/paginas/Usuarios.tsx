@@ -1,3 +1,4 @@
+import { KeyRound, Pencil, UserPlus } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { api, enviar, Pagina, Perfil, PERFIS, Usuario } from "../api";
 import { Modal } from "../componentes/Modal";
@@ -37,7 +38,7 @@ export function Usuarios() {
         </p>
         <span className="espaco" />
         <button className="primario" onClick={() => setEditando("novo")}>
-          Novo usuário
+          <UserPlus size={16} /> Novo usuário
         </button>
       </div>
       {erro && <div className="erro">{erro}</div>}
@@ -75,10 +76,10 @@ export function Usuarios() {
                 </td>
                 <td className="acoes">
                   <button className="link" onClick={() => setEditando(u)}>
-                    Editar
+                    <Pencil size={14} /> Editar
                   </button>
                   <button className="link" onClick={() => setSenhaDe(u)}>
-                    Redefinir senha
+                    <KeyRound size={14} /> Redefinir senha
                   </button>
                 </td>
               </tr>

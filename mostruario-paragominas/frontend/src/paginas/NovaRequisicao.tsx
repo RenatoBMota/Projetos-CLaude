@@ -1,7 +1,9 @@
-import { FormEvent, useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Minus, PackagePlus, Plus, Save, Search, Send, Trash2 } from "lucide-react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { api, enviar, Pagina } from "../api";
-import { moeda, useFiliais } from "../formato";
+import { Cabecalho, Vazio, useToast } from "../componentes/ui";
+import { moeda, qtd, useFiliais } from "../formato";
 import { temPerfil, useSessao } from "../sessao";
 
 interface Produto {
@@ -18,10 +20,13 @@ interface Linha {
   quantidade: string;
 }
 
+const num = (s: string) => Number(String(s).replace(",", ".")) || 0;
+
 export function NovaRequisicao() {
   const { id } = useParams();
   const { usuario } = useSessao();
   const navegar = useNavigate();
+  const toast = useToast();
   const todasFiliais = useFiliais();
   // Mostra só as filiais da abrangência (o backend também valida).
   const permitidas = new Set([...(usuario?.filiais ?? []), ...(usuario?.filial_id ? [usuario.filial_id] : [])]);
@@ -35,9 +40,10 @@ export function NovaRequisicao() {
   const [justificativa, setJustificativa] = useState("");
   const [linhas, setLinhas] = useState<Linha[]>([]);
   const [busca, setBusca] = useState("");
-  const [sugestoes, setSugestoes] = useState<Produto[]>([]);
+  const [sugestoes, setSugestoes] = useState<Produto[] | null>(null);
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
+  const campoBusca = useRef<HTMLInputElement>(null);
 
   // Edição de rascunho
   useEffect(() => {
@@ -47,7 +53,15 @@ export function NovaRequisicao() {
       prioridade: number;
       finalidade: string | null;
       justificativa: string | null;
-      itens: { produto_id: number; sku: string; descricao: string; unidade: string; custo_referencia: number; fornecedor_nome: string | null; quantidade_solicitada: number }[];
+      itens: {
+        produto_id: number;
+        sku: string;
+        descricao: string;
+        unidade: string;
+        custo_referencia: number;
+        fornecedor_nome: string | null;
+        quantidade_solicitada: number;
+      }[];
     }>(`/api/solicitacoes/${id}`).then((s) => {
       setFilialId(String(s.filial_id));
       setPrioridade(String(s.prioridade));
@@ -55,21 +69,28 @@ export function NovaRequisicao() {
       setJustificativa(s.justificativa ?? "");
       setLinhas(
         s.itens.map((i) => ({
-          produto: { id: i.produto_id, sku: i.sku, descricao: i.descricao, unidade: i.unidade, custo_referencia: i.custo_referencia, fornecedor_nome: i.fornecedor_nome },
+          produto: {
+            id: i.produto_id,
+            sku: i.sku,
+            descricao: i.descricao,
+            unidade: i.unidade,
+            custo_referencia: i.custo_referencia,
+            fornecedor_nome: i.fornecedor_nome,
+          },
           quantidade: String(Number(i.quantidade_solicitada)),
         })),
       );
     });
   }, [id]);
 
-  // Sem filial de lotação: sugere a primeira disponível
+  // Uma filial só: já vem escolhida
   useEffect(() => {
     if (!filialId && filiais.length === 1) setFilialId(String(filiais[0].id));
   }, [filiais.length, filialId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (busca.trim().length < 2) {
-      setSugestoes([]);
+      setSugestoes(null);
       return;
     }
     const t = setTimeout(() => {
@@ -80,20 +101,26 @@ export function NovaRequisicao() {
   }, [busca]);
 
   const adicionar = (p: Produto) => {
-    if (!linhas.some((l) => l.produto.id === p.id)) setLinhas([...linhas, { produto: p, quantidade: "1" }]);
+    if (linhas.some((l) => l.produto.id === p.id)) {
+      setLinhas(linhas.map((l) => (l.produto.id === p.id ? { ...l, quantidade: String(num(l.quantidade) + 1) } : l)));
+    } else {
+      setLinhas([...linhas, { produto: p, quantidade: "1" }]);
+    }
     setBusca("");
-    setSugestoes([]);
+    setSugestoes(null);
+    campoBusca.current?.focus();
   };
 
-  const num = (s: string) => Number(s.replace(",", ".")) || 0;
+  const mudarQtd = (n: number, valor: string) => setLinhas(linhas.map((l, i) => (i === n ? { ...l, quantidade: valor } : l)));
   const total = linhas.reduce((t, l) => t + num(l.quantidade) * Number(l.produto.custo_referencia), 0);
+  const unidades = linhas.reduce((t, l) => t + num(l.quantidade), 0);
 
   const salvar = async (enviarParaAprovacao: boolean, e?: FormEvent) => {
     e?.preventDefault();
     setErro("");
-    if (!filialId) return setErro("Escolha a filial");
-    if (linhas.length === 0) return setErro("Adicione pelo menos um produto");
-    if (linhas.some((l) => num(l.quantidade) <= 0)) return setErro("Todas as quantidades devem ser maiores que zero");
+    if (!filialId) return setErro("Escolha a filial.");
+    if (linhas.length === 0) return setErro("Adicione pelo menos um produto.");
+    if (linhas.some((l) => num(l.quantidade) <= 0)) return setErro("Todas as quantidades devem ser maiores que zero.");
     setSalvando(true);
     const corpo = {
       filial_id: Number(filialId),
@@ -105,8 +132,12 @@ export function NovaRequisicao() {
     };
     try {
       const s = id
-        ? await enviar<{ id: number }>(`/api/solicitacoes/${id}`, "PUT", corpo)
-        : await enviar<{ id: number }>("/api/solicitacoes", "POST", corpo);
+        ? await enviar<{ id: number; protocolo: string }>(`/api/solicitacoes/${id}`, "PUT", corpo)
+        : await enviar<{ id: number; protocolo: string }>("/api/solicitacoes", "POST", corpo);
+      toast({
+        tipo: "ok",
+        texto: enviarParaAprovacao ? `Requisição ${s.protocolo} enviada para aprovação.` : `Rascunho ${s.protocolo} salvo.`,
+      });
       navegar(`/requisicoes/${s.id}`);
     } catch (err) {
       setErro((err as Error).message);
@@ -116,51 +147,81 @@ export function NovaRequisicao() {
 
   return (
     <>
-      <div className="titulo">
-        <h1>{id ? "Editar rascunho" : "Nova requisição"}</h1>
-        <Link to={id ? `/requisicoes/${id}` : "/requisicoes"}>Voltar</Link>
-      </div>
-      <form className="cartao formulario" onSubmit={(e) => salvar(true, e)}>
-        <div className="linha">
+      <Cabecalho
+        titulo={id ? "Editar rascunho" : "Nova requisição"}
+        subtitulo="Escolha os produtos e as quantidades para o mostruário."
+        voltar={{ para: id ? `/requisicoes/${id}` : "/requisicoes", rotulo: id ? "Requisição" : "Requisições" }}
+      />
+      <form onSubmit={(e) => salvar(true, e)}>
+        <section className="cartao formulario">
+          <h2>Dados da requisição</h2>
+          <div className="linha">
+            <label>
+              Filial *
+              <select value={filialId} onChange={(e) => setFilialId(e.target.value)} required>
+                <option value="">Selecione…</option>
+                {filiais.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.codigo} · {f.nome}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Prioridade
+              <select value={prioridade} onChange={(e) => setPrioridade(e.target.value)}>
+                <option value="1">Alta</option>
+                <option value="2">Normal</option>
+                <option value="3">Baixa</option>
+              </select>
+            </label>
+          </div>
           <label>
-            Filial *
-            <select value={filialId} onChange={(e) => setFilialId(e.target.value)} required>
-              <option value="">Selecione…</option>
-              {filiais.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.codigo} · {f.nome}
-                </option>
-              ))}
-            </select>
+            Finalidade
+            <input value={finalidade} onChange={(e) => setFinalidade(e.target.value)} placeholder="Ex.: troca do painel de porcelanatos" />
           </label>
           <label>
-            Prioridade
-            <select value={prioridade} onChange={(e) => setPrioridade(e.target.value)}>
-              <option value="1">Alta</option>
-              <option value="2">Normal</option>
-              <option value="3">Baixa</option>
-            </select>
+            Justificativa (opcional)
+            <textarea rows={2} value={justificativa} onChange={(e) => setJustificativa(e.target.value)} />
           </label>
-        </div>
-        <label>
-          Finalidade
-          <input value={finalidade} onChange={(e) => setFinalidade(e.target.value)} placeholder="Ex.: troca do painel de porcelanatos" />
-        </label>
-        <label>
-          Justificativa
-          <textarea rows={2} value={justificativa} onChange={(e) => setJustificativa(e.target.value)} />
-        </label>
+        </section>
 
-        <fieldset>
-          <legend>Produtos</legend>
+        <section className="cartao">
+          <div className="cartao-cabecalho">
+            <div>
+              <h2>Produtos</h2>
+              <p>Busque pelo SKU ou parte da descrição e toque para adicionar.</p>
+            </div>
+          </div>
           <div className="autocompletar">
-            <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por SKU ou descrição para adicionar…" />
-            {sugestoes.length > 0 && (
+            <div className="campo-icone">
+              <Search size={16} />
+              <input
+                ref={campoBusca}
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Ex.: porcelanato 60x60, POR-6060…"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && sugestoes?.length) {
+                    e.preventDefault();
+                    adicionar(sugestoes[0]);
+                  }
+                }}
+              />
+            </div>
+            {sugestoes && (
               <ul>
+                {sugestoes.length === 0 && (
+                  <li className="sutil" style={{ padding: 10 }}>
+                    Nenhum produto ativo encontrado.
+                  </li>
+                )}
                 {sugestoes.map((p) => (
                   <li key={p.id}>
                     <button type="button" onClick={() => adicionar(p)}>
-                      <b>{p.sku}</b> {p.descricao}
+                      <b>
+                        {p.sku} · {p.descricao}
+                      </b>
                       <small>
                         {p.fornecedor_nome ?? "sem fornecedor"} · {moeda(p.custo_referencia)}/{p.unidade}
                       </small>
@@ -169,68 +230,70 @@ export function NovaRequisicao() {
                 ))}
               </ul>
             )}
-            {busca.trim().length >= 2 && sugestoes.length === 0 && <p className="sutil">Nenhum produto ativo encontrado.</p>}
           </div>
-          {linhas.length > 0 && (
-            <div className="tabela-rolagem">
-              <table>
-                <thead>
-                  <tr>
-                    <th>SKU</th>
-                    <th>Produto</th>
-                    <th className="num">Quantidade</th>
-                    <th className="num">Custo unit.</th>
-                    <th className="num">Subtotal</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {linhas.map((l, n) => (
-                    <tr key={l.produto.id}>
-                      <td>{l.produto.sku}</td>
-                      <td>{l.produto.descricao}</td>
-                      <td className="num">
-                        <input
-                          className="qtd"
-                          inputMode="decimal"
-                          value={l.quantidade}
-                          onChange={(e) => setLinhas(linhas.map((x, i) => (i === n ? { ...x, quantidade: e.target.value } : x)))}
-                        />{" "}
-                        {l.produto.unidade}
-                      </td>
-                      <td className="num">{moeda(l.produto.custo_referencia)}</td>
-                      <td className="num">{moeda(num(l.quantidade) * Number(l.produto.custo_referencia))}</td>
-                      <td className="acoes">
-                        <button type="button" className="link" onClick={() => setLinhas(linhas.filter((_, i) => i !== n))}>
-                          Remover
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colSpan={4}>Total de referência</td>
-                    <td className="num">
-                      <b>{moeda(total)}</b>
-                    </td>
-                    <td />
-                  </tr>
-                </tfoot>
-              </table>
+
+          {linhas.length === 0 ? (
+            <Vazio icone={PackagePlus} titulo="Nenhum produto adicionado" texto="Use a busca acima para incluir os itens." />
+          ) : (
+            <div className="itens-requisicao">
+              {linhas.map((l, n) => (
+                <div key={l.produto.id} className="item-req">
+                  <div className="desc">
+                    <strong>{l.produto.descricao}</strong>
+                    <small>
+                      {l.produto.sku} · {l.produto.fornecedor_nome ?? "sem fornecedor"} · {moeda(l.produto.custo_referencia)}/
+                      {l.produto.unidade}
+                    </small>
+                  </div>
+                  <div className="passo-qtd" aria-label={`Quantidade de ${l.produto.sku}`}>
+                    <button type="button" onClick={() => mudarQtd(n, String(Math.max(1, num(l.quantidade) - 1)))} aria-label="Diminuir">
+                      <Minus size={16} />
+                    </button>
+                    <input inputMode="decimal" value={l.quantidade} onChange={(e) => mudarQtd(n, e.target.value)} />
+                    <button type="button" onClick={() => mudarQtd(n, String(num(l.quantidade) + 1))} aria-label="Aumentar">
+                      <Plus size={16} />
+                    </button>
+                  </div>
+                  <span className="sutil" style={{ fontSize: 12.5, minWidth: 24 }}>
+                    {l.produto.unidade}
+                  </span>
+                  <span className="subtotal">{moeda(num(l.quantidade) * Number(l.produto.custo_referencia))}</span>
+                  <button
+                    type="button"
+                    className="icone"
+                    onClick={() => setLinhas(linhas.filter((_, i) => i !== n))}
+                    aria-label={`Remover ${l.produto.sku}`}
+                  >
+                    <Trash2 size={17} />
+                  </button>
+                </div>
+              ))}
             </div>
           )}
-        </fieldset>
+        </section>
 
-        {erro && <div className="erro">{erro}</div>}
-        <footer>
-          <button type="button" disabled={salvando} onClick={() => salvar(false)}>
-            Salvar rascunho
-          </button>
-          <button className="primario" disabled={salvando}>
-            Enviar para aprovação
-          </button>
-        </footer>
+        {erro && (
+          <div className="erro" style={{ marginTop: 16 }}>
+            {erro}
+          </div>
+        )}
+
+        <div className="resumo-fixo">
+          <div className="total">
+            <span>
+              {linhas.length} {linhas.length === 1 ? "produto" : "produtos"} · {qtd(unidades)} unidades
+            </span>
+            <strong>{moeda(total)}</strong>
+          </div>
+          <div className="botoes">
+            <button type="button" disabled={salvando} onClick={() => salvar(false)}>
+              <Save size={16} /> Salvar rascunho
+            </button>
+            <button className="primario" disabled={salvando}>
+              <Send size={16} /> Enviar para aprovação
+            </button>
+          </div>
+        </div>
       </form>
     </>
   );

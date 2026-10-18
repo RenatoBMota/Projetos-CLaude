@@ -99,3 +99,20 @@ def test_anexos(cenario, tmp_path, monkeypatch):  # noqa: F811
     assert k["c"].get(f"/api/anexos/{lista[0]['id']}", headers=k["bel_req"]).status_code == 404
     historico = k["c"].get(f"/api/solicitacoes/{s['id']}", headers=k["req"]).json()["historico"]
     assert any(h["acao"] == "anexar" for h in historico)
+
+
+def test_painel_gerencial(movimentado):
+    k = movimentado
+    d = k["c"].get("/api/relatorios/gerencial", headers=k["ges"]).json()
+    assert len(d["mensal"]) >= 3  # 90 dias cobrem ao menos 3 meses
+    atual = d["mensal"][-1]
+    assert atual["requisicoes"] == 1 and float(atual["expedido"]) == 580
+    assert [float(atual[c]) for c in ("estoque", "descarte", "perda")] == [300, 100, 40]
+    assert [(x["filial"], float(x["estoque"]), float(x["descarte"]), float(x["perda"]))
+            for x in d["destino_filial"]] == [("Paragominas", 6, 2, 2)]
+    assert [a["faixa"] for a in d["aging"]][0] == "0–30 dias"
+    assert d["aging"][0]["itens"] == 2 and float(d["aging"][0]["valor"]) == 140
+    assert [p["sku"] for p in d["top_produtos"]] == ["P1", "P2"]
+    assert d["top_requisitantes"][0]["requisitante"] == "Req"
+    assert d["status"] == [{"status": "devolucao_parcial", "n": 1}]
+    assert k["c"].get("/api/relatorios/gerencial", headers=k["req"]).status_code == 403

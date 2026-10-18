@@ -11,6 +11,22 @@ O sistema controla as amostras de pisos enviadas ao mostruário das lojas,
 - Para trocar a senha depois: menu lateral › **Trocar senha**.
 - Esqueceu a senha? Peça ao administrador para redefinir.
 
+### Instalar como aplicativo
+
+O sistema pode ser instalado no celular e no computador, com ícone próprio e
+abrindo em tela cheia:
+
+- **Android (Chrome):** menu ⋮ › **Instalar aplicativo** (ou o aviso que aparece na tela).
+- **iPhone/iPad (Safari):** botão **Compartilhar** › **Adicionar à Tela de Início**.
+- **Computador (Chrome/Edge):** ícone de instalar na barra de endereço, ou
+  menu do sistema › **Instalar aplicativo**.
+
+Quando houver versão nova, aparece o aviso **"Nova versão disponível — Atualizar"**.
+O tema claro/escuro segue o do aparelho; dá para trocar no menu (ícone de tela/lua/sol).
+
+No celular, o menu fica embaixo: **Início, Requisições, Nova** (requisitante),
+**Exposição** e **Mais** (relatórios, configuração, tema, senha, sair).
+
 O menu mostra só o que o seu perfil pode usar. A tela **Início** mostra as
 suas filas de trabalho (o que está esperando por você).
 
@@ -90,7 +106,7 @@ por período, filial e fornecedor.
 
 | Aba | O que mostra |
 |---|---|
-| Indicadores | Valor em exposição, pendências, taxas de aprovação, tempos médios, % de reaproveitamento, descarte e perda |
+| Painel gerencial | Indicadores e gráficos: evolução mensal, destino das devoluções por filial, idade das amostras, rankings de filiais, produtos e requisitantes, requisições por situação |
 | Em exposição | Valor e quantidade nas lojas por filial, fornecedor, produto ou requisitante |
 | Descarte e perda | Por filial e por motivo |
 | Lançar no ERP | Devoluções para estoque, somadas por SKU |

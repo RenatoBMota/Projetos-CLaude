@@ -1,6 +1,8 @@
+import { Boxes, CalendarClock, Search, Store, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
+import { Cabecalho, Carregando, Indicador, Vazio } from "../componentes/ui";
 import { data, moeda, qtd, useFiliais } from "../formato";
 
 interface Amostra {
@@ -19,6 +21,12 @@ interface Amostra {
   dias_em_exposicao: number;
 }
 
+const Dias = ({ d }: { d: number }) => (
+  <span className={`selo ${d > 180 ? "ruim" : d > 90 ? "aviso" : ""}`}>
+    <CalendarClock /> {d} {d === 1 ? "dia" : "dias"}
+  </span>
+);
+
 export function Amostras() {
   const filiais = useFiliais();
   const [filial, setFilial] = useState("");
@@ -34,82 +42,108 @@ export function Amostras() {
 
   const valor = lista?.reduce((t, a) => t + Number(a.valor_em_loja), 0) ?? 0;
   const quantidade = lista?.reduce((t, a) => t + Number(a.qtd_em_loja), 0) ?? 0;
+  const idadeMedia = lista?.length ? Math.round(lista.reduce((t, a) => t + a.dias_em_exposicao, 0) / lista.length) : 0;
 
   return (
     <>
-      <h1>Amostras em exposição</h1>
+      <Cabecalho titulo="Em exposição" subtitulo="O que está hoje no mostruário de cada loja." />
       <div className="indicadores">
-        <div className="cartao indicador">
-          <span>Itens em loja</span>
-          <b>{lista?.length ?? "—"}</b>
-        </div>
-        <div className="cartao indicador">
-          <span>Quantidade</span>
-          <b>{qtd(quantidade)}</b>
-        </div>
-        <div className="cartao indicador">
-          <span>Valor em exposição</span>
-          <b>{moeda(valor)}</b>
-        </div>
+        <Indicador icone={Wallet} rotulo="Valor em exposição" valor={moeda(valor)} />
+        <Indicador icone={Boxes} rotulo="Quantidade" valor={qtd(quantidade)} detalhe={`${lista?.length ?? 0} itens`} />
+        <Indicador icone={CalendarClock} rotulo="Idade média" valor={`${idadeMedia} dias`} detalhe="desde a expedição" />
       </div>
-      <section className="cartao">
-        <div className="barra">
-          <input className="busca" placeholder="SKU, produto ou protocolo…" value={busca} onChange={(e) => setBusca(e.target.value)} />
-          {filiais.length > 1 && (
-            <select className="filtro" value={filial} onChange={(e) => setFilial(e.target.value)}>
-              <option value="">Todas as filiais</option>
-              {filiais.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.nome}
-                </option>
-              ))}
-            </select>
-          )}
+      <div className="barra">
+        <div className="campo-icone busca">
+          <Search size={16} />
+          <input placeholder="SKU, produto ou protocolo" value={busca} onChange={(e) => setBusca(e.target.value)} />
         </div>
-        <div className="tabela-rolagem">
-          <table>
-            <thead>
-              <tr>
-                <th>Filial</th>
-                <th>SKU</th>
-                <th>Produto</th>
-                <th>Fornecedor</th>
-                <th className="num">Em loja</th>
-                <th className="num">Valor</th>
-                <th>Desde</th>
-                <th className="num">Dias</th>
-                <th>Protocolo</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lista?.map((a) => (
-                <tr key={a.item_id}>
-                  <td>{a.filial_nome}</td>
-                  <td className="nowrap">{a.sku}</td>
-                  <td>{a.descricao}</td>
-                  <td>{a.fornecedor_nome ?? "—"}</td>
-                  <td className="num">
-                    {qtd(a.qtd_em_loja)} {a.unidade}
-                  </td>
-                  <td className="num">{moeda(a.valor_em_loja)}</td>
-                  <td>{data(a.primeira_expedicao_em)}</td>
-                  <td className="num">{a.dias_em_exposicao}</td>
-                  <td>
-                    <Link to={`/requisicoes/${a.solicitacao_id}`}>{a.protocolo}</Link>
-                  </td>
-                </tr>
-              ))}
-              {lista && lista.length === 0 && (
-                <tr>
-                  <td colSpan={9} className="vazio">
-                    Nenhuma amostra em exposição.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        {filiais.length > 1 && (
+          <select className="filtro" value={filial} onChange={(e) => setFilial(e.target.value)} aria-label="Filial">
+            <option value="">Todas as filiais</option>
+            {filiais.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.nome}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+      {!lista ? (
+        <div className="cartao">
+          <Carregando />
         </div>
-      </section>
+      ) : lista.length === 0 ? (
+        <div className="cartao">
+          <Vazio icone={Store} titulo="Nenhuma amostra em exposição" texto="As peças aparecem aqui depois da expedição." />
+        </div>
+      ) : (
+        <>
+          <section className="cartao so-desktop" style={{ padding: "0 18px" }}>
+            <div className="tabela-rolagem">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Filial</th>
+                    <th>Produto</th>
+                    <th>Fornecedor</th>
+                    <th className="num">Em loja</th>
+                    <th className="num">Valor</th>
+                    <th>Desde</th>
+                    <th>Tempo</th>
+                    <th>Protocolo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lista.map((a) => (
+                    <tr key={a.item_id}>
+                      <td>{a.filial_nome}</td>
+                      <td className="produto">
+                        <strong>{a.descricao}</strong>
+                        <small className="sutil bloco">{a.sku}</small>
+                      </td>
+                      <td>{a.fornecedor_nome ?? "—"}</td>
+                      <td className="num">
+                        {qtd(a.qtd_em_loja)} {a.unidade}
+                      </td>
+                      <td className="num">{moeda(a.valor_em_loja)}</td>
+                      <td>{data(a.primeira_expedicao_em)}</td>
+                      <td>
+                        <Dias d={a.dias_em_exposicao} />
+                      </td>
+                      <td>
+                        <Link to={`/requisicoes/${a.solicitacao_id}`} className="protocolo">
+                          {a.protocolo}
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <div className="lista-cartoes so-celular">
+            {lista.map((a) => (
+              <Link key={a.item_id} to={`/requisicoes/${a.solicitacao_id}`} className="item-cartao">
+                <div className="topo-item">
+                  <strong>{a.descricao}</strong>
+                  <Dias d={a.dias_em_exposicao} />
+                </div>
+                <div className="meta">
+                  <span>{a.filial_nome}</span>
+                  <span>{a.sku}</span>
+                  <span>{a.protocolo}</span>
+                </div>
+                <div className="valor">
+                  {moeda(a.valor_em_loja)}{" "}
+                  <span className="sutil" style={{ fontWeight: 450, fontSize: 13 }}>
+                    · {qtd(a.qtd_em_loja)} {a.unidade}
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
     </>
   );
 }

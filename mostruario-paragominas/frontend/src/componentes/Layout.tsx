@@ -1,38 +1,220 @@
-import { NavLink, Outlet } from "react-router-dom";
+import {
+  BarChart3,
+  ClipboardList,
+  Download,
+  Home,
+  KeyRound,
+  LogOut,
+  Menu as IconeMenu,
+  Monitor,
+  Moon,
+  Plus,
+  Settings,
+  Store,
+  Sun,
+  WifiOff,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { useRegisterSW } from "virtual:pwa-register/react";
+import { api } from "../api";
 import { PERFIS_RELATORIOS, temPerfil, useSessao } from "../sessao";
+import { Modal } from "./Modal";
+import { iniciais, useInstalar, useOnline, useTema, useToast } from "./ui";
+
+interface Resumo {
+  filas: Record<string, number>;
+}
+
+/** Total de tarefas pendentes do usuário (aprovar, expedir). */
+function usePendencias() {
+  const [n, setN] = useState(0);
+  const local = useLocation();
+  useEffect(() => {
+    const carregar = () =>
+      api<Resumo>("/api/solicitacoes/resumo")
+        .then((r) => setN((r.filas.comercial ?? 0) + (r.filas.logistica ?? 0) + (r.filas.expedicao ?? 0)))
+        .catch(() => {});
+    carregar();
+    const t = setInterval(carregar, 60000);
+    return () => clearInterval(t);
+  }, [local.pathname]);
+  return n;
+}
 
 export function Layout() {
   const { usuario, sair } = useSessao();
+  const [tema, alternarTema] = useTema();
+  const instalar = useInstalar();
+  const online = useOnline();
+  const toast = useToast();
+  const pendencias = usePendencias();
+  const [mais, setMais] = useState(false);
+  const [dicaIos, setDicaIos] = useState(false);
+  const local = useLocation();
+
+  const {
+    needRefresh: [novaVersao],
+    updateServiceWorker,
+  } = useRegisterSW();
+  useEffect(() => {
+    if (novaVersao)
+      toast({ tipo: "info", texto: "Nova versão disponível.", fixo: true, acao: { rotulo: "Atualizar", executar: () => updateServiceWorker(true) } });
+  }, [novaVersao]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => setMais(false), [local.pathname]);
+
+  const relatorios = temPerfil(usuario, ...PERFIS_RELATORIOS);
+  const admin = temPerfil(usuario, "admin");
+  const requisitante = temPerfil(usuario, "requisitante");
+  const IconeTema = tema === "escuro" ? Moon : tema === "claro" ? Sun : Monitor;
+  const rotuloTema = tema === "escuro" ? "Tema escuro" : tema === "claro" ? "Tema claro" : "Tema automático";
+
+  const acaoInstalar = () => (instalar.ios ? setDicaIos(true) : instalar.instalar());
+
   return (
     <div className="app">
       <aside className="menu sem-impressao">
         <div className="marca">
-          Mostruário
-          <small>Paragominas</small>
+          <img src="/icone.svg" alt="" />
+          <div>
+            <strong>Mostruário</strong>
+            <small>Paragominas</small>
+          </div>
         </div>
         <nav>
           <NavLink to="/" end>
-            Início
+            <Home size={18} /> Início
           </NavLink>
-          <NavLink to="/requisicoes">Requisições</NavLink>
-          <NavLink to="/amostras">Em exposição</NavLink>
-          {temPerfil(usuario, ...PERFIS_RELATORIOS) && <NavLink to="/relatorios">Relatórios</NavLink>}
-          {temPerfil(usuario, "admin") && <NavLink to="/configuracao">Configuração</NavLink>}
+          <NavLink to="/requisicoes">
+            <ClipboardList size={18} /> Requisições
+            {pendencias > 0 && <span className="contador">{pendencias}</span>}
+          </NavLink>
+          <NavLink to="/amostras">
+            <Store size={18} /> Em exposição
+          </NavLink>
+          {(relatorios || admin) && <span className="grupo">Gestão</span>}
+          {relatorios && (
+            <NavLink to="/relatorios">
+              <BarChart3 size={18} /> Relatórios
+            </NavLink>
+          )}
+          {admin && (
+            <NavLink to="/configuracao">
+              <Settings size={18} /> Configuração
+            </NavLink>
+          )}
         </nav>
-        <div className="usuario">
-          <strong>{usuario?.nome}</strong>
-          <span>{usuario?.email}</span>
-          <div className="acoes-usuario">
-            <NavLink to="/minha-senha">Trocar senha</NavLink>
-            <button className="link" onClick={sair}>
-              Sair
+        <div className="menu-rodape">
+          {instalar.disponivel && (
+            <button className="link" onClick={acaoInstalar} style={{ justifyContent: "flex-start" }}>
+              <Download size={16} /> Instalar aplicativo
+            </button>
+          )}
+          <div className="perfil-usuario">
+            <span className="avatar">{iniciais(usuario?.nome)}</span>
+            <div>
+              <strong>{usuario?.nome}</strong>
+              <span>{usuario?.email}</span>
+            </div>
+          </div>
+          <div className="acoes-rodape">
+            <button className="icone" onClick={alternarTema} title={rotuloTema} aria-label={rotuloTema}>
+              <IconeTema size={18} />
+            </button>
+            <NavLink to="/minha-senha" className="botao icone" title="Trocar senha" aria-label="Trocar senha">
+              <KeyRound size={18} />
+            </NavLink>
+            <span className="espaco" />
+            <button className="icone" onClick={sair} title="Sair" aria-label="Sair">
+              <LogOut size={18} />
             </button>
           </div>
         </div>
       </aside>
-      <main className="conteudo">
-        <Outlet />
-      </main>
+
+      <div className="principal">
+        <header className="topo-celular">
+          <img src="/icone.svg" alt="" />
+          <strong>Mostruário</strong>
+          <span className="avatar">{iniciais(usuario?.nome)}</span>
+        </header>
+        {!online && (
+          <div className="faixa-offline">
+            <WifiOff size={16} /> Sem conexão — os dados podem estar desatualizados.
+          </div>
+        )}
+        <main className="conteudo">
+          <Outlet />
+        </main>
+      </div>
+
+      <nav className="navbar-inferior sem-impressao">
+        <NavLink to="/" end>
+          <Home size={22} /> Início
+        </NavLink>
+        <NavLink to="/requisicoes" end>
+          <ClipboardList size={22} /> Requisições
+          {pendencias > 0 && <span className="contador">{pendencias}</span>}
+        </NavLink>
+        {requisitante && (
+          <NavLink to="/requisicoes/nova" className="novo" aria-label="Nova requisição">
+            <span className="bola-nova">
+              <Plus size={24} />
+            </span>
+            Nova
+          </NavLink>
+        )}
+        <NavLink to="/amostras">
+          <Store size={22} /> Exposição
+        </NavLink>
+        <button onClick={() => setMais(true)}>
+          <IconeMenu size={22} /> Mais
+        </button>
+      </nav>
+
+      {mais && (
+        <Modal titulo={usuario?.nome ?? "Menu"} aoFechar={() => setMais(false)}>
+          <div className="folha-mais">
+            {relatorios && (
+              <NavLink to="/relatorios">
+                <BarChart3 size={20} /> Relatórios
+              </NavLink>
+            )}
+            {admin && (
+              <NavLink to="/configuracao">
+                <Settings size={20} /> Configuração
+              </NavLink>
+            )}
+            <hr />
+            {instalar.disponivel && (
+              <button onClick={acaoInstalar}>
+                <Download size={20} /> Instalar aplicativo
+              </button>
+            )}
+            <button onClick={alternarTema}>
+              <IconeTema size={20} /> {rotuloTema}
+            </button>
+            <NavLink to="/minha-senha">
+              <KeyRound size={20} /> Trocar senha
+            </NavLink>
+            <button onClick={sair}>
+              <LogOut size={20} /> Sair
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {dicaIos && (
+        <Modal titulo="Instalar no iPhone / iPad" aoFechar={() => setDicaIos(false)}>
+          <div className="formulario">
+            <p>
+              No Safari, toque em <b>Compartilhar</b> (o quadrado com a seta para cima) e depois em{" "}
+              <b>Adicionar à Tela de Início</b>.
+            </p>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

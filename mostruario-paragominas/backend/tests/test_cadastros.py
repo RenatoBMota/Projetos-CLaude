@@ -93,3 +93,12 @@ def test_importacao_formato_invalido(cliente, admin):
     r = cliente.post("/api/cadastros/produtos/importar", headers=admin,
                      files={"arquivo": ("p.csv", b"nome;valor\na;1\n")})
     assert r.status_code == 400 and "sku" in r.json()["detail"]
+
+
+def test_busca_por_palavras(cliente, admin):
+    cliente.post("/api/cadastros/produtos", headers=admin, json={"sku": "POR-6060", "descricao": "Porcelanato Acetinado 60x60 Cinza"})
+    cliente.post("/api/cadastros/produtos", headers=admin, json={"sku": "POR-9090", "descricao": "Porcelanato Polido 90x90"})
+    achar = lambda b: [p["sku"] for p in cliente.get(f"/api/cadastros/produtos?busca={b}", headers=admin).json()["itens"]]  # noqa: E731
+    assert achar("porcel 60") == ["POR-6060"]
+    assert achar("cinza acetinado") == ["POR-6060"]
+    assert sorted(achar("porcelanato")) == ["POR-6060", "POR-9090"]

@@ -1,7 +1,27 @@
+import {
+  Activity,
+  BarChart3,
+  Boxes,
+  CalendarClock,
+  ClipboardList,
+  Download,
+  FileSpreadsheet,
+  Hourglass,
+  PackageX,
+  Printer,
+  Recycle,
+  Store,
+  Timer,
+  Trash2,
+  Truck,
+  Wallet,
+} from "lucide-react";
 import { ReactNode, useEffect, useState } from "react";
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { api, baixar, Pagina } from "../api";
-import { data, dataHora, moeda, qtd, useFiliais } from "../formato";
+import { Cabecalho, Carregando, Indicador, Vazio } from "../componentes/ui";
+import { data, dataHora, moeda, qtd, STATUS, useFiliais } from "../formato";
+import { GraficoDestino, GraficoIdade, GraficoMensal, GraficoRanking, type DestinoFilial, type Faixa, type Mes } from "./Graficos";
 
 // ---------------------------------------------------------------------------
 // Filtros compartilhados (período, filial, fornecedor)
@@ -14,13 +34,13 @@ interface Filtros {
   fornecedor: string;
 }
 
-const iso = (d: Date) => d.toISOString().slice(0, 10);
+const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const diasAtras = (n: number) => iso(new Date(Date.now() - n * 86400000));
 
 const PERIODOS: { rotulo: string; inicio: () => string }[] = [
   { rotulo: "30 dias", inicio: () => diasAtras(29) },
   { rotulo: "90 dias", inicio: () => diasAtras(89) },
-  { rotulo: "Este mês", inicio: () => iso(new Date(new Date().getFullYear(), new Date().getMonth(), 1)) },
+  { rotulo: "6 meses", inicio: () => iso(new Date(new Date().getFullYear(), new Date().getMonth() - 5, 1)) },
   { rotulo: "Este ano", inicio: () => `${new Date().getFullYear()}-01-01` },
 ];
 
@@ -37,48 +57,56 @@ const pct = (v: number | null | undefined) =>
 const horas = (h: number | null | undefined) => {
   if (h == null) return "—";
   const n = Number(h);
-  return n < 48 ? `${n.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} h` : `${(n / 24).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} dias`;
+  return n < 48
+    ? `${n.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} h`
+    : `${(n / 24).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} dias`;
 };
 
 export function Relatorios() {
   const filiais = useFiliais();
   const [fornecedores, setFornecedores] = useState<{ id: number; razao_social: string }[]>([]);
-  const [f, setF] = useState<Filtros>({ inicio: diasAtras(89), fim: iso(new Date()), filial: "", fornecedor: "" });
+  const [f, setF] = useState<Filtros>({ inicio: iso(new Date(new Date().getFullYear(), new Date().getMonth() - 5, 1)), fim: iso(new Date()), filial: "", fornecedor: "" });
 
   useEffect(() => {
-    api<Pagina<{ id: number; razao_social: string }>>("/api/cadastros/fornecedores?ativos=true&limite=500").then((r) =>
-      setFornecedores(r.itens),
-    );
+    api<Pagina<{ id: number; razao_social: string }>>("/api/cadastros/fornecedores?ativos=true&limite=500").then((r) => setFornecedores(r.itens));
   }, []);
 
-  const abas = [
-    ["indicadores", "Indicadores"],
-    ["exposicao", "Em exposição"],
-    ["descarte", "Descarte e perda"],
-    ["erp", "Lançar no ERP"],
-    ["movimentacoes", "Movimentações"],
-    ["requisicoes", "Requisições"],
-    ["pendentes", "Aprovações pendentes"],
+  const abas: [string, string, typeof BarChart3][] = [
+    ["painel", "Painel gerencial", BarChart3],
+    ["exposicao", "Em exposição", Store],
+    ["descarte", "Descarte e perda", Trash2],
+    ["erp", "Lançar no ERP", FileSpreadsheet],
+    ["movimentacoes", "Movimentações", Activity],
+    ["requisicoes", "Requisições", ClipboardList],
+    ["pendentes", "Aprovações pendentes", Hourglass],
   ];
 
   return (
     <>
-      <h1>Relatórios</h1>
+      <Cabecalho
+        titulo="Relatórios"
+        subtitulo="Indicadores e relatórios gerenciais das amostras."
+        acoes={
+          <button className="sem-impressao" onClick={() => window.print()}>
+            <Printer size={16} /> Imprimir / PDF
+          </button>
+        }
+      />
       <nav className="abas sem-impressao">
-        {abas.map(([to, rotulo]) => (
+        {abas.map(([to, rotulo, Icone]) => (
           <NavLink key={to} to={to}>
-            {rotulo}
+            <Icone size={16} /> {rotulo}
           </NavLink>
         ))}
       </nav>
       <div className="filtros sem-impressao">
         <label>
           De
-          <input type="date" value={f.inicio} max={f.fim} onChange={(e) => setF({ ...f, inicio: e.target.value })} />
+          <input type="date" value={f.inicio} max={f.fim} onChange={(e) => e.target.value && setF({ ...f, inicio: e.target.value })} />
         </label>
         <label>
           Até
-          <input type="date" value={f.fim} min={f.inicio} onChange={(e) => setF({ ...f, fim: e.target.value })} />
+          <input type="date" value={f.fim} min={f.inicio} onChange={(e) => e.target.value && setF({ ...f, fim: e.target.value })} />
         </label>
         <div className="atalhos">
           {PERIODOS.map((p) => (
@@ -112,8 +140,11 @@ export function Relatorios() {
           </select>
         </label>
       </div>
+      <p className="impressao-periodo sutil">
+        Período: {data(f.inicio + "T12:00")} a {data(f.fim + "T12:00")}
+      </p>
       <Routes>
-        <Route path="indicadores" element={<Indicadores f={f} />} />
+        <Route path="painel" element={<Painel f={f} />} />
         <Route path="exposicao" element={<Exposicao f={f} />} />
         <Route
           path="descarte"
@@ -124,18 +155,27 @@ export function Relatorios() {
             </>
           }
         />
-        <Route path="erp" element={<TabelaRelatorio nome="lancar_erp" f={f} ajuda="Peças que voltaram em condição de uso no período, somadas por SKU, para dar entrada no ERP." />} />
+        <Route
+          path="erp"
+          element={
+            <TabelaRelatorio
+              nome="lancar_erp"
+              f={f}
+              ajuda="Peças que voltaram em condição de uso no período, somadas por SKU, para dar entrada no ERP."
+            />
+          }
+        />
         <Route path="movimentacoes" element={<TabelaRelatorio nome="movimentacoes" f={f} />} />
         <Route path="requisicoes" element={<TabelaRelatorio nome="requisicoes" f={f} />} />
         <Route path="pendentes" element={<TabelaRelatorio nome="aprovacoes_pendentes" f={f} />} />
-        <Route path="*" element={<Navigate to="indicadores" replace />} />
+        <Route path="*" element={<Navigate to="painel" replace />} />
       </Routes>
     </>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Indicadores
+// Painel gerencial
 // ---------------------------------------------------------------------------
 
 interface Ind {
@@ -164,60 +204,135 @@ interface Ind {
   pendentes_expedicao: number;
 }
 
-function Tile({ rotulo, valor, detalhe }: { rotulo: string; valor: ReactNode; detalhe?: ReactNode }) {
+interface Gerencial {
+  mensal: Mes[];
+  destino_filial: DestinoFilial[];
+  aging: Faixa[];
+  exposicao_filial: { filial: string; valor: number; quantidade: number }[];
+  top_produtos: { sku: string; descricao: string; valor: number; quantidade: number }[];
+  top_requisitantes: { requisitante: string; requisicoes: number; valor: number }[];
+  status: { status: string; n: number }[];
+}
+
+function Grafico({ titulo, subtitulo, children, vazio }: { titulo: string; subtitulo?: string; children: ReactNode; vazio?: boolean }) {
   return (
-    <div className="cartao indicador">
-      <span>{rotulo}</span>
-      <b>{valor}</b>
-      {detalhe && <small>{detalhe}</small>}
-    </div>
+    <section className="cartao">
+      <div className="cartao-cabecalho">
+        <div>
+          <h2>{titulo}</h2>
+          {subtitulo && <p>{subtitulo}</p>}
+        </div>
+      </div>
+      {vazio ? <Vazio icone={BarChart3} titulo="Sem dados no período" /> : children}
+    </section>
   );
 }
 
-function Indicadores({ f }: { f: Filtros }) {
+function Painel({ f }: { f: Filtros }) {
   const [d, setD] = useState<Ind | null>(null);
+  const [g, setG] = useState<Gerencial | null>(null);
   const [erro, setErro] = useState("");
   useEffect(() => {
+    setD(null);
+    setG(null);
     api<Ind>(`/api/relatorios/indicadores?${consulta(f)}`)
       .then(setD)
       .catch((e) => setErro(e.message));
+    api<Gerencial>(`/api/relatorios/gerencial?${consulta(f)}`)
+      .then(setG)
+      .catch((e) => setErro(e.message));
   }, [f]);
   if (erro) return <div className="erro">{erro}</div>;
-  if (!d) return <p className="sutil">Carregando…</p>;
+  if (!d || !g)
+    return (
+      <div className="cartao">
+        <Carregando linhas={6} />
+      </div>
+    );
+
+  const semMov = g.mensal.every((m) => !Number(m.expedido) && !Number(m.estoque) && !Number(m.descarte) && !Number(m.perda));
+  const statusOrdenado = [...g.status]
+    .sort((a, b) => b.n - a.n)
+    .map((s) => ({ status: STATUS[s.status]?.rotulo ?? s.status, n: s.n }));
+
   return (
     <>
-      <p className="sutil impressao-periodo">
-        Período: {data(f.inicio + "T12:00")} a {data(f.fim + "T12:00")}
-      </p>
-      <h2 className="secao">Agora</h2>
       <div className="indicadores">
-        <Tile rotulo="Valor em exposição" valor={moeda(d.em_exposicao.valor)} detalhe={`${qtd(d.em_exposicao.quantidade)} unidades em ${d.em_exposicao.itens} item(ns)`} />
-        <Tile rotulo="Idade média das amostras" valor={d.em_exposicao.idade_media_dias == null ? "—" : `${qtd(d.em_exposicao.idade_media_dias)} dias`} detalhe="desde a expedição" />
-        <Tile rotulo="Aguardando aprovação" valor={d.pendentes_aprovacao} detalhe="requisições" />
-        <Tile rotulo="Aguardando expedição" valor={d.pendentes_expedicao} detalhe="requisições" />
+        <Indicador
+          icone={Wallet}
+          rotulo="Valor em exposição"
+          valor={moeda(d.em_exposicao.valor)}
+          detalhe={`${qtd(d.em_exposicao.quantidade)} unid. em ${d.em_exposicao.itens} item(ns)`}
+          destaque
+        />
+        <Indicador
+          icone={CalendarClock}
+          rotulo="Idade média das amostras"
+          valor={d.em_exposicao.idade_media_dias == null ? "—" : `${qtd(d.em_exposicao.idade_media_dias)} dias`}
+          detalhe={d.permanencia_media_dias == null ? "desde a expedição" : `permanência das encerradas: ${qtd(d.permanencia_media_dias)} dias`}
+        />
+        <Indicador icone={ClipboardList} rotulo="Requisições no período" valor={d.solicitacoes} detalhe={moeda(d.valor_solicitado)} />
+        <Indicador icone={Truck} rotulo="Expedido no período" valor={moeda(d.valor_expedido)} detalhe={`${qtd(d.qtd_expedida)} unidades`} />
+        <Indicador
+          icone={Recycle}
+          rotulo="Reaproveitamento"
+          valor={pct(d.taxa_reaproveitamento)}
+          detalhe={`${qtd(d.qtd_estoque)} unid. voltaram ao estoque`}
+        />
+        <Indicador
+          icone={PackageX}
+          rotulo="Descarte + perda"
+          valor={moeda(Number(d.valor_descarte) + Number(d.valor_perda))}
+          detalhe={`descarte ${pct(d.taxa_descarte)} · perda ${pct(d.taxa_perda)}`}
+        />
+        <Indicador
+          icone={Timer}
+          rotulo="Tempo de aprovação"
+          valor={horas(
+            d.horas_aprovacao_comercial == null && d.horas_aprovacao_logistica == null
+              ? null
+              : Number(d.horas_aprovacao_comercial ?? 0) + Number(d.horas_aprovacao_logistica ?? 0),
+          )}
+          detalhe={`comercial ${horas(d.horas_aprovacao_comercial)} · logística ${horas(d.horas_aprovacao_logistica)}`}
+        />
+        <Indicador
+          icone={Boxes}
+          rotulo="Pendências agora"
+          valor={d.pendentes_aprovacao + d.pendentes_expedicao}
+          detalhe={`${d.pendentes_aprovacao} em aprovação · ${d.pendentes_expedicao} a expedir · expedição em ${horas(d.horas_ate_expedicao)}`}
+        />
       </div>
 
-      <h2 className="secao">Requisições no período</h2>
-      <div className="indicadores">
-        <Tile rotulo="Requisições enviadas" valor={d.solicitacoes} detalhe={`${moeda(d.valor_solicitado)} · ${qtd(d.qtd_solicitada)} unid.`} />
-        <Tile rotulo="Aprovação comercial" valor={pct(d.taxa_aprovacao_comercial)} detalhe={`tempo médio ${horas(d.horas_aprovacao_comercial)}`} />
-        <Tile rotulo="Aprovação logística" valor={pct(d.taxa_aprovacao_logistica)} detalhe={`tempo médio ${horas(d.horas_aprovacao_logistica)}`} />
-        <Tile rotulo="Da aprovação à expedição" valor={horas(d.horas_ate_expedicao)} detalhe="tempo médio" />
+      <Grafico titulo="Evolução mensal" subtitulo="Valor expedido para as lojas e valor que retornou ou foi baixado." vazio={semMov}>
+        <GraficoMensal dados={g.mensal} />
+      </Grafico>
+
+      <div className="grade-2" style={{ marginTop: 16 }}>
+        <Grafico titulo="Destino das devoluções por filial" subtitulo="% das unidades devolvidas no período." vazio={!g.destino_filial.length}>
+          <GraficoDestino dados={g.destino_filial} />
+        </Grafico>
+        <Grafico titulo="Idade das amostras em loja" subtitulo="Valor em exposição por tempo desde a expedição." vazio={g.aging.every((a) => !a.itens)}>
+          <GraficoIdade dados={g.aging} />
+        </Grafico>
       </div>
 
-      <h2 className="secao">Movimentação no período</h2>
-      <div className="indicadores">
-        <Tile rotulo="Expedido" valor={moeda(d.valor_expedido)} detalhe={`${qtd(d.qtd_expedida)} unid.`} />
-        <Tile rotulo="Voltou para estoque" valor={pct(d.taxa_reaproveitamento)} detalhe={`${qtd(d.qtd_estoque)} unid. · ${moeda(d.valor_estoque)}`} />
-        <Tile rotulo="Descarte" valor={pct(d.taxa_descarte)} detalhe={`${qtd(d.qtd_descarte)} unid. · ${moeda(d.valor_descarte)}`} />
-        <Tile rotulo="Perda" valor={pct(d.taxa_perda)} detalhe={`${qtd(d.qtd_perda)} unid. · ${moeda(d.valor_perda)}`} />
-        <Tile rotulo="Permanência média" valor={d.permanencia_media_dias == null ? "—" : `${qtd(d.permanencia_media_dias)} dias`} detalhe="itens encerrados no período" />
+      <div className="grade-2" style={{ marginTop: 16 }}>
+        <Grafico titulo="Valor em exposição por filial" subtitulo="Posição atual." vazio={!g.exposicao_filial.length}>
+          <GraficoRanking dados={g.exposicao_filial} rotulo="filial" valor="valor" />
+        </Grafico>
+        <Grafico titulo="Produtos com mais valor em exposição" subtitulo="10 maiores, posição atual." vazio={!g.top_produtos.length}>
+          <GraficoRanking dados={g.top_produtos} rotulo="descricao" valor="valor" />
+        </Grafico>
       </div>
-      <p className="sutil nota">
-        Percentuais de estoque, descarte e perda são calculados sobre tudo o que foi devolvido ou dado como perdido no período.
-      </p>
 
-      <TabelaRelatorio nome="exposicao_filial" f={f} barra="valor" />
+      <div className="grade-2" style={{ marginTop: 16 }}>
+        <Grafico titulo="Requisitantes" subtitulo="Valor solicitado no período (10 maiores)." vazio={!g.top_requisitantes.length}>
+          <GraficoRanking dados={g.top_requisitantes} rotulo="requisitante" valor="valor" />
+        </Grafico>
+        <Grafico titulo="Requisições por situação" subtitulo="Enviadas no período." vazio={!statusOrdenado.length}>
+          <GraficoRanking dados={statusOrdenado} rotulo="status" valor="n" formato={(v) => String(v)} nomeValor="Requisições" />
+        </Grafico>
+      </div>
     </>
   );
 }
@@ -305,20 +420,26 @@ function TabelaRelatorio({ nome, f, barra, ajuda }: { nome: string; f: Filtros; 
 
   return (
     <section className="cartao relatorio">
-      <div className="barra">
-        <h2>{d?.titulo ?? "…"}</h2>
-        {d && !d.usa_periodo && <span className="selo">posição atual</span>}
-        <span className="espaco" />
+      <div className="cartao-cabecalho">
+        <div>
+          <h2>
+            {d?.titulo ?? "…"} {d && !d.usa_periodo && <span className="selo">posição atual</span>}
+          </h2>
+          {ajuda && <p>{ajuda}</p>}
+        </div>
         <div className="botoes sem-impressao">
-          <button onClick={() => exportar("xlsx")}>Excel</button>
-          <button onClick={() => exportar("csv")}>CSV</button>
-          <button onClick={() => window.print()}>Imprimir / PDF</button>
+          <button className="pequeno" onClick={() => exportar("xlsx")}>
+            <Download size={14} /> Excel
+          </button>
+          <button className="pequeno" onClick={() => exportar("csv")}>
+            <Download size={14} /> CSV
+          </button>
         </div>
       </div>
-      {ajuda && <p className="sutil nota">{ajuda}</p>}
       {erro && <div className="erro">{erro}</div>}
-      {!d && !erro && <p className="sutil">Carregando…</p>}
-      {d && (
+      {!d && !erro && <Carregando />}
+      {d && d.linhas.length === 0 && <Vazio icone={BarChart3} titulo="Nada no período" texto="Ajuste as datas ou os filtros." />}
+      {d && d.linhas.length > 0 && (
         <div className="tabela-rolagem">
           <table>
             <thead>
@@ -347,13 +468,6 @@ function TabelaRelatorio({ nome, f, barra, ajuda }: { nome: string; f: Filtros; 
                   ))}
                 </tr>
               ))}
-              {d.linhas.length === 0 && (
-                <tr>
-                  <td colSpan={d.colunas.length} className="vazio">
-                    Nada no período.
-                  </td>
-                </tr>
-              )}
             </tbody>
             {d.linhas.length > 1 && Object.keys(totais).length > 0 && (
               <tfoot>

@@ -1,3 +1,4 @@
+import mimetypes
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -60,9 +61,16 @@ if config.FRONTEND_DIR and Path(config.FRONTEND_DIR, "index.html").exists():
     _front = Path(config.FRONTEND_DIR)
     app.mount("/assets", StaticFiles(directory=_front / "assets"), name="assets")
 
+    mimetypes.add_type("application/manifest+json", ".webmanifest")
+    # index.html e service worker sempre revalidados, para o app atualizar na hora
+    _sem_cache = {"Cache-Control": "no-cache"}
+
     @app.get("/{caminho:path}", include_in_schema=False)
     def spa(caminho: str):
+        if caminho.startswith("api/"):
+            return JSONResponse(status_code=404, content={"detail": "Rota inexistente"})
         arquivo = (_front / caminho).resolve()
         if caminho and arquivo.is_file() and _front.resolve() in arquivo.parents:
-            return FileResponse(arquivo)
-        return FileResponse(_front / "index.html")
+            sem_cache = arquivo.name in ("sw.js", "registerSW.js", "manifest.webmanifest", "index.html")
+            return FileResponse(arquivo, headers=_sem_cache if sem_cache else None)
+        return FileResponse(_front / "index.html", headers=_sem_cache)

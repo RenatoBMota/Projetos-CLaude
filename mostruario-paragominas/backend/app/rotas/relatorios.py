@@ -170,6 +170,94 @@ def indicadores(f: Filtro = Depends(filtro), conn: Connection = Depends(get_conn
 
 
 # ---------------------------------------------------------------------------
+# Painel gerencial (séries para gráficos)
+# ---------------------------------------------------------------------------
+
+FAIXAS_IDADE = [("0–30 dias", 0, 30), ("31–60 dias", 31, 60), ("61–90 dias", 61, 90),
+                ("91–180 dias", 91, 180), ("Mais de 180", 181, None)]
+
+
+@router.get("/gerencial")
+def gerencial(f: Filtro = Depends(filtro), conn: Connection = Depends(get_conn)):
+    p = f.params()
+    todos = lambda sql: conn.execute(sql, p).fetchall()  # noqa: E731
+
+    mensal = todos(f"""
+        WITH meses AS (
+          SELECT generate_series(date_trunc('month', %(inicio)s::date), date_trunc('month', %(fim_exclusivo)s::date - 1),
+                                 interval '1 month')::date AS mes
+        ),
+        mov AS (
+          SELECT date_trunc('month', m.ocorrido_em)::date AS mes, m.tipo, m.quantidade * m.custo_unitario AS valor
+          FROM ({MOV_VALIDAS}) m JOIN produtos p ON p.id = m.produto_id
+          WHERE m.ocorrido_em >= %(inicio)s AND m.ocorrido_em < %(fim_exclusivo)s
+            AND {f.filial('m.filial_id')} AND {f.fornecedor('p.fornecedor_id')}
+        ),
+        req AS (
+          SELECT date_trunc('month', s.enviado_em)::date AS mes, count(*) AS n
+          FROM solicitacoes s
+          WHERE s.status <> 'rascunho' AND s.enviado_em >= %(inicio)s AND s.enviado_em < %(fim_exclusivo)s
+            AND {f.filial('s.filial_id')}
+          GROUP BY 1
+        )
+        SELECT to_char(meses.mes, 'YYYY-MM') AS mes,
+               COALESCE((SELECT n FROM req WHERE req.mes = meses.mes), 0) AS requisicoes,
+               COALESCE((SELECT sum(valor) FROM mov WHERE mov.mes = meses.mes AND tipo = 'expedicao'), 0) AS expedido,
+               COALESCE((SELECT sum(valor) FROM mov WHERE mov.mes = meses.mes AND tipo = 'devolucao_estoque'), 0) AS estoque,
+               COALESCE((SELECT sum(valor) FROM mov WHERE mov.mes = meses.mes AND tipo = 'devolucao_descarte'), 0) AS descarte,
+               COALESCE((SELECT sum(valor) FROM mov WHERE mov.mes = meses.mes AND tipo = 'perda'), 0) AS perda
+        FROM meses ORDER BY meses.mes""")
+
+    destino_filial = todos(f"""
+        SELECT f.nome AS filial,
+               COALESCE(sum(m.quantidade) FILTER (WHERE m.tipo = 'devolucao_estoque'), 0) AS estoque,
+               COALESCE(sum(m.quantidade) FILTER (WHERE m.tipo = 'devolucao_descarte'), 0) AS descarte,
+               COALESCE(sum(m.quantidade) FILTER (WHERE m.tipo = 'perda'), 0) AS perda
+        FROM ({MOV_VALIDAS}) m JOIN filiais f ON f.id = m.filial_id JOIN produtos p ON p.id = m.produto_id
+        WHERE m.tipo <> 'expedicao' AND m.ocorrido_em >= %(inicio)s AND m.ocorrido_em < %(fim_exclusivo)s
+          AND {f.filial('m.filial_id')} AND {f.fornecedor('p.fornecedor_id')}
+        GROUP BY f.nome ORDER BY sum(m.quantidade) DESC""")
+
+    em_loja = f"v.qtd_em_loja > 0 AND {f.filial('v.filial_id')} AND {f.fornecedor('v.fornecedor_id')}"
+    idades = {r["faixa"]: r for r in todos(f"""
+        SELECT CASE {' '.join(f"WHEN v.dias_em_exposicao <= {fim} THEN '{nome}'" for nome, _, fim in FAIXAS_IDADE if fim)}
+                    ELSE '{FAIXAS_IDADE[-1][0]}' END AS faixa,
+               count(*) AS itens, sum(v.valor_em_loja) AS valor
+        FROM vw_posicao_item v WHERE {em_loja} GROUP BY 1""")}
+    aging = [{"faixa": nome, "itens": idades.get(nome, {}).get("itens", 0),
+              "valor": idades.get(nome, {}).get("valor", 0)} for nome, _, _ in FAIXAS_IDADE]
+
+    exposicao_filial = todos(f"""
+        SELECT f.nome AS filial, sum(v.valor_em_loja) AS valor, sum(v.qtd_em_loja) AS quantidade
+        FROM vw_posicao_item v JOIN filiais f ON f.id = v.filial_id WHERE {em_loja}
+        GROUP BY f.nome ORDER BY valor DESC LIMIT 10""")
+
+    top_produtos = todos(f"""
+        SELECT p.sku, p.descricao, sum(v.valor_em_loja) AS valor, sum(v.qtd_em_loja) AS quantidade
+        FROM vw_posicao_item v JOIN produtos p ON p.id = v.produto_id WHERE {em_loja}
+        GROUP BY p.sku, p.descricao ORDER BY valor DESC LIMIT 10""")
+
+    top_requisitantes = todos(f"""
+        SELECT u.nome AS requisitante, count(DISTINCT s.id) AS requisicoes,
+               sum(i.quantidade_solicitada * i.custo_referencia) AS valor
+        FROM solicitacoes s JOIN usuarios u ON u.id = s.requisitante_id
+        JOIN itens_solicitacao i ON i.solicitacao_id = s.id JOIN produtos p ON p.id = i.produto_id
+        WHERE s.status <> 'rascunho' AND s.enviado_em >= %(inicio)s AND s.enviado_em < %(fim_exclusivo)s
+          AND {f.filial('s.filial_id')} AND {f.fornecedor('p.fornecedor_id')}
+        GROUP BY u.nome ORDER BY valor DESC LIMIT 10""")
+
+    status = todos(f"""
+        SELECT s.status::text AS status, count(*) AS n FROM solicitacoes s
+        WHERE s.status <> 'rascunho' AND s.enviado_em >= %(inicio)s AND s.enviado_em < %(fim_exclusivo)s
+          AND {f.filial('s.filial_id')}
+        GROUP BY 1""")
+
+    return {"mensal": mensal, "destino_filial": destino_filial, "aging": aging,
+            "exposicao_filial": exposicao_filial, "top_produtos": top_produtos,
+            "top_requisitantes": top_requisitantes, "status": status}
+
+
+# ---------------------------------------------------------------------------
 # Relatórios em tabela
 # ---------------------------------------------------------------------------
 

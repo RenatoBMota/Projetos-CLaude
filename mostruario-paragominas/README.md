@@ -27,6 +27,10 @@ ou **Perda**). O estoque do depósito continua no ERP.
   médios, % reaproveitamento/descarte/perda) e relatórios por filial,
   fornecedor, produto, requisitante e motivo; lista para lançar no ERP.
   Exportação para Excel e CSV; impressão/PDF.
+- **Aplicativo (PWA)**: instalável no celular e no computador, modo escuro,
+  menu inferior no celular, aviso de nova versão, funciona com conexão instável.
+- **Painel gerencial**: gráficos de evolução mensal, destino das devoluções,
+  idade das amostras e rankings.
 - **Integridade**: movimentações imutáveis (correção só por estorno), regras de
   quantidade validadas no próprio banco, proteção contra duplo clique,
   auditoria de todas as alterações.

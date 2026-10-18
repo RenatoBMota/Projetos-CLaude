@@ -256,10 +256,11 @@ def listar(entidade: str, busca: str = "", ativos: bool | None = None, pagina: i
     ent = _entidade(entidade)
     limite = max(1, min(limite, 500))
     filtros, params = [], []
-    if busca.strip():
+    # Cada palavra precisa aparecer em algum campo ("porcel 60" acha "Porcelanato 60x60")
+    for palavra in busca.split()[:6]:
         filtros.append(sql.SQL("({})").format(sql.SQL(" OR ").join(
             sql.SQL("unaccent(t.{}) ILIKE unaccent(%s)").format(sql.Identifier(c)) for c in ent.busca)))
-        params += [f"%{busca.strip()}%"] * len(ent.busca)
+        params += [f"%{palavra}%"] * len(ent.busca)
     if ativos is not None:
         filtros.append(sql.SQL("t.ativo = %s"))
         params.append(ativos)
