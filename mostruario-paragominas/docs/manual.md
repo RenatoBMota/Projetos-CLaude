@@ -50,6 +50,22 @@ Só é possível antes da primeira expedição.
 
 ---
 
+## Requisitante geral (computador da loja)
+
+Conta **compartilhada**, deixada aberta num computador da loja, para que os
+**promotores** façam requisições sem precisar de login próprio.
+
+1. O administrador cria um usuário (ex.: "Loja Paragominas") com o perfil
+   **Requisitante geral** e a filial da loja, e deixa a sessão aberta no computador.
+2. O promotor abre **Nova requisição**, preenche **Seu nome** (o sistema sugere
+   os nomes já usados) e, se quiser, a **Empresa/marca**, escolhe os produtos e envia.
+3. A tela confirma o protocolo e volta limpa para o próximo promotor.
+
+O nome do promotor aparece nas listas, no detalhe, no histórico e nos relatórios
+(rankings de requisitantes). O registro indica que foi feito pelo computador da loja.
+
+---
+
 ## Aprovador comercial e aprovador logístico
 
 1. **Início › Aprovação comercial** (ou logística) mostra o que espera você.
@@ -136,7 +152,8 @@ Menu **Configuração**:
 
 | Perfil | Pode |
 |---|---|
-| Requisitante | Criar e acompanhar requisições |
+| Requisitante | Criar e acompanhar requisições (conta pessoal) |
+| Requisitante geral | Conta compartilhada da loja: cada promotor informa o próprio nome |
 | Aprovador comercial | Aprovar/reprovar a 1ª etapa |
 | Aprovador logístico | Aprovar/reprovar a 2ª etapa |
 | Depósito | Expedição, devolução, perda e anexos |

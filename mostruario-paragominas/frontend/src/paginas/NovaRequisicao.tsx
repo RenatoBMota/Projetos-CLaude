@@ -1,6 +1,6 @@
-import { Minus, PackagePlus, Plus, Save, Search, Send, Trash2 } from "lucide-react";
+import { CheckCircle2, Minus, PackagePlus, Plus, Save, Search, Send, Trash2, UserRound } from "lucide-react";
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, enviar, Pagina } from "../api";
 import { Cabecalho, Vazio, useToast } from "../componentes/ui";
 import { moeda, qtd, useFiliais } from "../formato";
@@ -44,6 +44,30 @@ export function NovaRequisicao() {
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
   const campoBusca = useRef<HTMLInputElement>(null);
+  // Conta compartilhada da loja: quem pede informa o próprio nome
+  const geral = temPerfil(usuario, "requisitante_geral");
+  const [solicitante, setSolicitante] = useState("");
+  const [empresa, setEmpresa] = useState("");
+  const [nomesUsados, setNomesUsados] = useState<{ nome: string; empresa: string | null }[]>([]);
+  const [enviada, setEnviada] = useState<{ id: number; protocolo: string; nome: string } | null>(null);
+
+  useEffect(() => {
+    if (!geral) return;
+    const t = setTimeout(
+      () =>
+        api<{ nome: string; empresa: string | null }[]>(`/api/solicitacoes/solicitantes?busca=${encodeURIComponent(solicitante)}`)
+          .then(setNomesUsados)
+          .catch(() => {}),
+      200,
+    );
+    return () => clearTimeout(t);
+  }, [geral, solicitante]);
+
+  const escolherNome = (nome: string) => {
+    setSolicitante(nome);
+    const conhecido = nomesUsados.find((n) => n.nome.toLowerCase() === nome.trim().toLowerCase());
+    if (conhecido?.empresa && !empresa) setEmpresa(conhecido.empresa);
+  };
 
   // Edição de rascunho
   useEffect(() => {
@@ -53,6 +77,8 @@ export function NovaRequisicao() {
       prioridade: number;
       finalidade: string | null;
       justificativa: string | null;
+      solicitante_nome: string | null;
+      solicitante_empresa: string | null;
       itens: {
         produto_id: number;
         sku: string;
@@ -67,6 +93,8 @@ export function NovaRequisicao() {
       setPrioridade(String(s.prioridade));
       setFinalidade(s.finalidade ?? "");
       setJustificativa(s.justificativa ?? "");
+      setSolicitante(s.solicitante_nome ?? "");
+      setEmpresa(s.solicitante_empresa ?? "");
       setLinhas(
         s.itens.map((i) => ({
           produto: {
@@ -118,6 +146,7 @@ export function NovaRequisicao() {
   const salvar = async (enviarParaAprovacao: boolean, e?: FormEvent) => {
     e?.preventDefault();
     setErro("");
+    if (geral && solicitante.trim().length < 2) return setErro("Informe o seu nome em “Quem está pedindo”.");
     if (!filialId) return setErro("Escolha a filial.");
     if (linhas.length === 0) return setErro("Adicione pelo menos um produto.");
     if (linhas.some((l) => num(l.quantidade) <= 0)) return setErro("Todas as quantidades devem ser maiores que zero.");
@@ -128,16 +157,33 @@ export function NovaRequisicao() {
       finalidade: finalidade || null,
       justificativa: justificativa || null,
       enviar: enviarParaAprovacao,
+      solicitante_nome: geral ? solicitante : null,
+      solicitante_empresa: geral ? empresa || null : null,
       itens: linhas.map((l) => ({ produto_id: l.produto.id, quantidade: num(l.quantidade) })),
     };
     try {
       const s = id
         ? await enviar<{ id: number; protocolo: string }>(`/api/solicitacoes/${id}`, "PUT", corpo)
         : await enviar<{ id: number; protocolo: string }>("/api/solicitacoes", "POST", corpo);
-      toast({
-        tipo: "ok",
-        texto: enviarParaAprovacao ? `Requisição ${s.protocolo} enviada para aprovação.` : `Rascunho ${s.protocolo} salvo.`,
-      });
+      const recomeca = geral && !id && enviarParaAprovacao;
+      if (!recomeca)
+        toast({
+          tipo: "ok",
+          texto: enviarParaAprovacao ? `Requisição ${s.protocolo} enviada para aprovação.` : `Rascunho ${s.protocolo} salvo.`,
+        });
+      if (recomeca) {
+        // Computador da loja: limpa tudo para o próximo promotor
+        setEnviada({ id: s.id, protocolo: s.protocolo, nome: solicitante.trim() });
+        setSolicitante("");
+        setEmpresa("");
+        setFinalidade("");
+        setJustificativa("");
+        setPrioridade("2");
+        setLinhas([]);
+        setSalvando(false);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
       navegar(`/requisicoes/${s.id}`);
     } catch (err) {
       setErro((err as Error).message);
@@ -149,10 +195,54 @@ export function NovaRequisicao() {
     <>
       <Cabecalho
         titulo={id ? "Editar rascunho" : "Nova requisição"}
-        subtitulo="Escolha os produtos e as quantidades para o mostruário."
+        subtitulo={
+          geral
+            ? "Computador da loja: cada promotor informa o próprio nome."
+            : "Escolha os produtos e as quantidades para o mostruário."
+        }
         voltar={{ para: id ? `/requisicoes/${id}` : "/requisicoes", rotulo: id ? "Requisição" : "Requisições" }}
       />
+      {enviada && (
+        <div className="sucesso" style={{ marginBottom: 16, alignItems: "center" }}>
+          <CheckCircle2 size={20} />
+          <span style={{ flex: 1 }}>
+            Requisição <b>{enviada.protocolo}</b> de <b>{enviada.nome}</b> enviada para aprovação. Pronto para o próximo pedido.
+          </span>
+          <Link to={`/requisicoes/${enviada.id}`}>Ver requisição</Link>
+        </div>
+      )}
       <form onSubmit={(e) => salvar(true, e)}>
+        {geral && (
+          <section className="cartao formulario">
+            <h2 style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <UserRound size={18} /> Quem está pedindo
+            </h2>
+            <div className="linha">
+              <label>
+                Seu nome *
+                <input
+                  list="nomes-usados"
+                  value={solicitante}
+                  onChange={(e) => escolherNome(e.target.value)}
+                  placeholder="Nome e sobrenome"
+                  autoComplete="off"
+                  required
+                />
+                <datalist id="nomes-usados">
+                  {nomesUsados.map((n) => (
+                    <option key={n.nome} value={n.nome}>
+                      {n.empresa ?? ""}
+                    </option>
+                  ))}
+                </datalist>
+              </label>
+              <label>
+                Empresa / marca (opcional)
+                <input value={empresa} onChange={(e) => setEmpresa(e.target.value)} placeholder="Ex.: Portobello" />
+              </label>
+            </div>
+          </section>
+        )}
         <section className="cartao formulario">
           <h2>Dados da requisição</h2>
           <div className="linha">

@@ -4,7 +4,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, Pagina } from "../api";
 import { Cabecalho, Carregando, SeloStatus, Vazio } from "../componentes/ui";
 import { data, moeda, STATUS, useFiliais } from "../formato";
-import { temPerfil, useSessao } from "../sessao";
+import { PERFIS_REQUISITANTE, temPerfil, useSessao } from "../sessao";
 
 export { SeloStatus };
 
@@ -22,7 +22,7 @@ export interface LinhaRequisicao {
 }
 
 export const FILAS: Record<string, { rotulo: string; perfis: string[] }> = {
-  rascunhos: { rotulo: "Meus rascunhos", perfis: ["requisitante"] },
+  rascunhos: { rotulo: "Meus rascunhos", perfis: ["requisitante", "requisitante_geral"] },
   comercial: { rotulo: "Aprovação comercial", perfis: ["aprovador_comercial"] },
   logistica: { rotulo: "Aprovação logística", perfis: ["aprovador_logistica"] },
   expedicao: { rotulo: "A expedir", perfis: ["deposito"] },
@@ -69,7 +69,7 @@ export function Requisicoes() {
   const filasVisiveis = Object.entries(FILAS).filter(([, f]) => temPerfil(usuario, ...f.perfis));
   const paginas = dados ? Math.max(1, Math.ceil(dados.total / POR_PAGINA)) : 1;
   const filtrando = !!(busca || status || filial || fila || minhas);
-  const requisitante = temPerfil(usuario, "requisitante");
+  const requisitante = temPerfil(usuario, ...PERFIS_REQUISITANTE);
 
   return (
     <>

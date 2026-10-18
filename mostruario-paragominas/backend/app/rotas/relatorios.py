@@ -238,13 +238,13 @@ def gerencial(f: Filtro = Depends(filtro), conn: Connection = Depends(get_conn))
         GROUP BY p.sku, p.descricao ORDER BY valor DESC LIMIT 10""")
 
     top_requisitantes = todos(f"""
-        SELECT u.nome AS requisitante, count(DISTINCT s.id) AS requisicoes,
+        SELECT COALESCE(s.solicitante_nome, u.nome) AS requisitante, count(DISTINCT s.id) AS requisicoes,
                sum(i.quantidade_solicitada * i.custo_referencia) AS valor
         FROM solicitacoes s JOIN usuarios u ON u.id = s.requisitante_id
         JOIN itens_solicitacao i ON i.solicitacao_id = s.id JOIN produtos p ON p.id = i.produto_id
         WHERE s.status <> 'rascunho' AND s.enviado_em >= %(inicio)s AND s.enviado_em < %(fim_exclusivo)s
           AND {f.filial('s.filial_id')} AND {f.fornecedor('p.fornecedor_id')}
-        GROUP BY u.nome ORDER BY valor DESC LIMIT 10""")
+        GROUP BY 1 ORDER BY valor DESC LIMIT 10""")
 
     status = todos(f"""
         SELECT s.status::text AS status, count(*) AS n FROM solicitacoes s
@@ -297,8 +297,10 @@ RELATORIOS: dict[str, Relatorio] = {
                                   grupo="p.sku, p.descricao"), usa_periodo=False),
     "exposicao_requisitante": Relatorio(
         "Em exposição por requisitante", [("requisitante", "Requisitante", "texto")] + COLS_EXPOSICAO,
-        EXPOSICAO_AGRUPADA.format(chave="u.nome AS requisitante", juncao="JOIN usuarios u ON u.id = v.requisitante_id",
-                                  grupo="u.nome"), usa_periodo=False),
+        EXPOSICAO_AGRUPADA.format(chave="COALESCE(so.solicitante_nome, u.nome) AS requisitante",
+                                  juncao="JOIN usuarios u ON u.id = v.requisitante_id "
+                                         "JOIN solicitacoes so ON so.id = v.solicitacao_id",
+                                  grupo="1"), usa_periodo=False),
     "movimentacoes": Relatorio(
         "Movimentações no período",
         [("ocorrido_em", "Data", "datahora"), ("protocolo", "Protocolo", "texto"), ("filial", "Filial", "texto"),
@@ -362,7 +364,7 @@ RELATORIOS: dict[str, Relatorio] = {
          ("requisitante", "Requisitante", "texto"), ("status", "Status", "texto"),
          ("valor_solicitado", "Valor solicitado", "moeda"), ("valor_expedido", "Valor expedido", "moeda"),
          ("valor_em_loja", "Valor em loja", "moeda"), ("dias_ate_expedicao", "Dias até expedir", "qtd")],
-        """SELECT s.protocolo, s.enviado_em, f.nome AS filial, u.nome AS requisitante,
+        """SELECT s.protocolo, s.enviado_em, f.nome AS filial, COALESCE(s.solicitante_nome, u.nome) AS requisitante,
                   CASE s.status WHEN 'aguardando_aprovacao_comercial' THEN 'Aguardando comercial'
                        WHEN 'aguardando_aprovacao_logistica' THEN 'Aguardando logística'
                        WHEN 'aguardando_expedicao' THEN 'Aguardando expedição' WHEN 'em_exposicao' THEN 'Em exposição'
@@ -387,7 +389,7 @@ RELATORIOS: dict[str, Relatorio] = {
          ("dias", "Dias de espera", "qtd"), ("valor", "Valor solicitado", "moeda")],
         """SELECT s.protocolo,
                   CASE s.status WHEN 'aguardando_aprovacao_comercial' THEN 'Comercial' ELSE 'Logística' END AS etapa,
-                  f.nome AS filial, u.nome AS requisitante,
+                  f.nome AS filial, COALESCE(s.solicitante_nome, u.nome) AS requisitante,
                   COALESCE((SELECT decidido_em FROM aprovacoes a WHERE a.solicitacao_id = s.id AND a.etapa = 'comercial'),
                            s.enviado_em) AS aguardando_desde,
                   round((extract(epoch FROM now() - COALESCE((SELECT decidido_em FROM aprovacoes a

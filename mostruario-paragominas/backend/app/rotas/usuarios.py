@@ -10,7 +10,7 @@ from ..seguranca import SQL_USUARIO, buscar_usuario, exigir_perfil, hash_senha
 
 router = APIRouter(prefix="/api/usuarios", tags=["usuarios"])
 
-Perfil = Literal["requisitante", "aprovador_comercial", "aprovador_logistica",
+Perfil = Literal["requisitante", "requisitante_geral", "aprovador_comercial", "aprovador_logistica",
                  "deposito", "gestor", "admin"]
 
 somente_admin = exigir_perfil("admin")

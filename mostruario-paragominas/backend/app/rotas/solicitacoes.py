@@ -21,6 +21,7 @@ router = APIRouter(prefix="/api", tags=["solicitacoes"])
 STATUS_APROVACAO = {"aguardando_aprovacao_comercial": "comercial",
                     "aguardando_aprovacao_logistica": "logistica"}
 STATUS_ATENDIMENTO = ("aguardando_expedicao", "em_exposicao", "devolucao_parcial")
+PERFIS_REQUISITANTE = ("requisitante", "requisitante_geral")
 DESTINOS = {"estoque": "devolucao_estoque", "descarte": "devolucao_descarte", "perda": "perda"}
 
 
@@ -41,6 +42,9 @@ class SolicitacaoIn(BaseModel):
     prioridade: int = Field(default=2, ge=1, le=3)
     itens: list[ItemIn] = Field(min_length=1)
     enviar: bool = False
+    # Conta "requisitante geral": nome (obrigatório) e empresa de quem pede
+    solicitante_nome: str | None = Field(default=None, max_length=120)
+    solicitante_empresa: str | None = Field(default=None, max_length=120)
 
 
 class DecisaoIn(BaseModel):
@@ -177,7 +181,8 @@ def _acoes(s: dict, itens: list[dict], usuario: dict) -> list[str]:
 
 def _detalhe(conn: Connection, usuario: dict, sid: int) -> dict:
     s = conn.execute(
-        """SELECT s.*, f.nome AS filial_nome, f.codigo AS filial_codigo, u.nome AS requisitante_nome,
+        """SELECT s.*, f.nome AS filial_nome, f.codigo AS filial_codigo,
+                  COALESCE(s.solicitante_nome, u.nome) AS requisitante_nome, u.nome AS usuario_nome,
                   m.descricao AS motivo_descricao
            FROM solicitacoes s JOIN filiais f ON f.id = s.filial_id JOIN usuarios u ON u.id = s.requisitante_id
            LEFT JOIN motivos m ON m.id = s.motivo_id
@@ -230,6 +235,17 @@ def _gravar_itens(conn: Connection, sid: int, itens: list[ItemIn]) -> None:
                VALUES (%s, %s, %s, %s, %s)""",
             (sid, item.produto_id, item.quantidade, p["custo_referencia"], item.observacao),
         )
+
+
+def _solicitante(usuario: dict, dados: SolicitacaoIn) -> tuple[str | None, str | None]:
+    """Na conta compartilhada, quem pede informa o nome; nas pessoais, vale o usuário."""
+    if not tem_perfil(usuario, "requisitante_geral"):
+        return None, None
+    nome = " ".join((dados.solicitante_nome or "").split())
+    if len(nome) < 2:
+        raise HTTPException(400, "Informe o nome de quem está fazendo a requisição")
+    empresa = " ".join((dados.solicitante_empresa or "").split()) or None
+    return nome, empresa
 
 
 def _validar_filial(conn: Connection, usuario: dict, filial_id: int) -> None:
@@ -288,7 +304,8 @@ def listar(status: str = "", fila: str = "", filial_id: int | None = None, busca
     if minhas:
         filtros.append("s.requisitante_id = %(eu)s")
     if busca.strip():
-        filtros.append("(s.protocolo ILIKE %(busca)s OR unaccent(u.nome) ILIKE unaccent(%(busca)s) OR EXISTS ("
+        filtros.append("(s.protocolo ILIKE %(busca)s OR unaccent(u.nome) ILIKE unaccent(%(busca)s) "
+                       "OR unaccent(COALESCE(s.solicitante_nome, '')) ILIKE unaccent(%(busca)s) OR EXISTS ("
                        "SELECT 1 FROM itens_solicitacao i2 JOIN produtos p2 ON p2.id = i2.produto_id "
                        "WHERE i2.solicitacao_id = s.id AND (p2.sku ILIKE %(busca)s "
                        "OR unaccent(p2.descricao) ILIKE unaccent(%(busca)s))))")
@@ -297,7 +314,8 @@ def listar(status: str = "", fila: str = "", filial_id: int | None = None, busca
     params.update(limite=limite, offset=(max(pagina, 1) - 1) * limite)
     linhas = conn.execute(
         f"""SELECT s.id, s.protocolo, s.status, s.prioridade, s.criado_em, s.enviado_em, s.encerrado_em,
-                   s.filial_id, f.nome AS filial_nome, s.requisitante_id, u.nome AS requisitante_nome,
+                   s.filial_id, f.nome AS filial_nome, s.requisitante_id,
+                   COALESCE(s.solicitante_nome, u.nome) AS requisitante_nome, s.solicitante_empresa,
                    (SELECT count(*) FROM itens_solicitacao i WHERE i.solicitacao_id = s.id) AS itens,
                    (SELECT COALESCE(sum(i.quantidade_solicitada * i.custo_referencia), 0)
                       FROM itens_solicitacao i WHERE i.solicitacao_id = s.id) AS valor_solicitado,
@@ -320,7 +338,7 @@ def listar(status: str = "", fila: str = "", filial_id: int | None = None, busca
 def resumo(usuario: dict = Depends(usuario_atual), conn: Connection = Depends(get_conn)):
     """Contagem das filas que o usuário atende, para a tela inicial."""
     filtros, params = _filtro_base(usuario)
-    filas = {"rascunhos": tem_perfil(usuario, "requisitante"),
+    filas = {"rascunhos": tem_perfil(usuario, *PERFIS_REQUISITANTE),
              "comercial": tem_perfil(usuario, "aprovador_comercial"),
              "logistica": tem_perfil(usuario, "aprovador_logistica"),
              "expedicao": tem_perfil(usuario, "deposito"),
@@ -342,6 +360,24 @@ def resumo(usuario: dict = Depends(usuario_atual), conn: Connection = Depends(ge
     return {"filas": resultado, "em_exposicao": exposicao}
 
 
+@router.get("/solicitacoes/solicitantes")
+def solicitantes(busca: str = "", usuario: dict = Depends(usuario_atual), conn: Connection = Depends(get_conn)):
+    """Nomes já usados na conta compartilhada, para sugerir ao digitar."""
+    filtros, params = ["s.solicitante_nome IS NOT NULL"], {"busca": f"%{busca.strip()}%"}
+    permitidas = filiais_permitidas(usuario)
+    if permitidas is not None:
+        filtros.append("s.filial_id = ANY(%(filiais)s)")
+        params["filiais"] = list(permitidas)
+    if busca.strip():
+        filtros.append("unaccent(s.solicitante_nome) ILIKE unaccent(%(busca)s)")
+    return conn.execute(
+        f"""SELECT DISTINCT ON (lower(s.solicitante_nome)) s.solicitante_nome AS nome, s.solicitante_empresa AS empresa
+            FROM solicitacoes s WHERE {' AND '.join(filtros)}
+            ORDER BY lower(s.solicitante_nome), s.id DESC LIMIT 15""",
+        params,
+    ).fetchall()
+
+
 @router.get("/solicitacoes/{sid}")
 def detalhe(sid: int, usuario: dict = Depends(usuario_atual), conn: Connection = Depends(get_conn)):
     s = _carregar(conn, usuario, sid)
@@ -356,17 +392,21 @@ def detalhe(sid: int, usuario: dict = Depends(usuario_atual), conn: Connection =
 
 @router.post("/solicitacoes", status_code=201)
 def criar(dados: SolicitacaoIn, usuario: dict = Depends(usuario_atual), conn: Connection = Depends(get_conn)):
-    if not tem_perfil(usuario, "requisitante"):
+    if not tem_perfil(usuario, *PERFIS_REQUISITANTE):
         raise HTTPException(403, "Apenas requisitantes criam requisições")
     _validar_filial(conn, usuario, dados.filial_id)
+    nome, empresa = _solicitante(usuario, dados)
     status = "aguardando_aprovacao_comercial" if dados.enviar else "rascunho"
     sid = conn.execute(
-        """INSERT INTO solicitacoes (filial_id, requisitante_id, finalidade, justificativa, prioridade, status, enviado_em)
-           VALUES (%s, %s, %s, %s, %s, %s, CASE WHEN %s THEN now() END) RETURNING id""",
-        (dados.filial_id, usuario["id"], dados.finalidade, dados.justificativa, dados.prioridade, status, dados.enviar),
+        """INSERT INTO solicitacoes (filial_id, requisitante_id, solicitante_nome, solicitante_empresa,
+                                     finalidade, justificativa, prioridade, status, enviado_em)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, CASE WHEN %s THEN now() END) RETURNING id""",
+        (dados.filial_id, usuario["id"], nome, empresa, dados.finalidade, dados.justificativa, dados.prioridade,
+         status, dados.enviar),
     ).fetchone()["id"]
     _gravar_itens(conn, sid, dados.itens)
-    auditar(conn, usuario["id"], "solicitacoes", sid, "criar", depois={"status": status})
+    auditar(conn, usuario["id"], "solicitacoes", sid, "criar",
+            depois={"status": status, "solicitante": nome, "empresa": empresa})
     return _detalhe(conn, usuario, sid)
 
 
@@ -376,11 +416,14 @@ def alterar(sid: int, dados: SolicitacaoIn, usuario: dict = Depends(usuario_atua
     s = _carregar(conn, usuario, sid, bloquear=True)
     _exigir("editar", s, conn, usuario)
     _validar_filial(conn, usuario, dados.filial_id)
+    nome, empresa = _solicitante(usuario, dados)
     status = "aguardando_aprovacao_comercial" if dados.enviar else "rascunho"
     conn.execute(
-        """UPDATE solicitacoes SET filial_id = %s, finalidade = %s, justificativa = %s, prioridade = %s,
-                  status = %s, enviado_em = CASE WHEN %s THEN now() END WHERE id = %s""",
-        (dados.filial_id, dados.finalidade, dados.justificativa, dados.prioridade, status, dados.enviar, sid),
+        """UPDATE solicitacoes SET filial_id = %s, solicitante_nome = %s, solicitante_empresa = %s, finalidade = %s,
+                  justificativa = %s, prioridade = %s, status = %s, enviado_em = CASE WHEN %s THEN now() END
+           WHERE id = %s""",
+        (dados.filial_id, nome, empresa, dados.finalidade, dados.justificativa, dados.prioridade, status,
+         dados.enviar, sid),
     )
     _gravar_itens(conn, sid, dados.itens)
     auditar(conn, usuario["id"], "solicitacoes", sid, "enviar" if dados.enviar else "alterar", depois={"status": status})
@@ -582,11 +625,13 @@ def amostras(filial_id: int | None = None, fornecedor_id: int | None = None, bus
         params["busca"] = f"%{busca.strip()}%"
     return conn.execute(
         f"""SELECT v.item_id, v.solicitacao_id, v.protocolo, v.filial_id, f.nome AS filial_nome,
-                   p.sku, p.descricao, p.unidade, fo.razao_social AS fornecedor_nome, u.nome AS requisitante_nome,
+                   p.sku, p.descricao, p.unidade, fo.razao_social AS fornecedor_nome,
+                   COALESCE(so.solicitante_nome, u.nome) AS requisitante_nome,
                    v.qtd_em_loja, v.valor_em_loja, v.primeira_expedicao_em, v.dias_em_exposicao
             FROM vw_posicao_item v
             JOIN filiais f ON f.id = v.filial_id JOIN produtos p ON p.id = v.produto_id
             JOIN usuarios u ON u.id = v.requisitante_id
+            JOIN solicitacoes so ON so.id = v.solicitacao_id
             LEFT JOIN fornecedores fo ON fo.id = v.fornecedor_id
             WHERE {' AND '.join(filtros)}
             ORDER BY v.dias_em_exposicao DESC, f.nome, p.descricao

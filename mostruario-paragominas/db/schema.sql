@@ -17,7 +17,8 @@ CREATE EXTENSION IF NOT EXISTS unaccent;
 
 CREATE TYPE perfil_usuario AS ENUM (
     'requisitante', 'aprovador_comercial', 'aprovador_logistica',
-    'deposito', 'gestor', 'admin'
+    'deposito', 'gestor', 'admin',
+    'requisitante_geral'  -- conta compartilhada; o promotor informa o nome
 );
 
 CREATE TYPE status_solicitacao AS ENUM (
@@ -123,6 +124,9 @@ CREATE TABLE solicitacoes (
                     DEFAULT to_char(now(), 'YYYY') || '-' || lpad(nextval('protocolo_seq')::text, 6, '0'),
     filial_id       bigint NOT NULL REFERENCES filiais(id),
     requisitante_id bigint NOT NULL REFERENCES usuarios(id),
+    -- Preenchidos quando a requisição é feita pela conta "requisitante geral"
+    solicitante_nome    text,
+    solicitante_empresa text,
     finalidade      text,
     justificativa   text,
     prioridade      smallint NOT NULL DEFAULT 2 CHECK (prioridade BETWEEN 1 AND 3),
@@ -136,6 +140,7 @@ CREATE TABLE solicitacoes (
 
 CREATE INDEX ON solicitacoes (filial_id, status);
 CREATE INDEX ON solicitacoes (requisitante_id);
+CREATE INDEX solicitacoes_solicitante_nome_idx ON solicitacoes (lower(solicitante_nome));
 
 CREATE TABLE itens_solicitacao (
     id                    bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

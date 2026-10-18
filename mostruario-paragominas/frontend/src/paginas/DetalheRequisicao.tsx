@@ -53,6 +53,9 @@ interface Detalhe {
   prioridade: number;
   filial_nome: string;
   requisitante_nome: string;
+  usuario_nome: string;
+  solicitante_nome: string | null;
+  solicitante_empresa: string | null;
   finalidade: string | null;
   justificativa: string | null;
   criado_em: string;
@@ -345,7 +348,7 @@ export function DetalheRequisicao() {
             {s.protocolo} <SeloStatus status={s.status} />
           </>
         }
-        subtitulo={`${s.filial_nome} · ${s.requisitante_nome} · criada em ${data(s.criado_em)}`}
+        subtitulo={`${s.filial_nome} · ${s.requisitante_nome}${s.solicitante_empresa ? ` (${s.solicitante_empresa})` : ""} · criada em ${data(s.criado_em)}`}
       />
 
       <section className="cartao">
@@ -354,6 +357,13 @@ export function DetalheRequisicao() {
       </section>
 
       <section className="cartao dados">
+        {s.solicitante_nome && (
+          <Dado rotulo="Solicitante">
+            {s.solicitante_nome}
+            {s.solicitante_empresa && <span className="sutil"> · {s.solicitante_empresa}</span>}
+            <small className="sutil bloco">registrado no computador da loja ({s.usuario_nome})</small>
+          </Dado>
+        )}
         <Dado rotulo="Valor solicitado">{moeda(s.valor_solicitado)}</Dado>
         <Dado rotulo="Valor em loja">{moeda(s.valor_em_loja)}</Dado>
         <Dado rotulo="Prioridade">{PRIORIDADES[s.prioridade]}</Dado>
@@ -438,6 +448,9 @@ export function DetalheRequisicao() {
               const detalhe = [
                 h.acao === "status" && h.dados_depois?.status ? STATUS[String(h.dados_depois.status)]?.rotulo : null,
                 typeof h.dados_depois?.arquivo === "string" ? h.dados_depois.arquivo : null,
+                typeof h.dados_depois?.solicitante === "string"
+                  ? `pedido de ${h.dados_depois.solicitante}${typeof h.dados_depois.empresa === "string" ? ` (${h.dados_depois.empresa})` : ""}`
+                  : null,
                 reprov,
                 typeof h.dados_depois?.observacao === "string" ? h.dados_depois.observacao : null,
               ].filter(Boolean);

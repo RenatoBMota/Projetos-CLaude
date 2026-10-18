@@ -1,5 +1,6 @@
 export type Perfil =
   | "requisitante"
+  | "requisitante_geral"
   | "aprovador_comercial"
   | "aprovador_logistica"
   | "deposito"
@@ -27,6 +28,11 @@ export interface Pagina<T> {
 
 export const PERFIS: { valor: Perfil; rotulo: string; descricao: string }[] = [
   { valor: "requisitante", rotulo: "Requisitante", descricao: "Cria e acompanha requisições da sua filial" },
+  {
+    valor: "requisitante_geral",
+    rotulo: "Requisitante geral",
+    descricao: "Conta compartilhada (computador da loja): quem pede informa o próprio nome",
+  },
   { valor: "aprovador_comercial", rotulo: "Aprovador comercial", descricao: "Aprova ou reprova a 1ª etapa" },
   { valor: "aprovador_logistica", rotulo: "Aprovador logístico", descricao: "Aprova ou reprova a 2ª etapa" },
   { valor: "deposito", rotulo: "Depósito", descricao: "Registra expedição, devolução e perda" },

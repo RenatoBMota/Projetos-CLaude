@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from psycopg import errors
 from pydantic import ValidationError
 
-from . import config, db
+from . import config, db, migracoes
 from .rotas import anexos, auth, cadastros, relatorios, solicitacoes, usuarios
 
 
@@ -16,6 +16,8 @@ from .rotas import anexos, auth, cadastros, relatorios, solicitacoes, usuarios
 async def ciclo_de_vida(_: FastAPI):
     if not config.JWT_SECRET:
         raise RuntimeError("Defina a variável de ambiente JWT_SECRET")
+    for nome in migracoes.aplicar(config.DATABASE_URL):
+        print(f"Migração aplicada: {nome}", flush=True)
     db.abrir(config.DATABASE_URL)
     yield
     db.fechar()

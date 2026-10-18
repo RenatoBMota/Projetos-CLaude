@@ -85,6 +85,7 @@ parcialmente → Em exposição → Devolução parcial → Encerrado.
 | Perfil | Pode |
 |---|---|
 | Requisitante | Criar e acompanhar requisições da sua filial |
+| Requisitante geral | Conta compartilhada (computador da loja); o promotor informa nome e empresa em cada requisição |
 | Aprovador comercial | Aprovar/reprovar a 1ª etapa nas filiais da abrangência |
 | Aprovador logístico | Aprovar/reprovar a 2ª etapa nas filiais da abrangência |
 | Depósito | Registrar expedição, devolução (estoque/descarte) e perda |

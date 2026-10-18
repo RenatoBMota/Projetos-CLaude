@@ -76,8 +76,9 @@ docker compose logs -f app        # registros do sistema
 docker compose logs caddy         # registros do HTTPS (certificado)
 ```
 
-O arquivo `db/schema.sql` só é aplicado na primeira inicialização (banco
-vazio); mudanças futuras de banco virão como scripts de migração.
+O arquivo `db/schema.sql` cria o banco na primeira instalação. Mudanças
+posteriores ficam em `backend/app/migracoes/` e são aplicadas **automaticamente**
+quando o sistema inicia (tabela `migracoes` registra o que já foi aplicado).
 
 ### Backup
 

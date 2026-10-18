@@ -532,7 +532,7 @@ input.qtd { width: 96px; text-align: right; }
 .resumo-fixo .total strong { font-size: 18px; font-variant-numeric: tabular-nums; }
 
 /* Toasts */
-.toasts { position: fixed; z-index: 100; right: 20px; bottom: 20px; display: flex; flex-direction: column; gap: 8px; max-width: min(420px, calc(100vw - 32px)); }
+.toasts { position: fixed; z-index: 100; right: 20px; top: 20px; display: flex; flex-direction: column; gap: 8px; max-width: min(420px, calc(100vw - 32px)); }
 .toast {
   display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: var(--raio);
   background: #101828; color: #f2f4f7; box-shadow: var(--sombra-3); font-weight: 550; font-size: 14px;
@@ -641,7 +641,7 @@ input.qtd { width: 96px; text-align: right; }
   .fundo-modal { align-items: end; padding: 0; }
   .modal, .modal.largo { max-width: none; border-radius: 18px 18px 0 0; max-height: 92vh; animation: folha 0.22s ease-out; }
   .modal > :not(header) { padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
-  .toasts { left: 16px; right: 16px; bottom: calc(84px + env(safe-area-inset-bottom)); max-width: none; }
+  .toasts { left: 16px; right: 16px; top: calc(env(safe-area-inset-top) + 62px); max-width: none; }
   .login-tela { grid-template-columns: 1fr; }
   .login-marca { padding: 28px 22px; min-height: 0; }
   .login-marca h2 { font-size: 24px; }

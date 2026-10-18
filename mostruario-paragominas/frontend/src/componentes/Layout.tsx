@@ -18,7 +18,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { api } from "../api";
-import { PERFIS_RELATORIOS, temPerfil, useSessao } from "../sessao";
+import { PERFIS_RELATORIOS, PERFIS_REQUISITANTE, temPerfil, useSessao } from "../sessao";
 import { Modal } from "./Modal";
 import { iniciais, useInstalar, useOnline, useTema, useToast } from "./ui";
 
@@ -66,7 +66,7 @@ export function Layout() {
 
   const relatorios = temPerfil(usuario, ...PERFIS_RELATORIOS);
   const admin = temPerfil(usuario, "admin");
-  const requisitante = temPerfil(usuario, "requisitante");
+  const requisitante = temPerfil(usuario, ...PERFIS_REQUISITANTE);
   const IconeTema = tema === "escuro" ? Moon : tema === "claro" ? Sun : Monitor;
   const rotuloTema = tema === "escuro" ? "Tema escuro" : tema === "claro" ? "Tema claro" : "Tema automático";
 

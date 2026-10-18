@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { api, Pagina } from "../api";
 import { Carregando, Cabecalho, Indicador, SeloStatus, Vazio } from "../componentes/ui";
 import { data, moeda, qtd } from "../formato";
-import { temPerfil, useSessao } from "../sessao";
+import { PERFIS_REQUISITANTE, temPerfil, useSessao } from "../sessao";
 import { FILAS, type LinhaRequisicao } from "./Requisicoes";
 
 interface Resumo {
@@ -29,7 +29,7 @@ export function Inicio() {
   const { usuario } = useSessao();
   const [resumo, setResumo] = useState<Resumo | null>(null);
   const [recentes, setRecentes] = useState<LinhaRequisicao[] | null>(null);
-  const requisitante = temPerfil(usuario, "requisitante");
+  const requisitante = temPerfil(usuario, ...PERFIS_REQUISITANTE);
 
   useEffect(() => {
     api<Resumo>("/api/solicitacoes/resumo").then(setResumo);
