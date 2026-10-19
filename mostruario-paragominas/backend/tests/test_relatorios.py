@@ -116,3 +116,13 @@ def test_painel_gerencial(movimentado):
     assert d["top_requisitantes"][0]["requisitante"] == "Req"
     assert d["status"] == [{"status": "devolucao_parcial", "n": 1}]
     assert k["c"].get("/api/relatorios/gerencial", headers=k["req"]).status_code == 403
+
+
+def test_exposicao_por_produto_colunas(movimentado):
+    k = movimentado
+    d = k["c"].get("/api/relatorios/exposicao_produto", headers=k["ges"]).json()
+    assert [c["rotulo"] for c in d["colunas"]][2:4] == ["Nº Requisições", "Quantidade (m²)"]
+    assert d["linhas"][0]["requisicoes"] == 1
+    # por filial conta requisições distintas, não itens (a requisição tem 2 itens)
+    f = k["c"].get("/api/relatorios/exposicao_filial", headers=k["ges"]).json()["linhas"]
+    assert f[0]["requisicoes"] == 1

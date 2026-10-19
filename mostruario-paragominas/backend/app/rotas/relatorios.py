@@ -270,14 +270,14 @@ class Relatorio:
 
 
 EXPOSICAO_AGRUPADA = """
-    SELECT {chave}, count(*) AS itens, sum(v.qtd_em_loja) AS quantidade, sum(v.valor_em_loja) AS valor,
+    SELECT {chave}, count(DISTINCT v.solicitacao_id) AS requisicoes, sum(v.qtd_em_loja) AS quantidade, sum(v.valor_em_loja) AS valor,
            round(avg(v.dias_em_exposicao), 1) AS idade_media
     FROM vw_posicao_item v {juncao}
     WHERE v.qtd_em_loja > 0 AND {{filial(v.filial_id)}} AND {{fornecedor(v.fornecedor_id)}}
     GROUP BY {grupo} ORDER BY valor DESC
 """
 
-COLS_EXPOSICAO = [("itens", "Itens", "int"), ("quantidade", "Quantidade", "qtd"),
+COLS_EXPOSICAO = [("requisicoes", "Nº Requisições", "int"), ("quantidade", "Quantidade (m²)", "qtd"),
                   ("valor", "Valor em exposição", "moeda"), ("idade_media", "Idade média (dias)", "qtd")]
 
 RELATORIOS: dict[str, Relatorio] = {
