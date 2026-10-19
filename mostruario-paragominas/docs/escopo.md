@@ -33,7 +33,10 @@ Um item é **encerrado** quando: quantidade expedida = estoque + descarte + perd
 - A aprovação (comercial ou logística) pode **reduzir** a quantidade de um item;
   0 significa que o item não será atendido. Se todos ficarem em 0, a
   requisição deve ser reprovada.
-- Ninguém aprova a própria requisição.
+- Ninguém aprova a própria requisição, exceto o administrador.
+- Toda redução de quantidade (na aprovação ou na expedição) exige justificativa
+  por item; a reprovação exige motivo e justificativa da requisição.
+- A devolução é registrada por produto.
 - A requisição pode ser cancelada (com motivo) até a primeira expedição.
 - Se o depósito não conseguir expedir todo o aprovado, ele **cancela o saldo
   pendente** do item, com justificativa.
@@ -51,7 +54,7 @@ Um item é **encerrado** quando: quantidade expedida = estoque + descarte + perd
 Possíveis evoluções (não incluídas nesta versão):
 
 - Integração automática com o ERP (hoje: importação de planilha de produtos e
-  relatório "Lançar no ERP").
+  relatório "Reintegrado ao estoque").
 - Notificações por e-mail (hoje: filas de trabalho na tela inicial).
 - Leitura de QR Code / código de barras na expedição e devolução.
 
@@ -121,7 +124,7 @@ Excel/CSV e impressão/PDF.
 - Dias em exposição (idade das amostras abertas).
 - Valor e taxa de descarte e de perda por loja e fornecedor.
 - Lead time de aprovação (por etapa) e de expedição.
-- Relatório "a lançar no ERP": quantidades devolvidas para Estoque por período.
+- Relatório "Reintegrado ao estoque": quantidades devolvidas para Estoque por período.
 
 ## Arquitetura
 

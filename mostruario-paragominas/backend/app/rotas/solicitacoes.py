@@ -53,6 +53,8 @@ class DecisaoIn(BaseModel):
     observacao: str | None = None
     # item_id -> quantidade aprovada (só para reduzir; ausente = mantém)
     quantidades: dict[int, Decimal] = {}
+    # item_id -> justificativa (obrigatória para cada item reduzido)
+    justificativas: dict[int, str] = {}
 
 
 class CancelarIn(BaseModel):
@@ -62,7 +64,11 @@ class CancelarIn(BaseModel):
 
 class ExpedicaoItem(BaseModel):
     item_id: int
-    quantidade: Decimal = Field(gt=0)
+    quantidade: Decimal = Field(ge=0)
+    # Obrigatória quando sai menos que o pendente
+    justificativa: str | None = None
+    # True: o que não saiu agora não será mais expedido (saldo cancelado)
+    cancelar_restante: bool = False
 
 
 class ExpedicaoIn(BaseModel):
@@ -104,6 +110,21 @@ def _carregar(conn: Connection, usuario: dict, sid: int, bloquear: bool = False)
     if s is None or not pode_ver_filial(usuario, s["filial_id"]):
         raise HTTPException(404, "Requisição não encontrada")
     return s
+
+
+def _justificativa(texto: str | None, contexto: str) -> str:
+    texto = " ".join((texto or "").split())
+    if len(texto) < 3:
+        raise HTTPException(400, f"Informe a justificativa {contexto}")
+    return texto
+
+
+def _ajuste(conn: Connection, item_id: int, tipo: str, anterior, nova, justificativa: str, usuario_id: int) -> None:
+    conn.execute(
+        """INSERT INTO ajustes_item (item_id, tipo, quantidade_anterior, quantidade_nova, justificativa, usuario_id)
+           VALUES (%s, %s, %s, %s, %s, %s)""",
+        (item_id, tipo, anterior, nova, justificativa, usuario_id),
+    )
 
 
 def _posicao(conn: Connection, sid: int) -> list[dict]:
@@ -167,7 +188,7 @@ def _acoes(s: dict, itens: list[dict], usuario: dict) -> list[str]:
             and expedida == 0 and (dono or gestor)):
         acoes.append("cancelar")
     etapa = STATUS_APROVACAO.get(s["status"])
-    if etapa and not dono and tem_perfil(usuario, f"aprovador_{etapa}"):
+    if etapa and (tem_perfil(usuario, "admin") or (not dono and tem_perfil(usuario, f"aprovador_{etapa}"))):
         acoes.append("aprovar")
     if s["status"] in STATUS_ATENDIMENTO and tem_perfil(usuario, "deposito"):
         if any(i["qtd_pendente_expedicao"] > 0 for i in itens):
@@ -213,6 +234,15 @@ def _detalhe(conn: Connection, usuario: dict, sid: int) -> dict:
            WHERE a.entidade = 'solicitacoes' AND a.entidade_id = %s ORDER BY a.id""",
         (sid,),
     ).fetchall()
+    ajustes = conn.execute(
+        """SELECT a.item_id, a.tipo, a.quantidade_anterior, a.quantidade_nova, a.justificativa, a.criado_em,
+                  u.nome AS usuario_nome
+           FROM ajustes_item a JOIN itens_solicitacao i ON i.id = a.item_id JOIN usuarios u ON u.id = a.usuario_id
+           WHERE i.solicitacao_id = %s ORDER BY a.id""",
+        (sid,),
+    ).fetchall()
+    for item in itens:
+        item["ajustes"] = [a for a in ajustes if a["item_id"] == item["item_id"]]
     s["acoes"] = _acoes(s, itens, usuario)
     s["valor_solicitado"] = sum(i["quantidade_solicitada"] * i["custo_referencia"] for i in itens)
     s["valor_em_loja"] = sum(i["valor_em_loja"] for i in itens)
@@ -266,8 +296,9 @@ def _exigir(acao: str, s: dict, conn: Connection, usuario: dict) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 FILAS = {
-    "comercial": "s.status = 'aguardando_aprovacao_comercial' AND s.requisitante_id <> %(eu)s",
-    "logistica": "s.status = 'aguardando_aprovacao_logistica' AND s.requisitante_id <> %(eu)s",
+    # O administrador também aprova (inclusive as próprias requisições)
+    "comercial": "s.status = 'aguardando_aprovacao_comercial' AND (s.requisitante_id <> %(eu)s OR %(admin)s)",
+    "logistica": "s.status = 'aguardando_aprovacao_logistica' AND (s.requisitante_id <> %(eu)s OR %(admin)s)",
     "expedicao": """s.status IN ('aguardando_expedicao', 'em_exposicao', 'devolucao_parcial') AND EXISTS
                     (SELECT 1 FROM vw_posicao_item v WHERE v.solicitacao_id = s.id AND v.qtd_pendente_expedicao > 0)""",
     "devolucao": """s.status IN ('em_exposicao', 'devolucao_parcial') AND EXISTS
@@ -278,7 +309,7 @@ FILAS = {
 
 def _filtro_base(usuario: dict) -> tuple[list[str], dict]:
     filtros = ["(s.status <> 'rascunho' OR s.requisitante_id = %(eu)s)"]
-    params = {"eu": usuario["id"]}
+    params = {"eu": usuario["id"], "admin": tem_perfil(usuario, "admin")}
     permitidas = filiais_permitidas(usuario)
     if permitidas is not None:
         filtros.append("s.filial_id = ANY(%(filiais)s)")
@@ -339,8 +370,8 @@ def resumo(usuario: dict = Depends(usuario_atual), conn: Connection = Depends(ge
     """Contagem das filas que o usuário atende, para a tela inicial."""
     filtros, params = _filtro_base(usuario)
     filas = {"rascunhos": tem_perfil(usuario, *PERFIS_REQUISITANTE),
-             "comercial": tem_perfil(usuario, "aprovador_comercial"),
-             "logistica": tem_perfil(usuario, "aprovador_logistica"),
+             "comercial": tem_perfil(usuario, "aprovador_comercial", "admin"),
+             "logistica": tem_perfil(usuario, "aprovador_logistica", "admin"),
              "expedicao": tem_perfil(usuario, "deposito"),
              "devolucao": tem_perfil(usuario, "deposito", "gestor")}
     resultado = {}
@@ -466,19 +497,25 @@ def decidir(sid: int, dados: DecisaoIn, usuario: dict = Depends(usuario_atual),
     itens = _exigir("aprovar", s, conn, usuario)
     etapa = STATUS_APROVACAO[s["status"]]
 
+    justificativas = {}
     if dados.decisao == "reprovada":
-        if dados.motivo_id is None and not (dados.observacao or "").strip():
-            raise HTTPException(400, "Informe o motivo da reprovação")
-        _motivo(conn, dados.motivo_id, "reprovacao", dados.observacao, obrigatorio=False)
+        _motivo(conn, dados.motivo_id, "reprovacao", dados.observacao, obrigatorio=True)
+        dados.observacao = _justificativa(dados.observacao, "da reprovação")
         novo = "reprovada"
     else:
         por_id = {i["item_id"]: i for i in itens}
         for item_id, qtd in dados.quantidades.items():
             if item_id not in por_id:
                 raise HTTPException(400, f"Item {item_id} não pertence à requisição")
-            if qtd < 0 or qtd > por_id[item_id]["qtd_aprovada"]:
+            anterior = por_id[item_id]["qtd_aprovada"]
+            if qtd < 0 or qtd > anterior:
                 raise HTTPException(400, "A quantidade aprovada não pode ser negativa nem maior que a anterior")
+            if qtd == anterior:
+                continue
+            texto = _justificativa(dados.justificativas.get(item_id), f"da alteração do item {por_id[item_id]['sku']}")
+            justificativas[str(item_id)] = texto
             conn.execute("UPDATE itens_solicitacao SET quantidade_aprovada = %s WHERE id = %s", (qtd, item_id))
+            _ajuste(conn, item_id, f"aprovacao_{etapa}", anterior, qtd, texto, usuario["id"])
         total = sum(dados.quantidades.get(i["item_id"], i["qtd_aprovada"]) for i in itens)
         if total == 0:
             raise HTTPException(400, "Nenhuma quantidade aprovada; use Reprovar")
@@ -496,7 +533,7 @@ def decidir(sid: int, dados: DecisaoIn, usuario: dict = Depends(usuario_atual),
     auditar(conn, usuario["id"], "solicitacoes", sid, f"{dados.decisao}_{etapa}",
             {"status": s["status"]},
             {"status": novo, "quantidades": {str(k): str(v) for k, v in dados.quantidades.items()} or None,
-             "observacao": dados.observacao})
+             "justificativas": justificativas or None, "observacao": dados.observacao})
     return _detalhe(conn, usuario, sid)
 
 
@@ -505,8 +542,9 @@ def decidir(sid: int, dados: DecisaoIn, usuario: dict = Depends(usuario_atual),
 # ---------------------------------------------------------------------------
 
 def _ja_processado(conn: Connection, chave: str) -> bool:
-    return conn.execute("SELECT 1 FROM movimentacoes WHERE chave_idempotencia = %s",
-                        (f"{chave}:0",)).fetchone() is not None
+    prefixo = f"{chave}:"
+    return conn.execute("SELECT 1 FROM movimentacoes WHERE left(chave_idempotencia, %s) = %s LIMIT 1",
+                        (len(prefixo), prefixo)).fetchone() is not None
 
 
 @router.post("/solicitacoes/{sid}/expedir")
@@ -516,15 +554,37 @@ def expedir(sid: int, dados: ExpedicaoIn, usuario: dict = Depends(usuario_atual)
     if _ja_processado(conn, dados.chave):  # duplo clique / reenvio
         return _detalhe(conn, usuario, sid)
     itens = _exigir("expedir", s, conn, usuario)
-    ids = {i["item_id"] for i in itens}
+    por_id = {i["item_id"]: i for i in itens}
+    if len({l.item_id for l in dados.itens}) != len(dados.itens):
+        raise HTTPException(400, "Item repetido na expedição")
+    feito = False
     for n, linha in enumerate(dados.itens):
-        if linha.item_id not in ids:
+        item = por_id.get(linha.item_id)
+        if item is None:
             raise HTTPException(400, f"Item {linha.item_id} não pertence à requisição")
-        conn.execute(
-            """INSERT INTO movimentacoes (item_id, tipo, quantidade, observacao, usuario_id, chave_idempotencia)
-               VALUES (%s, 'expedicao', %s, %s, %s, %s)""",
-            (linha.item_id, linha.quantidade, dados.observacao, usuario["id"], f"{dados.chave}:{n}"),
-        )
+        pendente = item["qtd_pendente_expedicao"]
+        if linha.quantidade > pendente:
+            raise HTTPException(400, f"{item['sku']}: expedição maior que o saldo pendente ({pendente})")
+        if linha.quantidade == 0 and not linha.cancelar_restante:
+            continue
+        feito = True
+        justificativa = None
+        if linha.quantidade < pendente:
+            justificativa = _justificativa(linha.justificativa, f"do item {item['sku']} (saindo menos que o aprovado)")
+        if linha.quantidade > 0:
+            conn.execute(
+                """INSERT INTO movimentacoes (item_id, tipo, quantidade, observacao, usuario_id, chave_idempotencia)
+                   VALUES (%s, 'expedicao', %s, %s, %s, %s)""",
+                (linha.item_id, linha.quantidade, justificativa or dados.observacao, usuario["id"], f"{dados.chave}:{n}"),
+            )
+        if justificativa and linha.cancelar_restante:
+            nova = item["qtd_expedida"] + linha.quantidade
+            conn.execute("UPDATE itens_solicitacao SET quantidade_aprovada = %s WHERE id = %s", (nova, linha.item_id))
+            _ajuste(conn, linha.item_id, "saldo_cancelado", item["qtd_aprovada"], nova, justificativa, usuario["id"])
+        elif justificativa:
+            _ajuste(conn, linha.item_id, "expedicao_parcial", pendente, linha.quantidade, justificativa, usuario["id"])
+    if not feito:
+        raise HTTPException(400, "Informe ao menos uma quantidade a expedir")
     _status(conn, sid, usuario)
     return _detalhe(conn, usuario, sid)
 
@@ -564,6 +624,8 @@ def cancelar_pendente(sid: int, item_id: int, dados: CancelarPendenteIn, usuario
         raise HTTPException(400, "Item sem saldo pendente de expedição")
     conn.execute("UPDATE itens_solicitacao SET quantidade_aprovada = %s WHERE id = %s",
                  (item["qtd_expedida"], item_id))
+    _ajuste(conn, item_id, "saldo_cancelado", item["qtd_aprovada"], item["qtd_expedida"],
+            _justificativa(dados.observacao, "do cancelamento do saldo"), usuario["id"])
     auditar(conn, usuario["id"], "solicitacoes", sid, "cancelar_pendente",
             {"item_id": item_id, "quantidade_aprovada": item["qtd_aprovada"]},
             {"item_id": item_id, "sku": item["sku"], "quantidade_aprovada": item["qtd_expedida"],

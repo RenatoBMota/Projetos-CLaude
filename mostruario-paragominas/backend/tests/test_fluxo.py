@@ -59,20 +59,29 @@ def test_fluxo_completo(cenario):
 
     i1, i2 = s["itens"][0]["item_id"], s["itens"][1]["item_id"]
     # logística reduz o item 2
+    # reduzir sem justificativa do item é recusado
+    r = _acao(k, "log", f"/api/solicitacoes/{s['id']}/decisao", {"decisao": "aprovada", "quantidades": {str(i2): 2}})
+    assert r.status_code == 400 and "justificativa" in r.json()["detail"]
     s = _acao(k, "log", f"/api/solicitacoes/{s['id']}/decisao",
-              {"decisao": "aprovada", "quantidades": {str(i2): 2}}).json()
+              {"decisao": "aprovada", "quantidades": {str(i2): 2}, "justificativas": {str(i2): "Pouca área no painel"}}).json()
     assert s["status"] == "aguardando_expedicao"
+    assert s["itens"][1]["ajustes"][0]["justificativa"] == "Pouca área no painel"
+    assert s["itens"][1]["ajustes"][0]["tipo"] == "aprovacao_logistica"
     assert [float(i["qtd_aprovada"]) for i in s["itens"]] == [10, 2]
     assert "expedir" not in s["acoes"]  # requisitante não expede
 
     chave = str(uuid.uuid4())
-    corpo = {"chave": chave, "itens": [{"item_id": i1, "quantidade": 6}, {"item_id": i2, "quantidade": 2}]}
+    sem_just = {"chave": str(uuid.uuid4()), "itens": [{"item_id": i1, "quantidade": 6}]}
+    assert _acao(k, "dep", f"/api/solicitacoes/{s['id']}/expedir", sem_just).status_code == 400
+    corpo = {"chave": chave, "itens": [{"item_id": i1, "quantidade": 6, "justificativa": "Restante segue no próximo carregamento"},
+                                       {"item_id": i2, "quantidade": 2}]}
     s = _acao(k, "dep", f"/api/solicitacoes/{s['id']}/expedir", corpo).json()
     assert s["status"] == "em_exposicao"
     # reenvio com a mesma chave não duplica
     s = _acao(k, "dep", f"/api/solicitacoes/{s['id']}/expedir", corpo).json()
     assert float(s["itens"][0]["qtd_expedida"]) == 6
     assert s["itens"][0]["status_item"] == "expedido_parcialmente"
+    assert s["itens"][0]["ajustes"][-1]["tipo"] == "expedicao_parcial"
 
     # depósito encerra o saldo que não vai sair
     r = _acao(k, "dep", f"/api/solicitacoes/{s['id']}/itens/{i1}/cancelar-pendente", {"observacao": "Sem estoque"})
@@ -123,8 +132,9 @@ def test_reprovacao_exige_motivo(cenario):
     s = _nova(k)
     url = f"/api/solicitacoes/{s['id']}/decisao"
     assert _acao(k, "com", url, {"decisao": "reprovada"}).status_code == 400
-    s = _acao(k, "com", url, {"decisao": "reprovada",
-                              "motivo_id": k["motivos"][("reprovacao", "Quantidade excessiva")]}).json()
+    sem_texto = {"decisao": "reprovada", "motivo_id": k["motivos"][("reprovacao", "Quantidade excessiva")]}
+    assert _acao(k, "com", url, sem_texto).status_code == 400
+    s = _acao(k, "com", url, {**sem_texto, "observacao": "Loja já tem esse modelo"}).json()
     assert s["status"] == "reprovada" and s["aprovacoes"][0]["motivo_descricao"] == "Quantidade excessiva"
     corpo = {"chave": str(uuid.uuid4()), "itens": [{"item_id": s["itens"][0]["item_id"], "quantidade": 1}]}
     assert _acao(k, "dep", f"/api/solicitacoes/{s['id']}/expedir", corpo).status_code == 403
@@ -152,7 +162,8 @@ def test_nao_cancela_depois_de_expedir(cenario):
     k = cenario
     s = _aprovar_tudo(k, _nova(k))
     _acao(k, "dep", f"/api/solicitacoes/{s['id']}/expedir",
-          {"chave": str(uuid.uuid4()), "itens": [{"item_id": s["itens"][0]["item_id"], "quantidade": 1}]})
+          {"chave": str(uuid.uuid4()), "itens": [{"item_id": s["itens"][0]["item_id"], "quantidade": 1,
+                                                 "justificativa": "Envio parcial"}]})
     r = _acao(k, "ges", f"/api/solicitacoes/{s['id']}/cancelar",
               {"motivo_id": k["motivos"][("cancelamento", "Desistência da loja")]})
     assert r.status_code == 403
@@ -209,10 +220,42 @@ def test_item_cortado_nao_impede_encerramento(cenario):
     _acao(k, "com", f"/api/solicitacoes/{s['id']}/decisao", {"decisao": "aprovada"})
     i1, i2 = s["itens"][0]["item_id"], s["itens"][1]["item_id"]
     s = _acao(k, "log", f"/api/solicitacoes/{s['id']}/decisao",
-              {"decisao": "aprovada", "quantidades": {str(i2): 0}}).json()
+              {"decisao": "aprovada", "quantidades": {str(i2): 0}, "justificativas": {str(i2): "Fora de linha"}}).json()
     assert s["itens"][1]["status_item"] == "sem_atendimento"
     _acao(k, "dep", f"/api/solicitacoes/{s['id']}/expedir",
           {"chave": str(uuid.uuid4()), "itens": [{"item_id": i1, "quantidade": 10}]})
     s = _acao(k, "dep", f"/api/solicitacoes/{s['id']}/devolver",
               {"chave": str(uuid.uuid4()), "lancamentos": [{"item_id": i1, "destino": "estoque", "quantidade": 10}]}).json()
     assert s["status"] == "encerrada"
+
+
+def test_admin_aprova_a_propria_requisicao(cenario):
+    k = cenario
+    eu = k["c"].get("/api/auth/eu", headers=k["admin"]).json()
+    k["c"].put(f"/api/usuarios/{eu['id']}", headers=k["admin"], json={
+        "nome": eu["nome"], "email": eu["email"], "perfis": ["admin", "requisitante"], "ativo": True})
+    s = k["c"].post("/api/solicitacoes", headers=k["admin"], json={
+        "filial_id": k["pgm"]["id"], "enviar": True, "itens": [{"produto_id": k["p1"]["id"], "quantidade": 3}]}).json()
+    assert "aprovar" in s["acoes"]
+    assert k["c"].get("/api/solicitacoes/resumo", headers=k["admin"]).json()["filas"]["comercial"] == 1
+    s = _acao(k, "admin", f"/api/solicitacoes/{s['id']}/decisao", {"decisao": "aprovada"}).json()
+    s = _acao(k, "admin", f"/api/solicitacoes/{s['id']}/decisao", {"decisao": "aprovada"}).json()
+    assert s["status"] == "aguardando_expedicao"
+
+
+def test_expedicao_cancelando_o_restante(cenario):
+    k = cenario
+    s = _aprovar_tudo(k, _nova(k))
+    i1, i2 = s["itens"][0]["item_id"], s["itens"][1]["item_id"]
+    url = f"/api/solicitacoes/{s['id']}/expedir"
+    # nada informado
+    assert _acao(k, "dep", url, {"chave": str(uuid.uuid4()), "itens": [{"item_id": i1, "quantidade": 0}]}).status_code == 400
+    s = _acao(k, "dep", url, {"chave": str(uuid.uuid4()), "itens": [
+        {"item_id": i1, "quantidade": 7, "justificativa": "Só havia 7 no depósito", "cancelar_restante": True},
+        {"item_id": i2, "quantidade": 0, "justificativa": "Produto em falta", "cancelar_restante": True},
+    ]}).json()
+    a, b = s["itens"]
+    assert float(a["qtd_aprovada"]) == 7 and float(a["qtd_pendente_expedicao"]) == 0
+    assert a["ajustes"][-1]["tipo"] == "saldo_cancelado" and a["ajustes"][-1]["justificativa"] == "Só havia 7 no depósito"
+    assert b["status_item"] == "sem_atendimento"
+    assert s["status"] == "em_exposicao" and "expedir" not in s["acoes"]

@@ -52,7 +52,7 @@ def test_todos_os_relatorios_e_exportacoes(movimentado):
         c = k["c"].get(f"/api/relatorios/{nome}?formato=csv", headers=k["ges"])
         assert c.content.startswith("﻿".encode())
 
-    erp = k["c"].get("/api/relatorios/lancar_erp", headers=k["dep"]).json()["linhas"]
+    erp = k["c"].get("/api/relatorios/reintegrado_estoque", headers=k["dep"]).json()["linhas"]
     assert [(l["sku"], float(l["quantidade"])) for l in erp] == [("P1", 6)]
     motivos = k["c"].get("/api/relatorios/motivos", headers=k["ges"]).json()["linhas"]
     assert {(l["destino"], l["motivo"]) for l in motivos} == {("Descarte", "Riscada / manchada"),

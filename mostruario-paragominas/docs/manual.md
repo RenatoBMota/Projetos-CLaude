@@ -70,26 +70,35 @@ O nome do promotor aparece nas listas, no detalhe, no histórico e nos relatóri
 
 1. **Início › Aprovação comercial** (ou logística) mostra o que espera você.
 2. Abra a requisição e clique em **Aprovar** ou **Reprovar**.
-   - Ao aprovar, você pode **reduzir a quantidade** de um item. Use 0 para não atender o item.
-   - Ao reprovar, escolha o motivo.
+   - **Aprovar com quantidade menor**: altere a quantidade do item e informe a
+     **justificativa de cada item alterado** (0 = não atender o item).
+   - **Reprovar**: escolha o motivo e escreva a **justificativa** (vale para a requisição inteira).
 3. A logística só decide depois do comercial.
 
-Ninguém aprova a própria requisição.
+Ninguém aprova a própria requisição, **exceto o administrador**, que pode aprovar
+qualquer etapa, inclusive das requisições que ele mesmo criou.
+
+As justificativas aparecem embaixo de cada item na requisição
+(ex.: "Aprovação logística: 10 → 6 — painel comporta só 6 peças").
 
 ---
 
 ## Depósito
 
 **Expedição** — **Início › A expedir**, abra a requisição › **Registrar expedição**.
-Informe o que saiu agora (pode ser parcial; o restante fica pendente).
-Se o restante não vai sair, use **Cancelar saldo pendente** e explique o motivo.
+Informe o que saiu agora. Se sair **menos que o aprovado**, o sistema pede a
+**justificativa do item** e pergunta se o restante **fica pendente** (sai depois)
+ou é **cancelado**. Também é possível cancelar o saldo depois, em
+**Cancelar saldo pendente** (com justificativa).
 
-**Devolução** — abra a requisição (**Início › Em loja**) › **Registrar devolução**.
-Para cada item, distribua a quantidade entre:
+**Devolução (por produto)** — abra a requisição (**Início › Em loja**) e clique em
+**Devolver** na linha do produto que voltou (ou em **Registrar devolução** e escolha
+o produto). Dá para devolver só um produto da requisição; os outros continuam na loja.
+Distribua a quantidade entre:
 
 | Destino | Quando usar |
 |---|---|
-| **Estoque** | A peça voltou e pode ser usada de novo (dar entrada no ERP) |
+| **Estoque** | A peça voltou e pode ser usada de novo (reintegrada ao estoque) |
 | **Descarte** | A peça voltou sem condição de uso — escolha o motivo |
 | **Perda** | A peça não voltou — escolha o motivo |
 
@@ -99,8 +108,8 @@ tem destino.
 **Anexos** — na requisição, em **Anexos**, envie fotos ou PDF (comprovante de
 coleta, foto da peça avariada). No celular, dá para tirar a foto na hora.
 
-**Lançar no ERP** — **Relatórios › Lançar no ERP** lista, por SKU, tudo o que
-voltou para estoque no período. Use para dar entrada no ERP.
+**Reintegrado ao estoque** — **Relatórios › Reintegrado ao estoque** lista, por SKU,
+tudo o que voltou para o estoque no período (base para o lançamento no ERP).
 
 ---
 
@@ -125,7 +134,7 @@ por período, filial e fornecedor.
 | Painel gerencial | Indicadores e gráficos: evolução mensal, destino das devoluções por filial, idade das amostras, rankings de filiais, produtos e requisitantes, requisições por situação |
 | Em exposição | Valor e quantidade nas lojas por filial, fornecedor, produto ou requisitante |
 | Descarte e perda | Por filial e por motivo |
-| Lançar no ERP | Devoluções para estoque, somadas por SKU |
+| Reintegrado ao estoque | Devoluções para estoque, somadas por SKU |
 | Movimentações | Todas as saídas e retornos do período |
 | Requisições | Cada requisição, com valores e dias até expedir |
 | Aprovações pendentes | O que está esperando aprovação e há quantos dias |

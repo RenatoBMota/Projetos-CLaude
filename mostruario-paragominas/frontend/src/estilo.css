@@ -344,7 +344,9 @@ h1 .selo { font-size: 13px; padding: 6px 10px; }
 /* Tabelas */
 .tabela-rolagem { overflow-x: auto; margin: 0 -18px; padding: 0 18px; }
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-th, td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--borda); vertical-align: middle; }
+/* Colunas do tamanho do conteúdo, sem quebrar linha (a tabela rola na horizontal se precisar) */
+th, td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--borda); vertical-align: middle; white-space: nowrap; }
+td.texto-longo { max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
 th {
   font-size: 12px; color: var(--sutil); font-weight: 600; background: var(--superficie-2);
   border-top: 1px solid var(--borda); white-space: nowrap;
@@ -353,7 +355,10 @@ td { color: var(--texto); }
 .num, td.num, th.num { text-align: right; }
 td.acoes { white-space: nowrap; text-align: right; }
 td.forte { font-weight: 700; }
-td.produto { min-width: 240px; }
+.ajustes { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; white-space: normal; min-width: 0; max-width: 340px; }
+.ajustes li { font-size: 12.5px; color: var(--texto-2); background: var(--aviso-fundo); border-left: 3px solid var(--aviso); border-radius: 0 6px 6px 0; padding: 4px 8px; }
+.opcoes-restante { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+input[type="radio"] { width: 16px; height: 16px; min-height: 0; padding: 0; box-shadow: none; accent-color: var(--primaria); }
 tr.inativo td { color: var(--sutil); }
 tbody tr:last-child td { border-bottom: none; }
 table.clicavel tbody tr { cursor: pointer; transition: background 0.1s; }

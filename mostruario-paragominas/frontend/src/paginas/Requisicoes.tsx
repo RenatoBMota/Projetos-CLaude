@@ -23,8 +23,8 @@ export interface LinhaRequisicao {
 
 export const FILAS: Record<string, { rotulo: string; perfis: string[] }> = {
   rascunhos: { rotulo: "Meus rascunhos", perfis: ["requisitante", "requisitante_geral"] },
-  comercial: { rotulo: "Aprovação comercial", perfis: ["aprovador_comercial"] },
-  logistica: { rotulo: "Aprovação logística", perfis: ["aprovador_logistica"] },
+  comercial: { rotulo: "Aprovação comercial", perfis: ["aprovador_comercial", "admin"] },
+  logistica: { rotulo: "Aprovação logística", perfis: ["aprovador_logistica", "admin"] },
   expedicao: { rotulo: "A expedir", perfis: ["deposito"] },
   devolucao: { rotulo: "Em loja", perfis: ["deposito", "gestor"] },
 };

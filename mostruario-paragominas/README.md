@@ -25,7 +25,7 @@ ou **Perda**). O estoque do depósito continua no ERP.
 - **Consultas**: amostras em exposição por loja; filas de trabalho na tela inicial.
 - **Relatórios**: indicadores (valor em exposição, taxas de aprovação, tempos
   médios, % reaproveitamento/descarte/perda) e relatórios por filial,
-  fornecedor, produto, requisitante e motivo; lista para lançar no ERP.
+  fornecedor, produto, requisitante e motivo; relatório "Reintegrado ao estoque".
   Exportação para Excel e CSV; impressão/PDF.
 - **Aplicativo (PWA)**: instalável no celular e no computador, modo escuro,
   menu inferior no celular, aviso de nova versão, funciona com conexão instável.

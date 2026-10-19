@@ -44,7 +44,24 @@ interface Item {
   valor_em_loja: number;
   dias_em_exposicao: number | null;
   status_item: string;
+  ajustes: Ajuste[];
 }
+
+interface Ajuste {
+  tipo: string;
+  quantidade_anterior: number;
+  quantidade_nova: number;
+  justificativa: string;
+  usuario_nome: string;
+  criado_em: string;
+}
+
+const TIPOS_AJUSTE: Record<string, string> = {
+  aprovacao_comercial: "Aprovação comercial",
+  aprovacao_logistica: "Aprovação logística",
+  expedicao_parcial: "Expedição parcial",
+  saldo_cancelado: "Saldo cancelado",
+};
 
 interface Detalhe {
   id: number;
@@ -92,7 +109,15 @@ interface Detalhe {
   historico: { acao: string; usuario_nome: string; ocorrido_em: string; dados_depois: Record<string, unknown> | null }[];
 }
 
-type Painel = "aprovar" | "reprovar" | "expedir" | "devolver" | "cancelar" | "cancelar_pendente" | { estornar: number };
+type Painel =
+  | "aprovar"
+  | "reprovar"
+  | "expedir"
+  | "devolver"
+  | "cancelar"
+  | "cancelar_pendente"
+  | { estornar: number }
+  | { devolverItem: number };
 
 const HISTORICO: Record<string, { texto: string; icone: LucideIcon; tom?: string }> = {
   criar: { texto: "Criou a requisição", icone: FileEdit },
@@ -336,7 +361,14 @@ export function DetalheRequisicao() {
       toast({ tipo: "erro", texto: (e as Error).message });
     }
   };
-  const abrir = (p: Painel | "editar") => (p === "editar" ? navegar(`/requisicoes/${s.id}/editar`) : setPainel(p));
+  const emLoja = s.itens.filter((i) => Number(i.qtd_em_loja) > 0);
+  const abrir = (p: Painel | "editar") => {
+    if (p === "editar") return navegar(`/requisicoes/${s.id}/editar`);
+    // Devolução é por produto: com um só produto na loja, abre direto
+    if (p === "devolver" && emLoja.length === 1) return setPainel({ devolverItem: emLoja[0].item_id });
+    setPainel(p);
+  };
+  const devolverItem = pode("devolver") ? (id: number) => setPainel({ devolverItem: id }) : undefined;
   const fechar = () => setPainel(null);
 
   return (
@@ -381,7 +413,7 @@ export function DetalheRequisicao() {
       </section>
 
       <h2 className="secao">Itens</h2>
-      <Itens s={s} />
+      <Itens s={s} aoDevolver={devolverItem} />
 
       {s.movimentacoes.length > 0 && (
         <>
@@ -417,7 +449,9 @@ export function DetalheRequisicao() {
                       <td className="num">{qtd(m.quantidade)}</td>
                       <td className="num">{moeda(Number(m.quantidade) * Number(m.custo_unitario))}</td>
                       <td>{m.usuario_nome}</td>
-                      <td>{[m.motivo_descricao, m.observacao].filter(Boolean).join(" — ") || "—"}</td>
+                      <td className="texto-longo" title={[m.motivo_descricao, m.observacao].filter(Boolean).join(" — ")}>
+                        {[m.motivo_descricao, m.observacao].filter(Boolean).join(" — ") || "—"}
+                      </td>
                       <td className="acoes">
                         {pode("estornar") && !m.estornada && m.tipo !== "estorno" && (
                           <button className="link" onClick={() => setPainel({ estornar: m.id })}>
@@ -480,7 +514,15 @@ export function DetalheRequisicao() {
       {painel === "aprovar" && <PainelAprovar s={s} aoFechar={fechar} aoConcluir={(n) => concluir(n, "Aprovação registrada.")} />}
       {painel === "reprovar" && <PainelReprovar s={s} aoFechar={fechar} aoConcluir={(n) => concluir(n, "Requisição reprovada.")} />}
       {painel === "expedir" && <PainelExpedir s={s} aoFechar={fechar} aoConcluir={(n) => concluir(n, "Expedição registrada.")} />}
-      {painel === "devolver" && <PainelDevolver s={s} aoFechar={fechar} aoConcluir={(n) => concluir(n, "Devolução registrada.")} />}
+      {painel === "devolver" && <EscolherDevolucao itens={emLoja} aoFechar={fechar} aoEscolher={(id) => setPainel({ devolverItem: id })} />}
+      {typeof painel === "object" && painel && "devolverItem" in painel && (
+        <PainelDevolver
+          s={s}
+          itemId={painel.devolverItem}
+          aoFechar={fechar}
+          aoConcluir={(n) => concluir(n, "Devolução registrada.")}
+        />
+      )}
       {painel === "cancelar" && (
         <PainelCancelar
           s={s}
@@ -491,7 +533,7 @@ export function DetalheRequisicao() {
       {painel === "cancelar_pendente" && (
         <PainelCancelarPendente s={s} aoFechar={fechar} aoConcluir={(n) => concluir(n, "Saldo pendente cancelado.")} />
       )}
-      {typeof painel === "object" && painel && (
+      {typeof painel === "object" && painel && "estornar" in painel && (
         <PainelEstornar s={s} movimentacaoId={painel.estornar} aoFechar={fechar} aoConcluir={(n) => concluir(n, "Movimentação estornada.")} />
       )}
     </>
@@ -544,8 +586,24 @@ const Legenda = () => (
   </div>
 );
 
-function Itens({ s }: { s: Detalhe }) {
+function Ajustes({ i }: { i: Item }) {
+  if (!i.ajustes?.length) return null;
+  return (
+    <ul className="ajustes">
+      {i.ajustes.map((a, n) => (
+        <li key={n} title={`${a.usuario_nome} · ${dataHora(a.criado_em)}`}>
+          <b>{TIPOS_AJUSTE[a.tipo] ?? a.tipo}:</b> {qtd(a.quantidade_anterior)} → {qtd(a.quantidade_nova)} — {a.justificativa}
+          <span className="sutil"> ({a.usuario_nome})</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Itens({ s, aoDevolver }: { s: Detalhe; aoDevolver?: (itemId: number) => void }) {
   const comMovimento = s.itens.some((i) => Number(i.qtd_expedida) > 0);
+  const podeDevolver = (i: Item) => !!aoDevolver && Number(i.qtd_em_loja) > 0;
+  const colunaAcao = s.itens.some(podeDevolver);
   return (
     <>
       <section className="cartao so-desktop" style={{ padding: "0 18px 14px" }}>
@@ -562,6 +620,7 @@ function Itens({ s }: { s: Detalhe }) {
                 <th className="num">Descarte</th>
                 <th className="num">Perda</th>
                 <th>Situação</th>
+                {colunaAcao && <th />}
               </tr>
             </thead>
             <tbody>
@@ -577,6 +636,7 @@ function Itens({ s }: { s: Detalhe }) {
                         <Progresso i={i} />
                       </div>
                     )}
+                    <Ajustes i={i} />
                   </td>
                   <td className="num">{qtd(i.quantidade_solicitada)}</td>
                   <td className="num">{qtd(i.qtd_aprovada)}</td>
@@ -593,6 +653,15 @@ function Itens({ s }: { s: Detalhe }) {
                       </small>
                     )}
                   </td>
+                  {colunaAcao && (
+                    <td className="acoes">
+                      {podeDevolver(i) && (
+                        <button className="pequeno" onClick={() => aoDevolver!(i.item_id)}>
+                          <Undo2 size={14} /> Devolver
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -626,6 +695,12 @@ function Itens({ s }: { s: Detalhe }) {
               <div style={{ marginTop: 10 }}>
                 <Progresso i={i} />
               </div>
+            )}
+            <Ajustes i={i} />
+            {podeDevolver(i) && (
+              <button style={{ marginTop: 10, width: "100%" }} onClick={() => aoDevolver!(i.item_id)}>
+                <Undo2 size={16} /> Devolver este produto
+              </button>
             )}
           </div>
         ))}
@@ -845,28 +920,43 @@ function PainelAprovar({ s, aoFechar, aoConcluir }: PropsPainel) {
   const [quantidades, setQuantidades] = useState<Record<number, string>>(
     Object.fromEntries(s.itens.map((i) => [i.item_id, String(Number(i.qtd_aprovada))])),
   );
+  const [justificativas, setJustificativas] = useState<Record<number, string>>({});
   const [observacao, setObservacao] = useState("");
   const { erro, setErro, enviando, executar } = useEnvio(aoConcluir);
   const total = s.itens.reduce((t, i) => t + num(quantidades[i.item_id] ?? "0") * Number(i.custo_referencia), 0);
+  const alterado = (i: Item) => num(quantidades[i.item_id] ?? "0") !== Number(i.qtd_aprovada);
 
   const salvar = (e: FormEvent) => {
     e.preventDefault();
     const alteradas: Record<number, number> = {};
+    const textos: Record<number, string> = {};
     for (const i of s.itens) {
       const q = num(quantidades[i.item_id]);
       if (q < 0 || q > Number(i.qtd_aprovada)) return setErro(`${i.sku}: quantidade deve estar entre 0 e ${qtd(i.qtd_aprovada)}`);
-      if (q !== Number(i.qtd_aprovada)) alteradas[i.item_id] = q;
+      if (q !== Number(i.qtd_aprovada)) {
+        const j = (justificativas[i.item_id] ?? "").trim();
+        if (j.length < 3) return setErro(`${i.sku}: informe a justificativa da alteração`);
+        alteradas[i.item_id] = q;
+        textos[i.item_id] = j;
+      }
     }
-    executar(`/api/solicitacoes/${s.id}/decisao`, { decisao: "aprovada", quantidades: alteradas, observacao: observacao || null });
+    executar(`/api/solicitacoes/${s.id}/decisao`, {
+      decisao: "aprovada",
+      quantidades: alteradas,
+      justificativas: textos,
+      observacao: observacao || null,
+    });
   };
 
   return (
-    <Modal titulo={`Aprovação ${etapa}`} aoFechar={aoFechar}>
+    <Modal titulo={`Aprovação ${etapa}`} aoFechar={aoFechar} largo>
       <form className="formulario" onSubmit={salvar}>
-        <p className="sutil">Ajuste se for aprovar menos que o solicitado. Use 0 para não atender um item.</p>
+        <p className="sutil">
+          Para aprovar menos que o solicitado, altere a quantidade e informe a justificativa do item. Use 0 para não atender.
+        </p>
         <div className="itens-requisicao" style={{ marginTop: 0 }}>
           {s.itens.map((i) => (
-            <div key={i.item_id} className="item-req">
+            <div key={i.item_id} className="item-req" style={{ flexWrap: "wrap" }}>
               <div className="desc">
                 <strong>{i.descricao}</strong>
                 <small>
@@ -880,6 +970,17 @@ function PainelAprovar({ s, aoFechar, aoConcluir }: PropsPainel) {
                 value={quantidades[i.item_id]}
                 onChange={(e) => setQuantidades({ ...quantidades, [i.item_id]: e.target.value })}
               />
+              {alterado(i) && (
+                <label style={{ flexBasis: "100%" }}>
+                  Justificativa da alteração ({qtd(i.qtd_aprovada)} → {qtd(num(quantidades[i.item_id] ?? "0"))}) *
+                  <input
+                    value={justificativas[i.item_id] ?? ""}
+                    onChange={(e) => setJustificativas({ ...justificativas, [i.item_id]: e.target.value })}
+                    placeholder="Ex.: painel comporta só 4 peças"
+                    autoFocus
+                  />
+                </label>
+              )}
             </div>
           ))}
         </div>
@@ -887,7 +988,7 @@ function PainelAprovar({ s, aoFechar, aoConcluir }: PropsPainel) {
           Total aprovado: <b>{moeda(total)}</b>
         </p>
         <label>
-          Observação (opcional)
+          Observação geral (opcional)
           <input value={observacao} onChange={(e) => setObservacao(e.target.value)} />
         </label>
         {erro && <div className="erro">{erro}</div>}
@@ -904,15 +1005,16 @@ function PainelReprovar({ s, aoFechar, aoConcluir }: PropsPainel) {
   const salvar = (e: FormEvent) => {
     e.preventDefault();
     if (!motivo) return setErro("Informe o motivo da reprovação");
-    executar(`/api/solicitacoes/${s.id}/decisao`, { decisao: "reprovada", motivo_id: Number(motivo), observacao: observacao || null });
+    if (observacao.trim().length < 3) return setErro("Informe a justificativa da reprovação");
+    executar(`/api/solicitacoes/${s.id}/decisao`, { decisao: "reprovada", motivo_id: Number(motivo), observacao });
   };
   return (
     <Modal titulo="Reprovar requisição" aoFechar={aoFechar}>
       <form className="formulario" onSubmit={salvar}>
         <SeletorMotivo tipo="reprovacao" valor={motivo} aoMudar={setMotivo} />
         <label>
-          Observação
-          <textarea rows={2} value={observacao} onChange={(e) => setObservacao(e.target.value)} />
+          Justificativa *
+          <textarea rows={3} value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="Explique por que a requisição foi reprovada" />
         </label>
         {erro && <div className="erro">{erro}</div>}
         <Rodape enviando={enviando} rotulo="Reprovar" icone={<ThumbsDown size={16} />} aoFechar={aoFechar} perigo />
@@ -921,52 +1023,89 @@ function PainelReprovar({ s, aoFechar, aoConcluir }: PropsPainel) {
   );
 }
 
+interface LinhaExpedicao {
+  quantidade: string;
+  justificativa: string;
+  cancelar: boolean;
+}
+
 function PainelExpedir({ s, aoFechar, aoConcluir }: PropsPainel) {
   const pendentes = s.itens.filter((i) => Number(i.qtd_pendente_expedicao) > 0);
   const [chave] = useState(novaChave);
-  const [quantidades, setQuantidades] = useState<Record<number, string>>(
-    Object.fromEntries(pendentes.map((i) => [i.item_id, String(Number(i.qtd_pendente_expedicao))])),
+  const [linhas, setLinhas] = useState<Record<number, LinhaExpedicao>>(
+    Object.fromEntries(pendentes.map((i) => [i.item_id, { quantidade: String(Number(i.qtd_pendente_expedicao)), justificativa: "", cancelar: false }])),
   );
   const [observacao, setObservacao] = useState("");
   const { erro, setErro, enviando, executar } = useEnvio(aoConcluir);
+  const mudar = (id: number, campo: Partial<LinhaExpedicao>) => setLinhas({ ...linhas, [id]: { ...linhas[id], ...campo } });
 
   const salvar = (e: FormEvent) => {
     e.preventDefault();
-    const itens = pendentes
-      .map((i) => ({ item_id: i.item_id, quantidade: num(quantidades[i.item_id] ?? "0"), max: Number(i.qtd_pendente_expedicao), sku: i.sku }))
-      .filter((i) => i.quantidade > 0);
+    const itens: unknown[] = [];
+    for (const i of pendentes) {
+      const l = linhas[i.item_id];
+      const q = num(l.quantidade);
+      const max = Number(i.qtd_pendente_expedicao);
+      if (q < 0 || q > max) return setErro(`${i.sku}: informe de 0 a ${qtd(max)}`);
+      if (q < max && l.justificativa.trim().length < 3) return setErro(`${i.sku}: informe a justificativa (sai menos que o aprovado)`);
+      if (q === 0 && !l.cancelar) continue;
+      itens.push({ item_id: i.item_id, quantidade: q, justificativa: q < max ? l.justificativa : null, cancelar_restante: q < max && l.cancelar });
+    }
     if (itens.length === 0) return setErro("Informe ao menos uma quantidade");
-    const excedido = itens.find((i) => i.quantidade > i.max);
-    if (excedido) return setErro(`${excedido.sku}: máximo de ${qtd(excedido.max)}`);
-    executar(`/api/solicitacoes/${s.id}/expedir`, {
-      chave,
-      observacao: observacao || null,
-      itens: itens.map(({ item_id, quantidade }) => ({ item_id, quantidade })),
-    });
+    executar(`/api/solicitacoes/${s.id}/expedir`, { chave, observacao: observacao || null, itens });
   };
 
   return (
-    <Modal titulo="Registrar expedição" aoFechar={aoFechar}>
+    <Modal titulo="Registrar expedição" aoFechar={aoFechar} largo>
       <form className="formulario" onSubmit={salvar}>
-        <p className="sutil">Informe o que está saindo agora. O que faltar continua pendente.</p>
+        <p className="sutil">
+          Informe o que está saindo agora. Se sair menos que o aprovado, justifique por item e diga se o restante fica pendente ou é
+          cancelado.
+        </p>
         <div className="itens-requisicao" style={{ marginTop: 0 }}>
-          {pendentes.map((i) => (
-            <div key={i.item_id} className="item-req">
-              <div className="desc">
-                <strong>{i.descricao}</strong>
-                <small>
-                  {i.sku} · pendente {qtd(i.qtd_pendente_expedicao)} {i.unidade}
-                </small>
+          {pendentes.map((i) => {
+            const l = linhas[i.item_id];
+            const menor = num(l.quantidade) < Number(i.qtd_pendente_expedicao);
+            return (
+              <div key={i.item_id} className="item-req" style={{ flexWrap: "wrap" }}>
+                <div className="desc">
+                  <strong>{i.descricao}</strong>
+                  <small>
+                    {i.sku} · aprovado pendente {qtd(i.qtd_pendente_expedicao)} {i.unidade}
+                  </small>
+                </div>
+                <input
+                  className="qtd"
+                  inputMode="decimal"
+                  aria-label={`Expedir agora de ${i.sku}`}
+                  value={l.quantidade}
+                  onChange={(e) => mudar(i.item_id, { quantidade: e.target.value })}
+                />
+                {menor && (
+                  <div style={{ flexBasis: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
+                    <label>
+                      Justificativa *
+                      <input
+                        value={l.justificativa}
+                        onChange={(e) => mudar(i.item_id, { justificativa: e.target.value })}
+                        placeholder="Ex.: só havia 6 peças no depósito"
+                      />
+                    </label>
+                    <div className="opcoes-restante">
+                      <label className="check">
+                        <input type="radio" checked={!l.cancelar} onChange={() => mudar(i.item_id, { cancelar: false })} />
+                        O restante fica pendente (sai depois)
+                      </label>
+                      <label className="check">
+                        <input type="radio" checked={l.cancelar} onChange={() => mudar(i.item_id, { cancelar: true })} />
+                        Cancelar o restante
+                      </label>
+                    </div>
+                  </div>
+                )}
               </div>
-              <input
-                className="qtd"
-                inputMode="decimal"
-                aria-label={`Expedir agora de ${i.sku}`}
-                value={quantidades[i.item_id]}
-                onChange={(e) => setQuantidades({ ...quantidades, [i.item_id]: e.target.value })}
-              />
-            </div>
-          ))}
+            );
+          })}
         </div>
         <label>
           Observação (transportador, nota, etc.)
@@ -979,127 +1118,123 @@ function PainelExpedir({ s, aoFechar, aoConcluir }: PropsPainel) {
   );
 }
 
-interface LinhaDevolucao {
-  estoque: string;
-  descarte: string;
-  motivoDescarte: string;
-  perda: string;
-  motivoPerda: string;
-  observacao: string;
+function EscolherDevolucao({ itens, aoFechar, aoEscolher }: { itens: Item[]; aoFechar: () => void; aoEscolher: (id: number) => void }) {
+  return (
+    <Modal titulo="Qual produto está sendo devolvido?" aoFechar={aoFechar}>
+      <div className="formulario">
+        <p className="sutil">A devolução é registrada por produto. Escolha o que voltou da loja.</p>
+        <div className="itens-requisicao" style={{ marginTop: 0 }}>
+          {itens.map((i) => (
+            <div key={i.item_id} className="item-req">
+              <div className="desc">
+                <strong>{i.descricao}</strong>
+                <small>
+                  {i.sku} · em loja {qtd(i.qtd_em_loja)} {i.unidade}
+                </small>
+              </div>
+              <button className="primario" onClick={() => aoEscolher(i.item_id)}>
+                <Undo2 size={16} /> Devolver
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Modal>
+  );
 }
 
-function PainelDevolver({ s, aoFechar, aoConcluir }: PropsPainel) {
-  const emLoja = s.itens.filter((i) => Number(i.qtd_em_loja) > 0);
+function PainelDevolver({ s, itemId, aoFechar, aoConcluir }: PropsPainel & { itemId: number }) {
+  const i = s.itens.find((x) => x.item_id === itemId)!;
   const [chave] = useState(novaChave);
   const motivos = useMotivos();
-  const [linhas, setLinhas] = useState<Record<number, LinhaDevolucao>>(
-    Object.fromEntries(
-      emLoja.map((i) => [i.item_id, { estoque: "", descarte: "", motivoDescarte: "", perda: "", motivoPerda: "", observacao: "" }]),
-    ),
-  );
+  const [estoque, setEstoque] = useState("");
+  const [descarte, setDescarte] = useState("");
+  const [motivoDescarte, setMotivoDescarte] = useState("");
+  const [perda, setPerda] = useState("");
+  const [motivoPerda, setMotivoPerda] = useState("");
+  const [observacao, setObservacao] = useState("");
   const { erro, setErro, enviando, executar } = useEnvio(aoConcluir);
-  const mudar = (id: number, campo: keyof LinhaDevolucao, valor: string) =>
-    setLinhas({ ...linhas, [id]: { ...linhas[id], [campo]: valor } });
+  const [qe, qd, qp] = [num(estoque), num(descarte), num(perda)];
+  const restante = Number(i.qtd_em_loja) - qe - qd - qp;
 
   const salvar = (e: FormEvent) => {
     e.preventDefault();
+    if (qe + qd + qp === 0) return setErro("Informe ao menos uma quantidade");
+    if (restante < 0) return setErro(`Total maior que o em loja (${qtd(i.qtd_em_loja)})`);
+    const obs = observacao.trim() || null;
     const lancamentos: unknown[] = [];
-    for (const i of emLoja) {
-      const l = linhas[i.item_id];
-      const [qe, qd, qp] = [num(l.estoque), num(l.descarte), num(l.perda)];
-      if (qe + qd + qp === 0) continue;
-      if (qe + qd + qp > Number(i.qtd_em_loja)) return setErro(`${i.sku}: total maior que o em loja (${qtd(i.qtd_em_loja)})`);
-      const obs = l.observacao.trim() || null;
-      for (const [destino, q, motivo] of [
-        ["estoque", qe, ""],
-        ["descarte", qd, l.motivoDescarte],
-        ["perda", qp, l.motivoPerda],
-      ] as const) {
-        if (q <= 0) continue;
-        if (destino !== "estoque") {
-          if (!motivo) return setErro(`${i.sku}: informe o motivo do ${destino}`);
-          const m = motivos(destino).find((x) => x.id === Number(motivo));
-          if (m?.exige_observacao && !obs) return setErro(`${i.sku}: o motivo "${m.descricao}" exige observação`);
-        }
-        lancamentos.push({ item_id: i.item_id, destino, quantidade: q, motivo_id: motivo ? Number(motivo) : null, observacao: obs });
+    for (const [destino, q, motivo] of [
+      ["estoque", qe, ""],
+      ["descarte", qd, motivoDescarte],
+      ["perda", qp, motivoPerda],
+    ] as const) {
+      if (q <= 0) continue;
+      if (destino !== "estoque") {
+        if (!motivo) return setErro(`Informe o motivo do ${destino}`);
+        const m = motivos(destino).find((x) => x.id === Number(motivo));
+        if (m?.exige_observacao && !obs) return setErro(`O motivo "${m.descricao}" exige observação`);
       }
+      lancamentos.push({ item_id: i.item_id, destino, quantidade: q, motivo_id: motivo ? Number(motivo) : null, observacao: obs });
     }
-    if (lancamentos.length === 0) return setErro("Informe ao menos uma quantidade");
     executar(`/api/solicitacoes/${s.id}/devolver`, { chave, lancamentos });
   };
 
   return (
-    <Modal titulo="Registrar devolução" aoFechar={aoFechar} largo>
+    <Modal titulo="Devolver produto" aoFechar={aoFechar}>
       <form className="formulario" onSubmit={salvar}>
+        <div className="item-req">
+          <div className="desc">
+            <strong>{i.descricao}</strong>
+            <small>
+              {i.sku} · em loja <b>{qtd(i.qtd_em_loja)}</b> {i.unidade}
+              {restante !== Number(i.qtd_em_loja) && (
+                <span style={{ color: restante < 0 ? "var(--erro)" : undefined }}> · continuará na loja: {qtd(restante)}</span>
+              )}
+            </small>
+          </div>
+        </div>
         <p className="sutil">
-          Distribua o que voltou: <b>Estoque</b> (pode ser usada de novo), <b>Descarte</b> (voltou sem condição) ou <b>Perda</b> (não
-          voltou). Pode ser parcial.
+          <b>Estoque</b>: voltou e pode ser usada de novo · <b>Descarte</b>: voltou sem condição · <b>Perda</b>: não voltou.
         </p>
-        {emLoja.map((i) => {
-          const l = linhas[i.item_id];
-          const restante = Number(i.qtd_em_loja) - num(l.estoque) - num(l.descarte) - num(l.perda);
-          return (
-            <fieldset key={i.item_id}>
-              <legend>
-                {i.sku} · {i.descricao}
-              </legend>
-              <div className="sutil" style={{ fontSize: 13 }}>
-                Em loja: <b>{qtd(i.qtd_em_loja)}</b> {i.unidade}
-                {restante !== Number(i.qtd_em_loja) && (
-                  <span style={{ color: restante < 0 ? "var(--erro)" : undefined }}> · continuará na loja: {qtd(restante)}</span>
-                )}
-              </div>
-              <div className="destinos">
-                <label>
-                  <span>
-                    <i className="marca-cor" style={{ background: "var(--serie-3)" }} />
-                    Estoque
-                  </span>
-                  <input className="qtd" inputMode="decimal" value={l.estoque} onChange={(e) => mudar(i.item_id, "estoque", e.target.value)} />
-                </label>
-                <label>
-                  <span>
-                    <i className="marca-cor" style={{ background: "var(--serie-2)" }} />
-                    Descarte
-                  </span>
-                  <input className="qtd" inputMode="decimal" value={l.descarte} onChange={(e) => mudar(i.item_id, "descarte", e.target.value)} />
-                </label>
-                <label>
-                  <span>
-                    <i className="marca-cor" style={{ background: "var(--serie-1)" }} />
-                    Perda
-                  </span>
-                  <input className="qtd" inputMode="decimal" value={l.perda} onChange={(e) => mudar(i.item_id, "perda", e.target.value)} />
-                </label>
-              </div>
-              <button
-                type="button"
-                className="link"
-                style={{ alignSelf: "flex-start" }}
-                onClick={() => setLinhas({ ...linhas, [i.item_id]: { ...l, estoque: String(Number(i.qtd_em_loja)), descarte: "", perda: "" } })}
-              >
-                <CheckCircle2 size={14} /> Tudo voltou para o estoque
-              </button>
-              {num(l.descarte) > 0 && (
-                <SeletorMotivo
-                  tipo="descarte"
-                  rotulo="Motivo do descarte *"
-                  valor={l.motivoDescarte}
-                  aoMudar={(v) => mudar(i.item_id, "motivoDescarte", v)}
-                />
-              )}
-              {num(l.perda) > 0 && (
-                <SeletorMotivo tipo="perda" rotulo="Motivo da perda *" valor={l.motivoPerda} aoMudar={(v) => mudar(i.item_id, "motivoPerda", v)} />
-              )}
-              {num(l.descarte) + num(l.perda) > 0 && (
-                <label>
-                  Observação
-                  <input value={l.observacao} onChange={(e) => mudar(i.item_id, "observacao", e.target.value)} />
-                </label>
-              )}
-            </fieldset>
-          );
-        })}
+        <div className="destinos">
+          <label>
+            <span>
+              <i className="marca-cor" style={{ background: "var(--serie-3)" }} />
+              Estoque
+            </span>
+            <input className="qtd" inputMode="decimal" value={estoque} onChange={(e) => setEstoque(e.target.value)} autoFocus />
+          </label>
+          <label>
+            <span>
+              <i className="marca-cor" style={{ background: "var(--serie-2)" }} />
+              Descarte
+            </span>
+            <input className="qtd" inputMode="decimal" value={descarte} onChange={(e) => setDescarte(e.target.value)} />
+          </label>
+          <label>
+            <span>
+              <i className="marca-cor" style={{ background: "var(--serie-1)" }} />
+              Perda
+            </span>
+            <input className="qtd" inputMode="decimal" value={perda} onChange={(e) => setPerda(e.target.value)} />
+          </label>
+        </div>
+        <button
+          type="button"
+          className="link"
+          style={{ alignSelf: "flex-start" }}
+          onClick={() => (setEstoque(String(Number(i.qtd_em_loja))), setDescarte(""), setPerda(""))}
+        >
+          <CheckCircle2 size={14} /> Tudo voltou para o estoque
+        </button>
+        {qd > 0 && <SeletorMotivo tipo="descarte" rotulo="Motivo do descarte *" valor={motivoDescarte} aoMudar={setMotivoDescarte} />}
+        {qp > 0 && <SeletorMotivo tipo="perda" rotulo="Motivo da perda *" valor={motivoPerda} aoMudar={setMotivoPerda} />}
+        {qd + qp > 0 && (
+          <label>
+            Observação
+            <input value={observacao} onChange={(e) => setObservacao(e.target.value)} />
+          </label>
+        )}
         {erro && <div className="erro">{erro}</div>}
         <Rodape enviando={enviando} rotulo="Confirmar devolução" icone={<Undo2 size={16} />} aoFechar={aoFechar} />
       </form>
@@ -1164,7 +1299,7 @@ function PainelCancelarPendente({ s, aoFechar, aoConcluir }: PropsPainel) {
           </select>
         </label>
         <label>
-          Motivo *
+          Justificativa *
           <input
             value={observacao}
             onChange={(e) => setObservacao(e.target.value)}

@@ -75,7 +75,7 @@ export function Relatorios() {
     ["painel", "Painel gerencial", BarChart3],
     ["exposicao", "Em exposição", Store],
     ["descarte", "Descarte e perda", Trash2],
-    ["erp", "Lançar no ERP", FileSpreadsheet],
+    ["reintegrado", "Reintegrado ao estoque", FileSpreadsheet],
     ["movimentacoes", "Movimentações", Activity],
     ["requisicoes", "Requisições", ClipboardList],
     ["pendentes", "Aprovações pendentes", Hourglass],
@@ -156,12 +156,12 @@ export function Relatorios() {
           }
         />
         <Route
-          path="erp"
+          path="reintegrado"
           element={
             <TabelaRelatorio
-              nome="lancar_erp"
+              nome="reintegrado_estoque"
               f={f}
-              ajuda="Peças que voltaram em condição de uso no período, somadas por SKU, para dar entrada no ERP."
+              ajuda="Peças que voltaram em condição de uso e foram reintegradas ao estoque no período, somadas por SKU."
             />
           }
         />
@@ -455,7 +455,11 @@ function TabelaRelatorio({ nome, f, barra, ajuda }: { nome: string; f: Filtros; 
               {d.linhas.map((l, n) => (
                 <tr key={n}>
                   {d.colunas.map((c) => (
-                    <td key={c.campo} className={NUMERICOS.has(c.tipo) ? "num" : c.tipo === "datahora" ? "nowrap" : ""}>
+                    <td
+                      key={c.campo}
+                      className={NUMERICOS.has(c.tipo) ? "num" : c.tipo === "texto" ? "texto-longo" : ""}
+                      title={c.tipo === "texto" && l[c.campo] ? String(l[c.campo]) : undefined}
+                    >
                       {c.campo === barra && maximo > 0 ? (
                         <div className="barra-dado" title={`${l[d.colunas[0].campo]}: ${celula(l[c.campo], c.tipo)}`}>
                           <span>{celula(l[c.campo], c.tipo)}</span>

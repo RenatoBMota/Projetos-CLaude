@@ -347,8 +347,8 @@ RELATORIOS: dict[str, Relatorio] = {
              AND m.ocorrido_em >= %(inicio)s AND m.ocorrido_em < %(fim_exclusivo)s
              AND {filial(m.filial_id)} AND {fornecedor(p.fornecedor_id)}
            GROUP BY 1, 2 ORDER BY valor DESC"""),
-    "lancar_erp": Relatorio(
-        "Devoluções para estoque (lançar no ERP)",
+    "reintegrado_estoque": Relatorio(
+        "Reintegrado ao estoque",
         [("sku", "SKU", "texto"), ("descricao", "Produto", "texto"), ("unidade", "Unidade", "texto"),
          ("quantidade", "Quantidade", "qtd"), ("valor", "Valor", "moeda"), ("protocolos", "Protocolos", "texto")],
         """SELECT p.sku, p.descricao, p.unidade, sum(m.quantidade) AS quantidade,
