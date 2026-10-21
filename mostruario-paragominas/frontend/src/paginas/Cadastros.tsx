@@ -4,6 +4,7 @@ import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { api, baixar, enviar, Pagina } from "../api";
 import { qtd } from "../formato";
 import { Modal } from "../componentes/Modal";
+import { useVersao } from "../componentes/atualizacao";
 
 type Registro = Record<string, unknown> & { id: number; ativo: boolean };
 
@@ -165,6 +166,7 @@ function TabelaCadastro({ config }: { config: Config }) {
   const [editando, setEditando] = useState<Registro | "novo" | null>(null);
   const [importando, setImportando] = useState(false);
   const [erro, setErro] = useState("");
+  const versao = useVersao();
 
   const carregar = useCallback(() => {
     const q = new URLSearchParams({ busca, pagina: String(pagina), limite: String(POR_PAGINA) });
@@ -177,7 +179,7 @@ function TabelaCadastro({ config }: { config: Config }) {
   useEffect(() => {
     const t = setTimeout(carregar, 250);
     return () => clearTimeout(t);
-  }, [carregar]);
+  }, [carregar, versao]);
 
   const colunas = config.campos.filter((c) => c.naTabela);
   const paginas = dados ? Math.max(1, Math.ceil(dados.total / POR_PAGINA)) : 1;

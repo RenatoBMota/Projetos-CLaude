@@ -1,6 +1,7 @@
 import {
   BarChart3,
   ClipboardList,
+  Bell,
   Download,
   Home,
   KeyRound,
@@ -14,11 +15,12 @@ import {
   Sun,
   WifiOff,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { api } from "../api";
 import { PERFIS_RELATORIOS, PERFIS_REQUISITANTE, temPerfil, useSessao } from "../sessao";
+import { marcarIcone, notificar, useVersao } from "./atualizacao";
 import { Modal } from "./Modal";
 import { iniciais, useInstalar, useOnline, useTema, useToast } from "./ui";
 
@@ -26,20 +28,44 @@ interface Resumo {
   filas: Record<string, number>;
 }
 
-/** Total de tarefas pendentes do usuário (aprovar, expedir). */
+/**
+ * Total de tarefas pendentes do usuário (aprovar, expedir). Recarrega sempre que
+ * os dados mudam e avisa quando chega coisa nova.
+ */
 function usePendencias() {
   const [n, setN] = useState(0);
-  const local = useLocation();
+  const anterior = useRef<number | null>(null);
+  const versao = useVersao();
+  const toast = useToast();
+  const navegar = useNavigate();
   useEffect(() => {
-    const carregar = () =>
-      api<Resumo>("/api/solicitacoes/resumo")
-        .then((r) => setN((r.filas.comercial ?? 0) + (r.filas.logistica ?? 0) + (r.filas.expedicao ?? 0)))
-        .catch(() => {});
-    carregar();
-    const t = setInterval(carregar, 60000);
-    return () => clearInterval(t);
-  }, [local.pathname]);
+    api<Resumo>("/api/solicitacoes/resumo")
+      .then((r) => {
+        const total = (r.filas.comercial ?? 0) + (r.filas.logistica ?? 0) + (r.filas.expedicao ?? 0);
+        const novas = anterior.current === null ? 0 : total - anterior.current;
+        anterior.current = total;
+        setN(total);
+        if (novas > 0) {
+          const texto = novas === 1 ? "Chegou 1 nova requisição para você." : `Chegaram ${novas} novas requisições para você.`;
+          toast({ tipo: "info", texto, acao: { rotulo: "Ver", executar: () => navegar("/") } });
+          if (document.visibilityState !== "visible") notificar("Mostruário — nova pendência", `${texto} Total esperando: ${total}.`);
+        }
+      })
+      .catch(() => {});
+  }, [versao]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    document.title = n > 0 ? `(${n}) Mostruário Paragominas` : "Mostruário Paragominas";
+    marcarIcone(n);
+  }, [n]);
   return n;
+}
+
+/** Botão para permitir avisos do sistema (aparece só enquanto o usuário não decidiu). */
+function useAvisos() {
+  const suportado = "Notification" in window;
+  const [permissao, setPermissao] = useState(suportado ? Notification.permission : "denied");
+  const pedir = () => Notification.requestPermission().then(setPermissao);
+  return { pendente: suportado && permissao === "default", pedir };
 }
 
 export function Layout() {
@@ -49,6 +75,7 @@ export function Layout() {
   const online = useOnline();
   const toast = useToast();
   const pendencias = usePendencias();
+  const avisos = useAvisos();
   const [mais, setMais] = useState(false);
   const [dicaIos, setDicaIos] = useState(false);
   const local = useLocation();
@@ -106,6 +133,11 @@ export function Layout() {
           )}
         </nav>
         <div className="menu-rodape">
+          {avisos.pendente && (
+            <button className="link" onClick={avisos.pedir} style={{ justifyContent: "flex-start" }}>
+              <Bell size={16} /> Ativar avisos de pendências
+            </button>
+          )}
           {instalar.disponivel && (
             <button className="link" onClick={acaoInstalar} style={{ justifyContent: "flex-start" }}>
               <Download size={16} /> Instalar aplicativo
@@ -187,6 +219,11 @@ export function Layout() {
               </NavLink>
             )}
             <hr />
+            {avisos.pendente && (
+              <button onClick={avisos.pedir}>
+                <Bell size={20} /> Ativar avisos de pendências
+              </button>
+            )}
             {instalar.disponivel && (
               <button onClick={acaoInstalar}>
                 <Download size={20} /> Instalar aplicativo

@@ -36,6 +36,7 @@ export default defineConfig({
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api\//],
         cleanupOutdatedCaches: true,
+        importScripts: ["/sw-avisos.js"],
       },
     }),
   ],

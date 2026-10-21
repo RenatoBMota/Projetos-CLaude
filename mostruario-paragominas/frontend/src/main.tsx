@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import "./estilo.css";
+import { ProvedorAtualizacao } from "./componentes/atualizacao";
 import { Layout } from "./componentes/Layout";
 import { Carregando, ProvedorToasts } from "./componentes/ui";
 import { Amostras } from "./paginas/Amostras";
@@ -28,22 +29,24 @@ function App() {
   if (!usuario) return <Login />;
   if (usuario.trocar_senha) return <TrocarSenha obrigatoria />;
   return (
-    <Suspense fallback={<Carregando />}>
-      <Routes>
-        <Route element={<Layout />}>
-          <Route index element={<Inicio />} />
-          <Route path="minha-senha" element={<TrocarSenha />} />
-          <Route path="requisicoes" element={<Requisicoes />} />
-          <Route path="requisicoes/nova" element={<NovaRequisicao />} />
-          <Route path="requisicoes/:id" element={<DetalheRequisicao />} />
-          <Route path="requisicoes/:id/editar" element={<NovaRequisicao />} />
-          <Route path="amostras" element={<Amostras />} />
-          {temPerfil(usuario, ...PERFIS_RELATORIOS) && <Route path="relatorios/*" element={<Relatorios />} />}
-          {temPerfil(usuario, "admin") && <Route path="configuracao/*" element={<Configuracao />} />}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
-    </Suspense>
+    <ProvedorAtualizacao>
+      <Suspense fallback={<Carregando />}>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route index element={<Inicio />} />
+            <Route path="minha-senha" element={<TrocarSenha />} />
+            <Route path="requisicoes" element={<Requisicoes />} />
+            <Route path="requisicoes/nova" element={<NovaRequisicao />} />
+            <Route path="requisicoes/:id" element={<DetalheRequisicao />} />
+            <Route path="requisicoes/:id/editar" element={<NovaRequisicao />} />
+            <Route path="amostras" element={<Amostras />} />
+            {temPerfil(usuario, ...PERFIS_RELATORIOS) && <Route path="relatorios/*" element={<Relatorios />} />}
+            {temPerfil(usuario, "admin") && <Route path="configuracao/*" element={<Configuracao />} />}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </Suspense>
+    </ProvedorAtualizacao>
   );
 }
 

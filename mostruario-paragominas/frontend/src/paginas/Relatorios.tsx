@@ -19,6 +19,7 @@ import {
 import { ReactNode, useEffect, useState } from "react";
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { api, baixar, Pagina } from "../api";
+import { useVersao } from "../componentes/atualizacao";
 import { Cabecalho, Carregando, Indicador, Vazio } from "../componentes/ui";
 import { data, dataHora, moeda, qtd, STATUS, useFiliais } from "../formato";
 import { GraficoDestino, GraficoIdade, GraficoMensal, GraficoRanking, type DestinoFilial, type Faixa, type Mes } from "./Graficos";
@@ -232,16 +233,19 @@ function Painel({ f }: { f: Filtros }) {
   const [d, setD] = useState<Ind | null>(null);
   const [g, setG] = useState<Gerencial | null>(null);
   const [erro, setErro] = useState("");
+  const versao = useVersao();
   useEffect(() => {
     setD(null);
     setG(null);
+  }, [f]);
+  useEffect(() => {
     api<Ind>(`/api/relatorios/indicadores?${consulta(f)}`)
       .then(setD)
       .catch((e) => setErro(e.message));
     api<Gerencial>(`/api/relatorios/gerencial?${consulta(f)}`)
       .then(setG)
       .catch((e) => setErro(e.message));
-  }, [f]);
+  }, [f, versao]);
   if (erro) return <div className="erro">{erro}</div>;
   if (!d || !g)
     return (
@@ -400,13 +404,14 @@ function celula(v: unknown, tipo: Coluna["tipo"]) {
 function TabelaRelatorio({ nome, f, barra, ajuda }: { nome: string; f: Filtros; barra?: string; ajuda?: string }) {
   const [d, setD] = useState<Dados | null>(null);
   const [erro, setErro] = useState("");
+  const versao = useVersao();
 
+  useEffect(() => setD(null), [nome, f]);
   useEffect(() => {
-    setD(null);
     api<Dados>(`/api/relatorios/${nome}?${consulta(f)}`)
       .then(setD)
       .catch((e) => setErro(e.message));
-  }, [nome, f]);
+  }, [nome, f, versao]);
 
   const exportar = (formato: "xlsx" | "csv") =>
     baixar(`/api/relatorios/${nome}?${consulta(f, { formato })}`, `${nome}_${f.fim}.${formato}`).catch((e) => setErro(e.message));

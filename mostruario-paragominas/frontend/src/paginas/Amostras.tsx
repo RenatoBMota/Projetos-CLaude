@@ -2,6 +2,7 @@ import { Boxes, CalendarClock, Search, Store, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
+import { useVersao } from "../componentes/atualizacao";
 import { Cabecalho, Carregando, Indicador, Vazio } from "../componentes/ui";
 import { data, moeda, qtd, useFiliais } from "../formato";
 
@@ -32,13 +33,14 @@ export function Amostras() {
   const [filial, setFilial] = useState("");
   const [busca, setBusca] = useState("");
   const [lista, setLista] = useState<Amostra[] | null>(null);
+  const versao = useVersao();
 
   useEffect(() => {
     const q = new URLSearchParams({ busca });
     if (filial) q.set("filial_id", filial);
     const t = setTimeout(() => api<Amostra[]>(`/api/amostras?${q}`).then(setLista), 200);
     return () => clearTimeout(t);
-  }, [filial, busca]);
+  }, [filial, busca, versao]);
 
   const valor = lista?.reduce((t, a) => t + Number(a.valor_em_loja), 0) ?? 0;
   const quantidade = lista?.reduce((t, a) => t + Number(a.qtd_em_loja), 0) ?? 0;

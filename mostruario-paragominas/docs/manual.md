@@ -30,6 +30,24 @@ No celular, o menu fica embaixo: **Início, Requisições, Nova** (requisitante)
 O menu mostra só o que o seu perfil pode usar. A tela **Início** mostra as
 suas filas de trabalho (o que está esperando por você).
 
+### Atualização automática e avisos
+
+Todas as telas (Início, listas, requisição aberta, Em exposição, painel e
+relatórios, cadastros) **se atualizam sozinhas** em poucos segundos quando
+alguém inclui ou altera qualquer informação — não é preciso recarregar a página.
+
+Quando chega uma requisição nova para você aprovar ou expedir:
+
+- aparece o aviso **"Chegou 1 nova requisição para você" › Ver**;
+- o número no menu **Requisições**, o título da aba — ex.: "(3) Mostruário" — e o
+  ícone do aplicativo instalado mostram quantas estão esperando;
+- clique em **Ativar avisos de pendências** (menu lateral, ou **Mais** no celular)
+  para receber também o aviso do sistema quando o Mostruário estiver minimizado
+  ou em outra aba.
+
+Os avisos funcionam enquanto o Mostruário estiver aberto (mesmo em segundo plano
+no computador). No celular, ao voltar para o aplicativo, tudo é atualizado na hora.
+
 ---
 
 ## Requisitante

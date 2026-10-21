@@ -2,6 +2,7 @@ import { CheckCheck, ChevronRight, ClipboardCheck, FileEdit, PackageOpen, Plus, 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, Pagina } from "../api";
+import { useVersao } from "../componentes/atualizacao";
 import { Carregando, Cabecalho, Indicador, SeloStatus, Vazio } from "../componentes/ui";
 import { data, moeda, qtd } from "../formato";
 import { PERFIS_REQUISITANTE, temPerfil, useSessao } from "../sessao";
@@ -30,11 +31,12 @@ export function Inicio() {
   const [resumo, setResumo] = useState<Resumo | null>(null);
   const [recentes, setRecentes] = useState<LinhaRequisicao[] | null>(null);
   const requisitante = temPerfil(usuario, ...PERFIS_REQUISITANTE);
+  const versao = useVersao();
 
   useEffect(() => {
     api<Resumo>("/api/solicitacoes/resumo").then(setResumo);
     api<Pagina<LinhaRequisicao>>(`/api/solicitacoes?limite=6${requisitante ? "&minhas=true" : ""}`).then((r) => setRecentes(r.itens));
-  }, [requisitante]);
+  }, [requisitante, versao]);
 
   const filas = resumo ? Object.entries(resumo.filas) : [];
   const pendentes = filas.filter(([f]) => f !== "rascunhos" && f !== "devolucao").reduce((t, [, n]) => t + n, 0);

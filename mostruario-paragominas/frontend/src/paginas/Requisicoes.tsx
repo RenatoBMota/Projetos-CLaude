@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, Flag, Plus, Search, SearchX } from "lucide-r
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, Pagina } from "../api";
+import { useVersao } from "../componentes/atualizacao";
 import { Cabecalho, Carregando, SeloStatus, Vazio } from "../componentes/ui";
 import { data, moeda, STATUS, useFiliais } from "../formato";
 import { PERFIS_REQUISITANTE, temPerfil, useSessao } from "../sessao";
@@ -44,6 +45,7 @@ export function Requisicoes() {
   const [pagina, setPagina] = useState(1);
   const [dados, setDados] = useState<Pagina<LinhaRequisicao> | null>(null);
   const [erro, setErro] = useState("");
+  const versao = useVersao();
 
   useEffect(() => {
     const q = new URLSearchParams({ busca, pagina: String(pagina), limite: String(POR_PAGINA) });
@@ -59,7 +61,7 @@ export function Requisicoes() {
       200,
     );
     return () => clearTimeout(t);
-  }, [busca, fila, minhas, status, filial, pagina]);
+  }, [busca, fila, minhas, status, filial, pagina, versao]);
 
   const escolher = (novo: Record<string, string>) => {
     setPagina(1);

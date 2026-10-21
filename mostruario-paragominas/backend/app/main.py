@@ -9,7 +9,7 @@ from psycopg import errors
 from pydantic import ValidationError
 
 from . import config, db, medidas, migracoes
-from .rotas import anexos, auth, cadastros, relatorios, solicitacoes, usuarios
+from .rotas import anexos, atualizacoes, auth, cadastros, relatorios, solicitacoes, usuarios
 
 
 @asynccontextmanager
@@ -32,6 +32,7 @@ app.include_router(cadastros.router)
 app.include_router(solicitacoes.router)
 app.include_router(relatorios.router)
 app.include_router(anexos.router)
+app.include_router(atualizacoes.router)
 
 
 @app.exception_handler(ValidationError)
@@ -75,6 +76,6 @@ if config.FRONTEND_DIR and Path(config.FRONTEND_DIR, "index.html").exists():
             return JSONResponse(status_code=404, content={"detail": "Rota inexistente"})
         arquivo = (_front / caminho).resolve()
         if caminho and arquivo.is_file() and _front.resolve() in arquivo.parents:
-            sem_cache = arquivo.name in ("sw.js", "registerSW.js", "manifest.webmanifest", "index.html")
+            sem_cache = arquivo.name in ("sw.js", "sw-avisos.js", "registerSW.js", "manifest.webmanifest", "index.html")
             return FileResponse(arquivo, headers=_sem_cache if sem_cache else None)
         return FileResponse(_front / "index.html", headers=_sem_cache)

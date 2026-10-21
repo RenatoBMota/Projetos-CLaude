@@ -3,6 +3,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { api, enviar, Pagina, Perfil, PERFIS, Usuario } from "../api";
 import { Modal } from "../componentes/Modal";
 import { useSessao } from "../sessao";
+import { useVersao } from "../componentes/atualizacao";
 
 interface Filial {
   id: number;
@@ -22,11 +23,12 @@ export function Usuarios() {
   const carregar = useCallback(() => {
     api<Usuario[]>("/api/usuarios").then(setUsuarios).catch((e) => setErro(e.message));
   }, []);
+  const versao = useVersao();
 
   useEffect(() => {
     carregar();
     api<Pagina<Filial>>("/api/cadastros/filiais?ativos=true&limite=500").then((r) => setFiliais(r.itens));
-  }, [carregar]);
+  }, [carregar, versao]);
 
   const nomeFilial = (id: number | null) => (id ? filiais.find((f) => f.id === id)?.nome ?? `#${id}` : "Corporativo");
 

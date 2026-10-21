@@ -23,6 +23,7 @@ import { FormEvent, ReactNode, useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, enviar, token } from "../api";
 import { Modal } from "../componentes/Modal";
+import { useVersao } from "../componentes/atualizacao";
 import { Cabecalho, Carregando, SeloStatus, Vazio, useToast } from "../componentes/ui";
 import { data, dataHora, moeda, novaChave, PRIORIDADES, qtd, STATUS, STATUS_ITEM, TIPOS_MOV, useMotivos } from "../formato";
 
@@ -342,13 +343,14 @@ export function DetalheRequisicao() {
   const [painel, setPainel] = useState<Painel | null>(null);
   const navegar = useNavigate();
   const toast = useToast();
+  const versao = useVersao();
 
   const carregar = useCallback(() => {
     api<Detalhe>(`/api/solicitacoes/${id}`)
       .then(setS)
       .catch((e) => setErro(e.message));
   }, [id]);
-  useEffect(carregar, [carregar]);
+  useEffect(carregar, [carregar, versao]);
 
   if (erro) return <Vazio icone={XCircle} titulo="Não foi possível abrir" texto={erro} />;
   if (!s)
@@ -780,7 +782,8 @@ function Anexos({ solicitacaoId, aoAnexar }: { solicitacaoId: number; aoAnexar: 
   const carregar = useCallback(() => {
     api<Anexo[]>(`/api/solicitacoes/${solicitacaoId}/anexos`).then(setAnexos);
   }, [solicitacaoId]);
-  useEffect(carregar, [carregar]);
+  const versao = useVersao();
+  useEffect(carregar, [carregar, versao]);
 
   const enviarArquivo = async (e: FormEvent) => {
     e.preventDefault();
