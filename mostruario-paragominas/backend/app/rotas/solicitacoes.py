@@ -31,7 +31,9 @@ DESTINOS = {"estoque": "devolucao_estoque", "descarte": "devolucao_descarte", "p
 
 class ItemIn(BaseModel):
     produto_id: int
-    quantidade: Decimal = Field(gt=0)
+    # Informe peças (convertidas em m² pela medida do produto) ou a quantidade direta
+    pecas: Decimal | None = Field(default=None, gt=0)
+    quantidade: Decimal | None = Field(default=None, gt=0)
     observacao: str | None = None
 
 
@@ -129,8 +131,9 @@ def _ajuste(conn: Connection, item_id: int, tipo: str, anterior, nova, justifica
 
 def _posicao(conn: Connection, sid: int) -> list[dict]:
     return conn.execute(
-        """SELECT v.*, i.quantidade_solicitada, i.quantidade_aprovada, i.custo_referencia, i.observacao,
-                  p.sku, p.descricao, p.unidade, f.razao_social AS fornecedor_nome
+        """SELECT v.*, i.quantidade_solicitada, i.quantidade_aprovada, i.quantidade_pecas, i.custo_referencia,
+                  i.observacao, p.sku, p.descricao, p.unidade, p.area_peca_m2, p.pecas_caixa,
+                  f.razao_social AS fornecedor_nome
            FROM vw_posicao_item v
            JOIN itens_solicitacao i ON i.id = v.item_id
            JOIN produtos p ON p.id = v.produto_id
@@ -254,16 +257,25 @@ def _gravar_itens(conn: Connection, sid: int, itens: list[ItemIn]) -> None:
     if len(set(ids)) != len(ids):
         raise HTTPException(400, "O mesmo produto aparece mais de uma vez")
     produtos = {p["id"]: p for p in conn.execute(
-        "SELECT id, custo_referencia, ativo FROM produtos WHERE id = ANY(%s)", (ids,))}
+        "SELECT id, sku, custo_referencia, ativo, area_peca_m2 FROM produtos WHERE id = ANY(%s)", (ids,))}
     conn.execute("DELETE FROM itens_solicitacao WHERE solicitacao_id = %s", (sid,))
     for item in itens:
         p = produtos.get(item.produto_id)
         if p is None or not p["ativo"]:
             raise HTTPException(400, f"Produto {item.produto_id} inexistente ou inativo")
+        if item.pecas is not None:
+            if not p["area_peca_m2"]:
+                raise HTTPException(400, f"{p['sku']}: produto sem medida da peça; informe a quantidade em m²")
+            quantidade = round(item.pecas * Decimal(p["area_peca_m2"]), 3)
+        elif item.quantidade is not None:
+            quantidade = item.quantidade
+        else:
+            raise HTTPException(400, f"{p['sku']}: informe a quantidade")
         conn.execute(
-            """INSERT INTO itens_solicitacao (solicitacao_id, produto_id, quantidade_solicitada, custo_referencia, observacao)
-               VALUES (%s, %s, %s, %s, %s)""",
-            (sid, item.produto_id, item.quantidade, p["custo_referencia"], item.observacao),
+            """INSERT INTO itens_solicitacao (solicitacao_id, produto_id, quantidade_solicitada, quantidade_pecas,
+                                              custo_referencia, observacao)
+               VALUES (%s, %s, %s, %s, %s, %s)""",
+            (sid, item.produto_id, quantidade, item.pecas, p["custo_referencia"], item.observacao),
         )
 
 

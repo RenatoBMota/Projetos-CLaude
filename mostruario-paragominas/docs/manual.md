@@ -38,8 +38,14 @@ suas filas de trabalho (o que está esperando por você).
 
 1. **Requisições › Nova requisição** (ou o botão na tela Início).
 2. Escolha a filial e a prioridade; informe a finalidade e, se quiser, uma justificativa.
-3. Em **Produtos**, digite parte do SKU ou da descrição e clique no produto para
-   adicioná-lo. Ajuste a quantidade de cada item.
+3. Em **Produtos**, digite parte do SKU ou da descrição e tecle **Enter** (ou
+   clique no produto). O cursor vai para a quantidade: digite e tecle **Enter**
+   de novo para voltar à busca e incluir o próximo. O Enter **não envia** a
+   requisição — o envio é só pelo botão.
+   - Para pisos e revestimentos, a quantidade é em **peças**. O sistema converte
+     para m² pela caixa (ex.: "CERBRAS 33X46A CARIRI AZUL 2,23": caixa de 2,23 m²
+     com 15 peças → 15 peças = 2,23 m²) e mostra a conversão ao lado.
+   - Produtos sem medida na descrição continuam sendo pedidos na unidade deles (m², peça…).
 4. **Enviar para aprovação** — ou **Salvar rascunho** para terminar depois.
 
 Rascunhos só você vê. Para continuar um rascunho: **Requisições › Minhas**,
@@ -153,6 +159,10 @@ Menu **Configuração**:
 
 - **Cadastros › Produtos, Fornecedores, Filiais, Motivos** — inclua e edite.
   Registros não são apagados: desmarque **Ativo** para tirá-los de uso.
+- **Medidas da peça** (Produtos › Editar): largura e comprimento da peça (cm) e
+  m² por caixa. São lidos automaticamente da descrição ("33X46A … 2,23"); corrija
+  à mão se a descrição estiver fora do padrão. A tabela mostra a peça e quantas
+  peças vêm na caixa.
 - **Importar planilha** (aba Produtos) — envie a planilha exportada do ERP
   (.xlsx ou .csv). Baixe a planilha modelo para ver as colunas. Produtos já
   existentes são atualizados pelo SKU. Se alguma linha tiver erro, nada é

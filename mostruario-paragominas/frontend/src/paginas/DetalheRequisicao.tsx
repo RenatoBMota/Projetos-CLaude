@@ -45,7 +45,17 @@ interface Item {
   dias_em_exposicao: number | null;
   status_item: string;
   ajustes: Ajuste[];
+  quantidade_pecas: number | null;
+  area_peca_m2: number | null;
 }
+
+/** Equivalente em peças de uma quantidade em m² (produtos com medida da peça). */
+const emPecas = (i: Item, m2: number | string) =>
+  Number(i.area_peca_m2) > 0 ? Math.round(Number(m2) / Number(i.area_peca_m2)) : null;
+const Pecas = ({ i, m2 }: { i: Item; m2: number | string }) => {
+  const n = emPecas(i, m2);
+  return n == null || !Number(m2) ? null : <small className="sutil bloco">{n} pç</small>;
+};
 
 interface Ajuste {
   tipo: string;
@@ -638,10 +648,22 @@ function Itens({ s, aoDevolver }: { s: Detalhe; aoDevolver?: (itemId: number) =>
                     )}
                     <Ajustes i={i} />
                   </td>
-                  <td className="num">{qtd(i.quantidade_solicitada)}</td>
-                  <td className="num">{qtd(i.qtd_aprovada)}</td>
-                  <td className="num">{qtd(i.qtd_expedida)}</td>
-                  <td className="num forte">{qtd(i.qtd_em_loja)}</td>
+                  <td className="num">
+                    {qtd(i.quantidade_solicitada)}
+                    <Pecas i={i} m2={i.quantidade_solicitada} />
+                  </td>
+                  <td className="num">
+                    {qtd(i.qtd_aprovada)}
+                    <Pecas i={i} m2={i.qtd_aprovada} />
+                  </td>
+                  <td className="num">
+                    {qtd(i.qtd_expedida)}
+                    <Pecas i={i} m2={i.qtd_expedida} />
+                  </td>
+                  <td className="num forte">
+                    {qtd(i.qtd_em_loja)}
+                    <Pecas i={i} m2={i.qtd_em_loja} />
+                  </td>
                   <td className="num">{qtd(i.qtd_estoque)}</td>
                   <td className="num">{qtd(i.qtd_descarte)}</td>
                   <td className="num">{qtd(i.qtd_perda)}</td>
@@ -961,6 +983,9 @@ function PainelAprovar({ s, aoFechar, aoConcluir }: PropsPainel) {
                 <strong>{i.descricao}</strong>
                 <small>
                   {i.sku} · solicitado {qtd(i.quantidade_solicitada)} {i.unidade}
+                  {emPecas(i, i.quantidade_solicitada) != null && ` (${emPecas(i, i.quantidade_solicitada)} pç)`}
+                  {alterado(i) && emPecas(i, num(quantidades[i.item_id] ?? "0")) != null &&
+                    ` · aprovando ≈ ${emPecas(i, num(quantidades[i.item_id] ?? "0"))} pç`}
                 </small>
               </div>
               <input
@@ -1072,6 +1097,8 @@ function PainelExpedir({ s, aoFechar, aoConcluir }: PropsPainel) {
                   <strong>{i.descricao}</strong>
                   <small>
                     {i.sku} · aprovado pendente {qtd(i.qtd_pendente_expedicao)} {i.unidade}
+                    {emPecas(i, i.qtd_pendente_expedicao) != null && ` (${emPecas(i, i.qtd_pendente_expedicao)} pç)`}
+                    {emPecas(i, num(l.quantidade)) != null && ` · saindo ≈ ${emPecas(i, num(l.quantidade))} pç`}
                   </small>
                 </div>
                 <input

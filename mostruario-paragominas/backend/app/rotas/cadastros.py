@@ -17,6 +17,7 @@ from openpyxl import Workbook, load_workbook
 from psycopg import Connection, sql
 from pydantic import BaseModel, Field
 
+from .. import medidas
 from ..db import auditar, get_conn
 from ..seguranca import exigir_perfil, usuario_atual
 
@@ -48,6 +49,10 @@ class ProdutoIn(BaseModel):
     unidade: str = "PC"
     fornecedor_id: int | None = None
     custo_referencia: Decimal = Field(ge=0, default=Decimal(0))
+    # Medidas da peça; vazias = lidas da descrição (ex.: "33X46A ... 2,23")
+    peca_largura_cm: Decimal | None = Field(default=None, gt=0)
+    peca_comprimento_cm: Decimal | None = Field(default=None, gt=0)
+    m2_caixa: Decimal | None = Field(default=None, gt=0)
     ativo: bool = True
 
 
@@ -199,6 +204,7 @@ def importar_produtos(arquivo: UploadFile, admin: dict = Depends(somente_admin),
             "marca": _texto(linha.get("marca")), "linha": _texto(linha.get("linha")),
             "formato": _texto(linha.get("formato")), "unidade": _texto(linha.get("unidade")) or "PC",
             "custo_referencia": custo,
+            **dict(zip(("peca_largura_cm", "peca_comprimento_cm", "m2_caixa"), medidas.extrair(descricao))),
             "fornecedor_codigo": _texto(linha.get("fornecedor_codigo")),
             "fornecedor_nome": _texto(linha.get("fornecedor_nome")),
         }))
@@ -224,13 +230,18 @@ def importar_produtos(arquivo: UploadFile, admin: dict = Depends(somente_admin),
     inseridos = atualizados = 0
     for _, p in validas:
         r = conn.execute(
-            """INSERT INTO produtos (sku, descricao, marca, linha, formato, unidade, fornecedor_id, custo_referencia)
-               VALUES (%(sku)s, %(descricao)s, %(marca)s, %(linha)s, %(formato)s, %(unidade)s, %(fornecedor_id)s, %(custo_referencia)s)
+            """INSERT INTO produtos (sku, descricao, marca, linha, formato, unidade, fornecedor_id, custo_referencia,
+                                     peca_largura_cm, peca_comprimento_cm, m2_caixa)
+               VALUES (%(sku)s, %(descricao)s, %(marca)s, %(linha)s, %(formato)s, %(unidade)s, %(fornecedor_id)s,
+                       %(custo_referencia)s, %(peca_largura_cm)s, %(peca_comprimento_cm)s, %(m2_caixa)s)
                ON CONFLICT (sku) DO UPDATE SET
                  descricao = EXCLUDED.descricao, marca = EXCLUDED.marca, linha = EXCLUDED.linha,
                  formato = EXCLUDED.formato, unidade = EXCLUDED.unidade,
                  fornecedor_id = COALESCE(EXCLUDED.fornecedor_id, produtos.fornecedor_id),
-                 custo_referencia = EXCLUDED.custo_referencia
+                 custo_referencia = EXCLUDED.custo_referencia,
+                 peca_largura_cm = COALESCE(EXCLUDED.peca_largura_cm, produtos.peca_largura_cm),
+                 peca_comprimento_cm = COALESCE(EXCLUDED.peca_comprimento_cm, produtos.peca_comprimento_cm),
+                 m2_caixa = COALESCE(EXCLUDED.m2_caixa, produtos.m2_caixa)
                RETURNING (xmax = 0) AS inserido""",
             {**p, "fornecedor_id": fornecedores.get(p["fornecedor_codigo"])},
         ).fetchone()
@@ -286,6 +297,8 @@ def criar(entidade: str, corpo: dict, admin: dict = Depends(somente_admin),
           conn: Connection = Depends(get_conn)):
     ent = _entidade(entidade)
     dados = _limpar(ent.modelo.model_validate(corpo))
+    if entidade == "produtos":
+        dados = medidas.completar(dados)
     colunas = list(dados)
     novo = conn.execute(
         sql.SQL("INSERT INTO {} ({}) VALUES ({}) RETURNING *").format(
@@ -302,6 +315,8 @@ def alterar(entidade: str, registro_id: int, corpo: dict, admin: dict = Depends(
             conn: Connection = Depends(get_conn)):
     ent = _entidade(entidade)
     dados = _limpar(ent.modelo.model_validate(corpo))
+    if entidade == "produtos":
+        dados = medidas.completar(dados)
     antes = _buscar(conn, ent, registro_id)
     if antes is None:
         raise HTTPException(404, "Registro não encontrado")

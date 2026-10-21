@@ -2,6 +2,7 @@ import { ChangeEvent, FormEvent, useCallback, useEffect, useRef, useState } from
 import { Download, FileUp, Pencil, Plus, Search } from "lucide-react";
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { api, baixar, enviar, Pagina } from "../api";
+import { qtd } from "../formato";
 import { Modal } from "../componentes/Modal";
 
 type Registro = Record<string, unknown> & { id: number; ativo: boolean };
@@ -10,6 +11,11 @@ interface Campo {
   nome: string;
   rotulo: string;
   tipo?: "texto" | "numero" | "bool" | "select" | "fornecedor";
+  /** Número que pode ficar vazio (enviado como nulo) */
+  opcional?: boolean;
+  dica?: string;
+  /** Título da coluna na tabela, quando diferente do rótulo do formulário */
+  rotuloTabela?: string;
   obrigatorio?: boolean;
   opcoes?: { valor: string; rotulo: string }[];
   padrao?: unknown;
@@ -56,6 +62,27 @@ const CADASTROS: Config[] = [
         exibir: (r) => String(r.fornecedor_nome ?? "—"),
       },
       { nome: "custo_referencia", rotulo: "Custo de referência (R$)", tipo: "numero", padrao: 0, naTabela: true, exibir: (r) => moeda(r.custo_referencia) },
+      {
+        nome: "peca_largura_cm",
+        rotulo: "Peça: largura (cm)",
+        rotuloTabela: "Peça",
+        tipo: "numero",
+        opcional: true,
+        dica: "Deixe as medidas vazias para o sistema ler da descrição (ex.: “33X46A … 2,23”).",
+        naTabela: true,
+        exibir: (r) =>
+          r.peca_largura_cm ? `${qtd(r.peca_largura_cm)}×${qtd(r.peca_comprimento_cm)} cm` : "—",
+      },
+      { nome: "peca_comprimento_cm", rotulo: "Peça: comprimento (cm)", tipo: "numero", opcional: true },
+      {
+        nome: "m2_caixa",
+        rotulo: "m² por caixa",
+        rotuloTabela: "Caixa",
+        tipo: "numero",
+        opcional: true,
+        naTabela: true,
+        exibir: (r) => (r.m2_caixa ? `${qtd(r.m2_caixa)} m² · ${r.pecas_caixa ?? "?"} pç` : "—"),
+      },
     ],
   },
   {
@@ -189,7 +216,7 @@ function TabelaCadastro({ config }: { config: Config }) {
           <thead>
             <tr>
               {colunas.map((c) => (
-                <th key={c.nome}>{c.rotulo}</th>
+                <th key={c.nome}>{c.rotuloTabela ?? c.rotulo}</th>
               ))}
               <th>Situação</th>
               <th />
@@ -301,7 +328,8 @@ function FormularioCadastro({
     for (const c of config.campos) {
       const v = valores[c.nome];
       if (c.tipo === "fornecedor") corpo[c.nome] = v ? Number(v) : null;
-      else if (c.tipo === "numero") corpo[c.nome] = v === "" ? 0 : String(v).replace(",", ".");
+      else if (c.tipo === "numero")
+        corpo[c.nome] = v === "" || v == null ? (c.opcional ? null : 0) : String(v).replace(",", ".");
       else corpo[c.nome] = v === "" ? null : v;
     }
     try {
@@ -331,6 +359,7 @@ function FormularioCadastro({
             <label key={c.nome}>
               {c.rotulo}
               {c.obrigatorio && " *"}
+              {c.dica && <small className="sutil" style={{ fontWeight: 400 }}>{c.dica}</small>}
               {c.tipo === "select" ? (
                 <select value={String(v)} onChange={(e) => mudar(c.nome, e.target.value)}>
                   {c.opcoes!.map((o) => (

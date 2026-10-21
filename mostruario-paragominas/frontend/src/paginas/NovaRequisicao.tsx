@@ -1,5 +1,5 @@
 import { CheckCircle2, Minus, PackagePlus, Plus, Save, Search, Send, Trash2, UserRound } from "lucide-react";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, enviar, Pagina } from "../api";
 import { Cabecalho, Vazio, useToast } from "../componentes/ui";
@@ -13,7 +13,14 @@ interface Produto {
   unidade: string;
   custo_referencia: number;
   fornecedor_nome: string | null;
+  area_peca_m2?: number | null;
+  pecas_caixa?: number | null;
 }
+
+/** Produto com medida da peça: a requisição é feita em peças e convertida em m². */
+const porPeca = (p: Produto) => Number(p.area_peca_m2) > 0;
+const m2DaLinha = (l: { produto: Produto; quantidade: string }) =>
+  porPeca(l.produto) ? Math.round(num(l.quantidade) * Number(l.produto.area_peca_m2) * 1000) / 1000 : num(l.quantidade);
 
 interface Linha {
   produto: Produto;
@@ -87,6 +94,9 @@ export function NovaRequisicao() {
         custo_referencia: number;
         fornecedor_nome: string | null;
         quantidade_solicitada: number;
+        quantidade_pecas: number | null;
+        area_peca_m2: number | null;
+        pecas_caixa: number | null;
       }[];
     }>(`/api/solicitacoes/${id}`).then((s) => {
       setFilialId(String(s.filial_id));
@@ -104,8 +114,10 @@ export function NovaRequisicao() {
             unidade: i.unidade,
             custo_referencia: i.custo_referencia,
             fornecedor_nome: i.fornecedor_nome,
+            area_peca_m2: i.area_peca_m2,
+            pecas_caixa: i.pecas_caixa,
           },
-          quantidade: String(Number(i.quantidade_solicitada)),
+          quantidade: String(Number(i.quantidade_pecas ?? i.quantidade_solicitada)),
         })),
       );
     });
@@ -136,12 +148,26 @@ export function NovaRequisicao() {
     }
     setBusca("");
     setSugestoes(null);
+    // Vai direto para a quantidade do produto incluído
+    setTimeout(() => {
+      const campos = document.querySelectorAll<HTMLInputElement>(".item-req .passo-qtd input");
+      const alvo = campos[linhas.some((l) => l.produto.id === p.id) ? linhas.findIndex((l) => l.produto.id === p.id) : campos.length - 1];
+      alvo?.focus();
+      alvo?.select();
+    }, 0);
+  };
+
+  /** Enter na quantidade: volta para a busca para incluir o próximo produto. */
+  const proximoProduto = (e: KeyboardEvent) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
     campoBusca.current?.focus();
   };
 
   const mudarQtd = (n: number, valor: string) => setLinhas(linhas.map((l, i) => (i === n ? { ...l, quantidade: valor } : l)));
-  const total = linhas.reduce((t, l) => t + num(l.quantidade) * Number(l.produto.custo_referencia), 0);
-  const unidades = linhas.reduce((t, l) => t + num(l.quantidade), 0);
+  const total = linhas.reduce((t, l) => t + m2DaLinha(l) * Number(l.produto.custo_referencia), 0);
+  const totalM2 = linhas.reduce((t, l) => t + m2DaLinha(l), 0);
+  const totalPecas = linhas.reduce((t, l) => t + (porPeca(l.produto) ? num(l.quantidade) : 0), 0);
 
   const salvar = async (enviarParaAprovacao: boolean, e?: FormEvent) => {
     e?.preventDefault();
@@ -159,7 +185,9 @@ export function NovaRequisicao() {
       enviar: enviarParaAprovacao,
       solicitante_nome: geral ? solicitante : null,
       solicitante_empresa: geral ? empresa || null : null,
-      itens: linhas.map((l) => ({ produto_id: l.produto.id, quantidade: num(l.quantidade) })),
+      itens: linhas.map((l) =>
+        porPeca(l.produto) ? { produto_id: l.produto.id, pecas: num(l.quantidade) } : { produto_id: l.produto.id, quantidade: num(l.quantidade) },
+      ),
     };
     try {
       const s = id
@@ -211,7 +239,8 @@ export function NovaRequisicao() {
           <Link to={`/requisicoes/${enviada.id}`}>Ver requisição</Link>
         </div>
       )}
-      <form onSubmit={(e) => salvar(true, e)}>
+      {/* Enter não envia a requisição: o envio é só pelos botões */}
+      <form onSubmit={(e) => e.preventDefault()}>
         {geral && (
           <section className="cartao formulario">
             <h2 style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -292,10 +321,9 @@ export function NovaRequisicao() {
                 onChange={(e) => setBusca(e.target.value)}
                 placeholder="Ex.: porcelanato 60x60, POR-6060…"
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && sugestoes?.length) {
-                    e.preventDefault();
-                    adicionar(sugestoes[0]);
-                  }
+                  if (e.key !== "Enter") return;
+                  e.preventDefault();
+                  if (sugestoes?.length) adicionar(sugestoes[0]);
                 }}
               />
             </div>
@@ -314,6 +342,7 @@ export function NovaRequisicao() {
                       </b>
                       <small>
                         {p.fornecedor_nome ?? "sem fornecedor"} · {moeda(p.custo_referencia)}/{p.unidade}
+                        {porPeca(p) && p.pecas_caixa ? ` · caixa com ${p.pecas_caixa} peças` : ""}
                       </small>
                     </button>
                   </li>
@@ -339,15 +368,30 @@ export function NovaRequisicao() {
                     <button type="button" onClick={() => mudarQtd(n, String(Math.max(1, num(l.quantidade) - 1)))} aria-label="Diminuir">
                       <Minus size={16} />
                     </button>
-                    <input inputMode="decimal" value={l.quantidade} onChange={(e) => mudarQtd(n, e.target.value)} />
+                    <input
+                      inputMode={porPeca(l.produto) ? "numeric" : "decimal"}
+                      value={l.quantidade}
+                      onChange={(e) => mudarQtd(n, e.target.value)}
+                      onKeyDown={proximoProduto}
+                    />
                     <button type="button" onClick={() => mudarQtd(n, String(num(l.quantidade) + 1))} aria-label="Aumentar">
                       <Plus size={16} />
                     </button>
                   </div>
-                  <span className="sutil" style={{ fontSize: 12.5, minWidth: 24 }}>
-                    {l.produto.unidade}
-                  </span>
-                  <span className="subtotal">{moeda(num(l.quantidade) * Number(l.produto.custo_referencia))}</span>
+                  {porPeca(l.produto) ? (
+                    <span className="conversao">
+                      <b>peças</b>
+                      <small>
+                        = {qtd(m2DaLinha(l))} m²
+                        {l.produto.pecas_caixa ? ` · caixa: ${l.produto.pecas_caixa} pç` : ""}
+                      </small>
+                    </span>
+                  ) : (
+                    <span className="sutil" style={{ fontSize: 12.5, minWidth: 24 }}>
+                      {l.produto.unidade}
+                    </span>
+                  )}
+                  <span className="subtotal">{moeda(m2DaLinha(l) * Number(l.produto.custo_referencia))}</span>
                   <button
                     type="button"
                     className="icone"
@@ -371,7 +415,8 @@ export function NovaRequisicao() {
         <div className="resumo-fixo">
           <div className="total">
             <span>
-              {linhas.length} {linhas.length === 1 ? "produto" : "produtos"} · {qtd(unidades)} unidades
+              {linhas.length} {linhas.length === 1 ? "produto" : "produtos"}
+              {totalPecas > 0 && ` · ${qtd(totalPecas)} peças`} · {qtd(totalM2)} m²
             </span>
             <strong>{moeda(total)}</strong>
           </div>
@@ -379,7 +424,7 @@ export function NovaRequisicao() {
             <button type="button" disabled={salvando} onClick={() => salvar(false)}>
               <Save size={16} /> Salvar rascunho
             </button>
-            <button className="primario" disabled={salvando}>
+            <button type="button" className="primario" disabled={salvando} onClick={() => salvar(true)}>
               <Send size={16} /> Enviar para aprovação
             </button>
           </div>

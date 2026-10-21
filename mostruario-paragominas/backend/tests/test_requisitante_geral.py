@@ -54,4 +54,4 @@ def test_migracoes_idempotentes(cliente):
         assert "001_requisitante_geral.sql" in feitas
         # simula banco antigo: remove o registro e reaplica (IF NOT EXISTS)
         conn.execute("DELETE FROM migracoes")
-    assert migracoes.aplicar(url) == ["001_requisitante_geral.sql", "002_ajustes_item.sql"]
+    assert migracoes.aplicar(url) == ["001_requisitante_geral.sql", "002_ajustes_item.sql", "003_medidas_peca.sql"]

@@ -526,6 +526,8 @@ input.qtd { width: 96px; text-align: right; }
 .item-req .desc { flex: 1; min-width: 180px; }
 .item-req .desc strong { display: block; font-size: 14px; }
 .item-req .desc small { color: var(--sutil); font-size: 12.5px; }
+.item-req .conversao { display: flex; flex-direction: column; font-size: 12.5px; min-width: 110px; line-height: 1.3; }
+.item-req .conversao small { color: var(--sutil); }
 .item-req .subtotal { min-width: 110px; text-align: right; font-weight: 650; font-variant-numeric: tabular-nums; }
 .resumo-fixo {
   position: sticky; bottom: 0; z-index: 5; margin-top: 16px;
